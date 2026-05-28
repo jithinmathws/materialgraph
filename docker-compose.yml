@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: materialgraph-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: materialgraph
+    ports:
+      - "5432:5432"
+    volumes:
+      - materialgraph_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  materialgraph_postgres_data:

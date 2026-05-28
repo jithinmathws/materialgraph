@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: materialgraph
+Version: 0.1.0
+Summary: Graph-based candidate materials intelligence platform
+Requires-Python: >=3.11
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: sqlalchemy
+Requires-Dist: psycopg[binary]
+Requires-Dist: alembic
+Requires-Dist: pydantic-settings
+Requires-Dist: python-dotenv
+Requires-Dist: networkx
+Requires-Dist: loguru
+Requires-Dist: mp-api
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: httpx2; extra == "dev"
+Requires-Dist: ruff; extra == "dev"

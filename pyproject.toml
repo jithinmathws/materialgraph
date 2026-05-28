@@ -1,0 +1,28 @@
+[project]
+name = "materialgraph"
+version = "0.1.0"
+description = "Graph-based candidate materials intelligence platform"
+requires-python = ">=3.11"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "psycopg[binary]",
+    "alembic",
+    "pydantic-settings",
+    "python-dotenv",
+    "networkx",
+    "loguru",
+    "mp-api",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx2",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 120

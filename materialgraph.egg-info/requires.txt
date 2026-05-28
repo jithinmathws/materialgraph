@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+alembic
+pydantic-settings
+python-dotenv
+networkx
+loguru
+mp-api
+
+[dev]
+pytest
+httpx2
+ruff
