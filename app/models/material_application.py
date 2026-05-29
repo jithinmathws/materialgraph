@@ -4,8 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 
-class MaterialElement(Base):
-    __tablename__ = "material_elements"
+class MaterialApplication(Base):
+    __tablename__ = "material_applications"
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -13,13 +13,13 @@ class MaterialElement(Base):
         ForeignKey("materials.id", ondelete="CASCADE"),
         index=True,
     )
-    element_id: Mapped[int] = mapped_column(
-        ForeignKey("elements.id", ondelete="CASCADE"),
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("applications.id", ondelete="CASCADE"),
         index=True,
     )
 
-    fraction: Mapped[float] = mapped_column(Float)
+    suitability_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("material_id", "element_id", name="uq_material_element"),
+        UniqueConstraint("material_id", "application_id", name="uq_material_application"),
     )

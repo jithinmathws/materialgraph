@@ -10,9 +10,6 @@ class Element(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     symbol: Mapped[str] = mapped_column(String(10), unique=True, index=True)
-
-    name: Mapped[str] = mapped_column(String(50))
-
-    atomic_number: Mapped[int] = mapped_column(Integer)
-
-    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    name: Mapped[str] = mapped_column(String(100))
+    atomic_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
