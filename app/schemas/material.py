@@ -15,3 +15,14 @@ class MaterialRead(BaseModel):
     source: str
 
     model_config = ConfigDict(from_attributes=True)
+
+class ElementSummary(BaseModel):
+    id: int
+    symbol: str
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MaterialDetail(MaterialRead):
+    elements: list[ElementSummary]

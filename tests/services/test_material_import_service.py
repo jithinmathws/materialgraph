@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from app.models.element import Element
 from app.models.material import Material
 from app.models.material_element import MaterialElement
@@ -6,13 +8,15 @@ from app.services.materials_project_service import MaterialCandidate
 
 
 def make_candidate(
-    mp_id: str = "mp-test-1",
+    mp_id: str | None = None,
     formula: str = "LiFePO4",
     pretty_formula: str = "LiFePO4",
     elements: list[str] | None = None,
 ) -> MaterialCandidate:
+    generated_mp_id = mp_id or f"mp-test-{uuid4()}"
+
     return MaterialCandidate(
-        mp_id=mp_id,
+        mp_id=generated_mp_id,
         formula=formula,
         pretty_formula=pretty_formula,
         elements=elements or ["Li", "Fe", "P", "O"],
@@ -21,19 +25,22 @@ def make_candidate(
         formation_energy_per_atom=-2.5,
         density=3.6,
         is_stable=True,
-        raw_data={"material_id": mp_id, "formula_pretty": pretty_formula},
+        raw_data={
+            "material_id": generated_mp_id,
+            "formula_pretty": pretty_formula,
+        },
     )
 
 
 def test_import_materials_creates_material(db_session):
     service = MaterialImportService(db_session)
-    candidate = make_candidate(mp_id="mp-create-test")
+    candidate = make_candidate()
 
     imported_count = service.import_materials([candidate])
 
     material = (
         db_session.query(Material)
-        .filter(Material.mp_id == "mp-create-test")
+        .filter(Material.mp_id == candidate.mp_id)
         .first()
     )
 
@@ -42,19 +49,19 @@ def test_import_materials_creates_material(db_session):
     assert material.pretty_formula == "LiFePO4"
     assert material.source == "materials_project"
     assert material.is_stable is True
-    assert material.raw_data["material_id"] == "mp-create-test"
+    assert material.raw_data["material_id"] == candidate.mp_id
 
 
 def test_import_materials_skips_duplicate_mp_id(db_session):
     service = MaterialImportService(db_session)
-    candidate = make_candidate(mp_id="mp-duplicate-test")
+    candidate = make_candidate()
 
     first_count = service.import_materials([candidate])
     second_count = service.import_materials([candidate])
 
     material_count = (
         db_session.query(Material)
-        .filter(Material.mp_id == "mp-duplicate-test")
+        .filter(Material.mp_id == candidate.mp_id)
         .count()
     )
 
@@ -65,7 +72,7 @@ def test_import_materials_skips_duplicate_mp_id(db_session):
 
 def test_import_materials_creates_elements(db_session):
     service = MaterialImportService(db_session)
-    candidate = make_candidate(mp_id="mp-elements-test")
+    candidate = make_candidate()
 
     service.import_materials([candidate])
 
@@ -79,13 +86,13 @@ def test_import_materials_creates_elements(db_session):
 
 def test_import_materials_creates_material_element_links(db_session):
     service = MaterialImportService(db_session)
-    candidate = make_candidate(mp_id="mp-links-test")
+    candidate = make_candidate()
 
     service.import_materials([candidate])
 
     material = (
         db_session.query(Material)
-        .filter(Material.mp_id == "mp-links-test")
+        .filter(Material.mp_id == candidate.mp_id)
         .one()
     )
 
