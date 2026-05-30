@@ -8,6 +8,8 @@ from app.api.v1.routes.risks import router as risks_router
 from app.api.v1.routes.screening import router as screening_router
 from app.api.v1.routes.material_risks import router as material_risks_router
 from app.api.v1.routes.comparison import router as comparison_router
+from app.api.v1.routes.scenario_ranking import router as scenario_ranking_router
+from app.api.v1.routes.sensitivity import router as sensitivity_router
 
 api_router = APIRouter()
 
@@ -19,3 +21,5 @@ api_router.include_router(risks_router)
 api_router.include_router(screening_router)
 api_router.include_router(material_risks_router)
 api_router.include_router(comparison_router)
+api_router.include_router(scenario_ranking_router)
+api_router.include_router(sensitivity_router)
