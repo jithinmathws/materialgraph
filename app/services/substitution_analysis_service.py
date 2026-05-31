@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.core.logging import logger
 
 from app.models.element import Element
 from app.models.material import Material
@@ -87,12 +88,20 @@ class SubstitutionAnalysisService:
             )
 
         ranked = sorted(candidates, key=lambda item: item.rank_score, reverse=True)
+        
+        top_substitutes = ranked[: request.top_n]
+
+        logger.info(
+            "Generated {} substitutes for material {}",
+            len(top_substitutes),
+            source.id,
+        )
 
         return SubstitutionResult(
             source_material_id=source.id,
             source_formula=source.pretty_formula,
             source_risk_score=round(source_risk, 3),
-            substitutes=ranked[: request.top_n],
+            substitutes=top_substitutes,
         )
 
     def _get_element_symbols(self, material_id: int) -> set[str]:

@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.core.logging import logger
 
 from app.models.element import Element
 from app.models.material import Material
@@ -91,7 +92,16 @@ class CandidateScreeningService:
                 )
             )
 
-        return sorted(results, key=lambda item: item.score, reverse=True)
+        ranked_results = sorted(results, key=lambda item: item.score, reverse=True)
+
+        logger.info(
+            "Screened {} candidate materials with scarce_elements={} avoid_elements={}",
+            len(ranked_results),
+            request.scarce_elements,
+            request.avoid_elements,
+        )
+
+        return ranked_results
 
     def _get_material_element_symbols(self, material_id: int) -> set[str]:
         rows = (
