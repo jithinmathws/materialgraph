@@ -7,7 +7,6 @@ __pycache__/
 .envs/.env.production
 *.pyc
 *.db
-alembic/versions/*.py
 .mypy_cache/
 .coverage
 htmlcov/
