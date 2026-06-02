@@ -5,6 +5,7 @@ __pycache__/
 .env
 .envs/.env.local
 .envs/.env.production
+env
 *.pyc
 *.db
 .mypy_cache/
