@@ -5,3 +5,4 @@ from app.models.material import Material
 from app.models.material_application import MaterialApplication
 from app.models.material_element import MaterialElement
 from app.models.risk_factor import RiskFactor
+from app.models.graph_job import GraphJob, JobStatus
