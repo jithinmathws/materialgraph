@@ -16,6 +16,20 @@ The platform evaluates and compares known material candidates using explainable 
 
 ---
 
+## Documentation
+
+Additional project documentation is available in the `docs/` directory.
+
+| Document                                             | Description                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| [Getting Started](docs/getting_started.md)           | Local development setup and project bootstrapping                        |
+| [Phase 1 Scope](docs/phase_1_scope.md)               | Phase 1 objectives, constraints, and mission                             |
+| [Phase 1 Architecture](docs/phase_1_architecture.md) | System architecture and design decisions                                 |
+| [Phase 1 Review](docs/phase_1_review.md)             | Feature completion review and implementation summary                     |
+| [Known Issues](docs/known_issues.md)                 | Current limitations and tracked issues                                   |
+| [Deployment Guide](docs/DEPLOYMENT.md)               | Production deployment using AWS EC2, Neon PostgreSQL, systemd, and Nginx |
+
+
 ## Quick Start
 
 ```bash
@@ -156,10 +170,24 @@ Using:
 * Alembic
 * NetworkX
 * Pydantic v2
+* Loguru
+
+### Infrastructure
+
+* Docker
+* AWS EC2 (Ubuntu 24.04 LTS)
+* Neon PostgreSQL
+* systemd
+* Nginx
 
 ### Testing
 
 * pytest
+
+### Planned Extensions
+
+- Go — GraphCompute Worker for background scenario and ranking jobs
+- Rust — Multigraph computation engine for high-performance traversal and scoring
 
 ### Data Sources
 
@@ -311,11 +339,7 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
-## Current Status
-
-### Phase 1 — Candidate Screening Core
-
-Completed:
+## Candidate Screening Core (Completed & Deployed)
 
 * FastAPI foundation
 * PostgreSQL integration
@@ -330,6 +354,26 @@ Completed:
 * Substitution analysis
 * Service tests
 * API tests
+
+---
+
+## Current Status
+
+### Go GraphCompute Worker
+
+* PostgreSQL-backed job queue
+* Background scenario simulation
+* Candidate ranking jobs
+* Supply-risk reweighting jobs
+* systemd-managed worker process
+
+### Rust Multigraph Engine
+
+* CLI-based graph computation engine
+* JSON input/output
+* High-performance multigraph traversal
+* Candidate scoring
+* Path explanation and substitution analysis
 
 ---
 
@@ -353,9 +397,33 @@ MaterialGraph focuses on:
 
 ---
 
+## Production Deployment
+
+MaterialGraph Phase 1 is deployed using:
+
+* AWS EC2 (Ubuntu 24.04)
+* Neon PostgreSQL
+* FastAPI
+* SQLAlchemy
+* Alembic
+* systemd
+* Nginx
+
+Public Endpoints:
+
+* API: `http://35.154.84.47`
+* Swagger UI: `http://35.154.84.47/docs`
+* Health Check: `http://35.154.84.47/health`
+
+For complete deployment instructions, see:
+
+`docs/DEPLOYMENT.md`
+
+---
+
 ## Future Roadmap
 
-### Phase 2
+### Phase 2 - Scientific Intelligence Layer
 
 * USGS integration
 * Criticality analysis
@@ -363,13 +431,37 @@ MaterialGraph focuses on:
 * Material family exploration
 * Similarity search
 * Enhanced graph relationships
+* Constraint-aware recommendation engine
+* Candidate neighborhood exploration
 
-### Phase 3
+### Phase 3 - Discovery Intelligence Layer
 
 * Graph analytics
 * Graph embeddings
 * Recommendation systems
 * Machine-assisted candidate exploration
+* Candidate generation workflows
+* Material relationship discovery
+* Scientific hypothesis exploration
+* Embedding-based similarity search
+
+### Phase 4 - Distributed Computation Layes
+
+* PostgreSQL-backed job system
+* Go GraphCompute worker
+* Background scenario processing
+* Candidate ranking jobs
+* Supply-risk recomputation
+* Async graph computation
+
+### Phase 5 - High Performance Graph Engine
+
+* Rust-based multigraph engine
+* High-performance graph traversal
+* Candidate scoring engine
+* Path explanation engine
+* Substitution analysis engine
+* Large-scale graph optimization
 
 ---
 
