@@ -15,6 +15,9 @@ from app.services.material_neighborhood_service import MaterialNeighborhoodServi
 from app.schemas.material_criticality import MaterialCriticalityResponse
 from app.services.material_criticality_service import MaterialCriticalityService
 
+from app.schemas.material_recommendation import MaterialRecommendationResponse
+from app.services.material_recommendation_service import MaterialRecommendationService
+
 router = APIRouter(prefix="/materials", tags=["Material Intelligence"])
 
 
@@ -76,6 +79,32 @@ def get_material_criticality(
     service = MaterialCriticalityService(db)
 
     result = service.get_material_criticality(material_id)
+
+    if result["mp_id"] is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Material not found",
+        )
+
+    return result
+
+@router.get(
+    "/{material_id}/recommendations",
+    response_model=MaterialRecommendationResponse,
+)
+def get_material_recommendations(
+    material_id: int,
+    limit: int = Query(default=10, ge=1, le=50),
+    prefer_lower_criticality: bool = Query(default=True),
+    db: Session = Depends(get_db),
+) -> MaterialRecommendationResponse:
+    service = MaterialRecommendationService(db)
+
+    result = service.get_recommendations(
+        material_id=material_id,
+        limit=limit,
+        prefer_lower_criticality=prefer_lower_criticality,
+    )
 
     if result["mp_id"] is None:
         raise HTTPException(
