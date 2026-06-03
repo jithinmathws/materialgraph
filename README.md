@@ -214,17 +214,15 @@ Material Graph
         ↓
 Element Risk Profiles
         ↓
-Material Risk Scoring
+Material Criticality Engine
         ↓
-Candidate Screening
+Material Similarity Engine
         ↓
-Candidate Comparison
+Neighborhood Analysis
         ↓
-Scenario Ranking
+Recommendation Engine
         ↓
-Sensitivity Analysis
-        ↓
-Substitution Analysis
+Decision Support
 ```
 
 ---
@@ -339,41 +337,51 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
-## Candidate Screening Core (Completed & Deployed)
+## MaterialGraph Current Capabilities (v1.2.0)
 
-* FastAPI foundation
-* PostgreSQL integration
-* SQLAlchemy models
-* Alembic migrations
-* Materials Project importer
-* Material graph foundation
-* Risk-aware screening engine
-* Candidate comparison
-* Scenario ranking
-* Sensitivity analysis
-* Substitution analysis
-* Service tests
-* API tests
+✓ Materials Project integration
+✓ Material graph foundation
+✓ Risk aggregation
+✓ Candidate screening
+✓ Candidate comparison
+✓ Scenario ranking
+✓ Sensitivity analysis
+✓ Substitution analysis
+
+✓ PostgreSQL-backed graph job system
+
+✓ Material neighbors
+✓ Material neighborhoods
+✓ Similarity search
+✓ Material criticality analysis
+✓ Criticality-aware similarity
+✓ Recommendation engine MVP
+
+✓ Service tests
+✓ API tests
+✓ AWS deployment
 
 ---
 
 ## Current Status
 
-### Go GraphCompute Worker
+Completed:
+* Phase 1 Decision Intelligence Platform
+* Phase 1.5 Async Graph Job Foundation
+* Phase 2 Material Intelligence MVP
+  - Material neighbors
+  - Similarity search
+  - Candidate neighborhood analysis
+  - Material criticality analysis
+  - Material family exploration
+  - Constraint-aware recommendations
+  - Criticality-aware recommendations
 
-* PostgreSQL-backed job queue
-* Background scenario simulation
-* Candidate ranking jobs
-* Supply-risk reweighting jobs
-* systemd-managed worker process
-
-### Rust Multigraph Engine
-
-* CLI-based graph computation engine
-* JSON input/output
-* High-performance multigraph traversal
-* Candidate scoring
-* Path explanation and substitution analysis
+Planned:
+* Scenario-aware recommendations
+* USGS-backed criticality enrichment
+* Go GraphCompute Worker
+* Rust Multigraph Engine
 
 ---
 
@@ -423,16 +431,16 @@ For complete deployment instructions, see:
 
 ## Future Roadmap
 
-### Phase 2 - Scientific Intelligence Layer
+### Phase 2.5 — Decision Intelligence Expansion
 
 * USGS integration
-* Criticality analysis
+* Scenario-aware recommendations
 * Supply concentration intelligence
-* Material family exploration
-* Similarity search
+* Dynamic risk reweighting
+* Supply shock simulation
 * Enhanced graph relationships
-* Constraint-aware recommendation engine
-* Candidate neighborhood exploration
+* Alternative ranking under constraints
+* Recommendation explanation
 
 ### Phase 3 - Discovery Intelligence Layer
 
@@ -445,7 +453,7 @@ For complete deployment instructions, see:
 * Scientific hypothesis exploration
 * Embedding-based similarity search
 
-### Phase 4 - Distributed Computation Layes
+### Phase 4 - Distributed Computation Layer
 
 * PostgreSQL-backed job system
 * Go GraphCompute worker
