@@ -1,0 +1,56 @@
+def test_get_material_scenario_recommendations(client):
+    response = client.get(
+        "/api/v1/materials/5/recommendations/scenario"
+        "?element=Li&supply_risk_multiplier=1.5&limit=5"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["material_id"] == 5
+    assert "mp_id" in data
+    assert "pretty_formula" in data
+    assert "formula" in data
+    assert "criticality_score" in data
+    assert "scenario" in data
+    assert "recommendations" in data
+
+    assert data["scenario"]["element"] == "Li"
+    assert data["scenario"]["supply_risk_multiplier"] == 1.5
+    assert data["scenario"]["limit"] == 5
+
+    assert isinstance(data["recommendations"], list)
+    assert len(data["recommendations"]) <= 5
+
+    if data["recommendations"]:
+        item = data["recommendations"][0]
+
+        assert "material_id" in item
+        assert "mp_id" in item
+        assert "formula" in item
+        assert "similarity_score" in item
+        assert "criticality_score" in item
+        assert "recommendation_score" in item
+        assert "scenario_score" in item
+        assert "scenario_delta" in item
+        assert "scenario_reason" in item
+
+
+def test_get_material_scenario_recommendations_not_found(client):
+    response = client.get(
+        "/api/v1/materials/999999/recommendations/scenario"
+        "?element=Li&supply_risk_multiplier=1.5&limit=5"
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Material not found"
+
+
+def test_get_material_scenario_recommendations_requires_element(client):
+    response = client.get(
+        "/api/v1/materials/5/recommendations/scenario"
+        "?supply_risk_multiplier=1.5&limit=5"
+    )
+
+    assert response.status_code == 422
