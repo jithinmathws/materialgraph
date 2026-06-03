@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.services.material_similarity_service import MaterialSimilarityService
+from app.utils.chemical_formula import contains_element
 
 
 class MaterialRecommendationService:
@@ -93,8 +94,10 @@ class MaterialRecommendationService:
         for recommendation in base_result["recommendations"]:
             recommendation_score = recommendation["recommendation_score"]
             criticality_score = recommendation["criticality_score"] or 0
-            formula = recommendation["formula"] or ""
-            contains_scenario_element = element.lower() in formula.lower()
+            contains_scenario_element = contains_element(
+                recommendation["formula"],
+                element,
+            )
 
             scenario_penalty = (
                 criticality_score
