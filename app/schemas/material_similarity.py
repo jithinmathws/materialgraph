@@ -19,6 +19,10 @@ class SimilarMaterialRead(BaseModel):
     similarity_score: float
     reason_summary: str
 
+    criticality_score: float | None
+    criticality_delta: float | None
+    criticality_direction: str
+
 
 class MaterialSimilarityResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -30,5 +34,6 @@ class MaterialSimilarityResponse(BaseModel):
     material_type: str | None = None
     is_stable: bool | None = None
     energy_above_hull: float | None = None
+    criticality_score: float | None = None
 
     similar_materials: list[SimilarMaterialRead]
