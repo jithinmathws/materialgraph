@@ -12,6 +12,9 @@ from app.services.material_similarity_service import MaterialSimilarityService
 from app.schemas.material_neighborhood import MaterialNeighborhoodResponse
 from app.services.material_neighborhood_service import MaterialNeighborhoodService
 
+from app.schemas.material_criticality import MaterialCriticalityResponse
+from app.services.material_criticality_service import MaterialCriticalityService
+
 router = APIRouter(prefix="/materials", tags=["Material Intelligence"])
 
 
@@ -59,5 +62,25 @@ def get_material_neighborhood(
 
     if result["mp_id"] is None:
         raise HTTPException(status_code=404, detail="Material not found")
+
+    return result
+
+@router.get(
+    "/{material_id}/criticality",
+    response_model=MaterialCriticalityResponse,
+)
+def get_material_criticality(
+    material_id: int,
+    db: Session = Depends(get_db),
+) -> MaterialCriticalityResponse:
+    service = MaterialCriticalityService(db)
+
+    result = service.get_material_criticality(material_id)
+
+    if result["mp_id"] is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Material not found",
+        )
 
     return result
