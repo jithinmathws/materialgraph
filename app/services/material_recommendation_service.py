@@ -75,6 +75,77 @@ class MaterialRecommendationService:
             "recommendations": recommendations[:limit],
         }
 
+    def get_scenario_recommendations(
+        self,
+        material_id: int,
+        element: str,
+        supply_risk_multiplier: float = 1.0,
+        limit: int = 10,
+    ) -> dict:
+        base_result = self.get_recommendations(
+            material_id=material_id,
+            limit=50,
+            prefer_lower_criticality=True,
+        )
+
+        scenario_recommendations = []
+
+        for recommendation in base_result["recommendations"]:
+            recommendation_score = recommendation["recommendation_score"]
+            criticality_score = recommendation["criticality_score"] or 0
+            formula = recommendation["formula"] or ""
+            contains_scenario_element = element.lower() in formula.lower()
+
+            scenario_penalty = (
+                criticality_score
+                * (supply_risk_multiplier - 1.0)
+            )
+
+            if contains_scenario_element and supply_risk_multiplier > 1.0:
+                scenario_penalty += 10 * (supply_risk_multiplier - 1.0)
+
+            scenario_score = round(
+                recommendation_score - scenario_penalty,
+                2,
+            )
+
+            scenario_recommendations.append(
+                {
+                    **recommendation,
+                    "scenario_score": scenario_score,
+                    "scenario_delta": round(
+                        scenario_score - recommendation_score,
+                        2,
+                    ),
+                    "scenario_reason": (
+                        f"{element} supply risk multiplier "
+                        f"{supply_risk_multiplier} applied; "
+                        f"criticality score {criticality_score}; "
+                        f"contains {element}: {contains_scenario_element}; "
+                        f"scenario penalty {round(scenario_penalty, 2)}"
+                    ),
+                }
+            )
+
+        scenario_recommendations.sort(
+            key=lambda item: item["scenario_score"],
+            reverse=True,
+        )
+
+        return {
+            "material_id": base_result["material_id"],
+            "mp_id": base_result["mp_id"],
+            "pretty_formula": base_result["pretty_formula"],
+            "formula": base_result["formula"],
+            "criticality_score": base_result["criticality_score"],
+            "scenario": {
+                "element": element,
+                "supply_risk_multiplier": supply_risk_multiplier,
+                "limit": limit,
+            },
+            "recommendations": scenario_recommendations[:limit],
+        }
+
     def _calculate_recommendation_score(
         self,
         candidate: dict,

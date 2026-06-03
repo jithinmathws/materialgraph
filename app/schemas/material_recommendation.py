@@ -23,7 +23,6 @@ class MaterialRecommendationRead(BaseModel):
     recommendation_score: float
     recommendation_reason: str
 
-
 class MaterialRecommendationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,3 +33,27 @@ class MaterialRecommendationResponse(BaseModel):
     criticality_score: float | None
 
     recommendations: list[MaterialRecommendationRead]
+
+class MaterialScenarioRead(MaterialRecommendationRead):
+    scenario_score: float
+    scenario_delta: float
+    scenario_reason: str
+
+
+class MaterialRecommendationScenario(BaseModel):
+    element: str
+    supply_risk_multiplier: float
+    limit: int
+
+
+class MaterialScenarioRecommendationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    material_id: int
+    mp_id: str | None
+    pretty_formula: str | None
+    formula: str | None
+    criticality_score: float | None
+
+    scenario: MaterialRecommendationScenario
+    recommendations: list[MaterialScenarioRead]

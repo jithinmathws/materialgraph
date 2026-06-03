@@ -15,7 +15,10 @@ from app.services.material_neighborhood_service import MaterialNeighborhoodServi
 from app.schemas.material_criticality import MaterialCriticalityResponse
 from app.services.material_criticality_service import MaterialCriticalityService
 
-from app.schemas.material_recommendation import MaterialRecommendationResponse
+from app.schemas.material_recommendation import (
+    MaterialRecommendationResponse,
+    MaterialScenarioRecommendationResponse,
+)
 from app.services.material_recommendation_service import MaterialRecommendationService
 
 router = APIRouter(prefix="/materials", tags=["Material Intelligence"])
@@ -104,6 +107,34 @@ def get_material_recommendations(
         material_id=material_id,
         limit=limit,
         prefer_lower_criticality=prefer_lower_criticality,
+    )
+
+    if result["mp_id"] is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Material not found",
+        )
+
+    return result
+
+@router.get(
+    "/{material_id}/recommendations/scenario",
+    response_model=MaterialScenarioRecommendationResponse,
+)
+def get_material_scenario_recommendations(
+    material_id: int,
+    element: str = Query(..., min_length=1, max_length=3),
+    supply_risk_multiplier: float = Query(default=1.0, ge=0.0, le=10.0),
+    limit: int = Query(default=10, ge=1, le=50),
+    db: Session = Depends(get_db),
+) -> MaterialScenarioRecommendationResponse:
+    service = MaterialRecommendationService(db)
+
+    result = service.get_scenario_recommendations(
+        material_id=material_id,
+        element=element,
+        supply_risk_multiplier=supply_risk_multiplier,
+        limit=limit,
     )
 
     if result["mp_id"] is None:
