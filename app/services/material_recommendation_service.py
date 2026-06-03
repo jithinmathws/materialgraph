@@ -105,7 +105,14 @@ class MaterialRecommendationService:
             )
 
             if contains_scenario_element and supply_risk_multiplier > 1.0:
-                scenario_penalty += 10 * (supply_risk_multiplier - 1.0)
+                element_exposure_penalty = (
+                    recommendation_score
+                    * 0.15
+                    * (supply_risk_multiplier - 1.0)
+                )
+                scenario_penalty += element_exposure_penalty
+            else:
+                element_exposure_penalty = 0
 
             scenario_score = round(
                 recommendation_score - scenario_penalty,
@@ -125,6 +132,7 @@ class MaterialRecommendationService:
                         f"{supply_risk_multiplier} applied; "
                         f"criticality score {criticality_score}; "
                         f"contains {element}: {contains_scenario_element}; "
+                        f"element exposure penalty {round(element_exposure_penalty, 2)}; "
                         f"scenario penalty {round(scenario_penalty, 2)}"
                     ),
                 }
