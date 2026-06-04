@@ -292,6 +292,16 @@ Request:
 }
 ```
 
+### Scenario-Aware Recommendation
+
+MaterialGraph supports scenario-aware recommendation ranking under changing supply-risk conditions and strategic constraints.
+
+Example:
+
+```bash
+curl "http://35.154.84.47/api/v1/materials/5/recommendations/scenario?element=Li&supply_risk_multiplier=1.5&avoid_element=Co&limit=5"
+```
+
 MaterialGraph:
 
 * Evaluates candidates
@@ -337,7 +347,7 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
-## MaterialGraph Current Capabilities (v1.2.0)
+## MaterialGraph Current Capabilities (v1.3.0)
 
 ✓ Materials Project integration
 ✓ Material graph foundation
@@ -356,6 +366,11 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 ✓ Material criticality analysis
 ✓ Criticality-aware similarity
 ✓ Recommendation engine MVP
+✓ Scenario-aware recommendations
+✓ Element-aware scenario ranking
+✓ Supply-risk multipliers
+✓ Element avoidance constraints
+✓ Recommendation explanations
 
 ✓ Service tests
 ✓ API tests
@@ -376,9 +391,11 @@ Completed:
   - Material family exploration
   - Constraint-aware recommendations
   - Criticality-aware recommendations
+  - Scenario-aware recommendations
+  - Element-aware scenario scoring
+  - Constraint-aware recommendation workflow
 
 Planned:
-* Scenario-aware recommendations
 * USGS-backed criticality enrichment
 * Go GraphCompute Worker
 * Rust Multigraph Engine
@@ -434,7 +451,9 @@ For complete deployment instructions, see:
 ### Phase 2.5 — Decision Intelligence Expansion
 
 * USGS integration
-* Scenario-aware recommendations
+* Multi-constraint recommendation scenarios
+* Geopolitical-risk-aware recommendations
+* Toxicity-aware recommendations
 * Supply concentration intelligence
 * Dynamic risk reweighting
 * Supply shock simulation
