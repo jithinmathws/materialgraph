@@ -125,6 +125,7 @@ def get_material_scenario_recommendations(
     material_id: int,
     element: str = Query(..., min_length=1, max_length=3),
     supply_risk_multiplier: float = Query(default=1.0, ge=0.0, le=10.0),
+    avoid_element: str | None = Query(default=None, min_length=1, max_length=3),
     limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
 ) -> MaterialScenarioRecommendationResponse:
@@ -134,6 +135,7 @@ def get_material_scenario_recommendations(
         material_id=material_id,
         element=element,
         supply_risk_multiplier=supply_risk_multiplier,
+        avoid_element=avoid_element,
         limit=limit,
     )
 

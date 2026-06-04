@@ -43,6 +43,7 @@ class MaterialScenarioRead(MaterialRecommendationRead):
 class MaterialRecommendationScenario(BaseModel):
     element: str
     supply_risk_multiplier: float
+    avoid_element: str | None = None
     limit: int
 
 

@@ -81,6 +81,7 @@ class MaterialRecommendationService:
         material_id: int,
         element: str,
         supply_risk_multiplier: float = 1.0,
+        avoid_element: str | None = None,
         limit: int = 10,
     ) -> dict:
         base_result = self.get_recommendations(
@@ -99,10 +100,23 @@ class MaterialRecommendationService:
                 element,
             )
 
+            contains_avoid_element = (
+                avoid_element is not None
+                and contains_element(
+                    recommendation["formula"],
+                    avoid_element,
+                )
+            )
+
+            avoid_element_penalty = 0
+            if contains_avoid_element:
+                avoid_element_penalty = 25
+
             scenario_penalty = (
                 criticality_score
                 * (supply_risk_multiplier - 1.0)
             )
+            scenario_penalty += avoid_element_penalty
 
             if contains_scenario_element and supply_risk_multiplier > 1.0:
                 element_exposure_penalty = (
@@ -133,6 +147,9 @@ class MaterialRecommendationService:
                         f"criticality score {criticality_score}; "
                         f"contains {element}: {contains_scenario_element}; "
                         f"element exposure penalty {round(element_exposure_penalty, 2)}; "
+                        f"contains avoided element {avoid_element}: "
+                        f"{contains_avoid_element}; "
+                        f"avoid element penalty {avoid_element_penalty}; "
                         f"scenario penalty {round(scenario_penalty, 2)}"
                     ),
                 }
@@ -152,6 +169,7 @@ class MaterialRecommendationService:
             "scenario": {
                 "element": element,
                 "supply_risk_multiplier": supply_risk_multiplier,
+                "avoid_element": avoid_element,
                 "limit": limit,
             },
             "recommendations": scenario_recommendations[:limit],
