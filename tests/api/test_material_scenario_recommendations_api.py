@@ -1,7 +1,7 @@
 def test_get_material_scenario_recommendations(client):
     response = client.get(
         "/api/v1/materials/5/recommendations/scenario"
-        "?element=Li&supply_risk_multiplier=1.5&limit=5"
+        "?element=Li&supply_risk_multiplier=1.5&avoid_element=Fe&limit=5"
     )
 
     assert response.status_code == 200
@@ -18,6 +18,7 @@ def test_get_material_scenario_recommendations(client):
 
     assert data["scenario"]["element"] == "Li"
     assert data["scenario"]["supply_risk_multiplier"] == 1.5
+    assert data["scenario"]["avoid_element"] == "Fe"
     assert data["scenario"]["limit"] == 5
 
     assert isinstance(data["recommendations"], list)
@@ -27,6 +28,8 @@ def test_get_material_scenario_recommendations(client):
         item = data["recommendations"][0]
 
         assert "material_id" in item
+        assert "contains avoided element Fe" in item["scenario_reason"]
+        assert "avoid element penalty" in item["scenario_reason"]
         assert "mp_id" in item
         assert "formula" in item
         assert "similarity_score" in item
