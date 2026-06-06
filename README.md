@@ -347,7 +347,7 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
-## MaterialGraph Current Capabilities (v1.3.0)
+## MaterialGraph Current Capabilities (v1.3.1)
 
 ✓ Materials Project integration
 ✓ Material graph foundation

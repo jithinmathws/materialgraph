@@ -82,6 +82,7 @@ class MaterialRecommendationService:
         element: str,
         supply_risk_multiplier: float = 1.0,
         avoid_element: str | None = None,
+        prefer_element: str | None = None,
         limit: int = 10,
     ) -> dict:
         base_result = self.get_recommendations(
@@ -108,14 +109,27 @@ class MaterialRecommendationService:
                 )
             )
 
+            contains_prefer_element = (
+                prefer_element is not None
+                and contains_element(
+                    recommendation["formula"],
+                    prefer_element,
+                )
+            )
+
             avoid_element_penalty = 0
             if contains_avoid_element:
                 avoid_element_penalty = 25
+
+            prefer_element_bonus = 0
+            if contains_prefer_element:
+                prefer_element_bonus = 15
 
             scenario_penalty = (
                 criticality_score
                 * (supply_risk_multiplier - 1.0)
             )
+
             scenario_penalty += avoid_element_penalty
 
             if contains_scenario_element and supply_risk_multiplier > 1.0:
@@ -129,7 +143,7 @@ class MaterialRecommendationService:
                 element_exposure_penalty = 0
 
             scenario_score = round(
-                recommendation_score - scenario_penalty,
+                recommendation_score - scenario_penalty + prefer_element_bonus,
                 2,
             )
 
@@ -150,6 +164,9 @@ class MaterialRecommendationService:
                         f"contains avoided element {avoid_element}: "
                         f"{contains_avoid_element}; "
                         f"avoid element penalty {avoid_element_penalty}; "
+                        f"contains preferred element {prefer_element}: "
+                        f"{contains_prefer_element}; "
+                        f"prefer element bonus {prefer_element_bonus}; "
                         f"scenario penalty {round(scenario_penalty, 2)}"
                     ),
                 }
@@ -170,6 +187,7 @@ class MaterialRecommendationService:
                 "element": element,
                 "supply_risk_multiplier": supply_risk_multiplier,
                 "avoid_element": avoid_element,
+                "prefer_element": prefer_element,
                 "limit": limit,
             },
             "recommendations": scenario_recommendations[:limit],
