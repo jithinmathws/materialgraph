@@ -1,4 +1,3 @@
-from app.schemas.comparison import CandidateComparisonRequest
 
 def test_compare_materials_api(client):
     response = client.post(

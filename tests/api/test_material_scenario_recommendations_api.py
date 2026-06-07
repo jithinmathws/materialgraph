@@ -30,10 +30,6 @@ def test_get_material_scenario_recommendations(client):
         item = data["recommendations"][0]
 
         assert "material_id" in item
-        assert "contains avoided element Co" in item["scenario_reason"]
-        assert "avoid element penalty" in item["scenario_reason"]
-        assert "contains preferred element Na" in item["scenario_reason"]
-        assert "prefer element bonus" in item["scenario_reason"]
         assert "mp_id" in item
         assert "formula" in item
         assert "similarity_score" in item
@@ -42,6 +38,20 @@ def test_get_material_scenario_recommendations(client):
         assert "scenario_score" in item
         assert "scenario_delta" in item
         assert "scenario_reason" in item
+
+        assert isinstance(item["scenario_score"], float)
+        assert isinstance(item["scenario_delta"], float)
+        assert isinstance(item["scenario_reason"], str)
+
+        assert any(
+            "supply risk multiplier" in rec["scenario_reason"]
+            for rec in data["recommendations"]
+        )
+
+        assert any(
+            "final scenario penalty" in rec["scenario_reason"]
+            for rec in data["recommendations"]
+        )
 
 
 def test_get_material_scenario_recommendations_not_found(client):

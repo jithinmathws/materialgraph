@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.utils.chemical_formula import is_valid_element_symbol
+
 from app.schemas.material_neighbor import MaterialNeighborsResponse
 from app.schemas.material_similarity import MaterialSimilarityResponse
 from app.services.material_neighbor_service import MaterialNeighborService
@@ -128,6 +130,24 @@ def get_material_scenario_recommendations(
     limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
 ) -> MaterialScenarioRecommendationResponse:
+    if not is_valid_element_symbol(element):
+        raise HTTPException(
+            status_code=422,
+            detail="element must be a valid chemical symbol, e.g. Li, Co, Na",
+        )
+
+    if not is_valid_element_symbol(avoid_element):
+        raise HTTPException(
+            status_code=422,
+            detail="avoid_element must be a valid chemical symbol, e.g. Co",
+        )
+
+    if not is_valid_element_symbol(prefer_element):
+        raise HTTPException(
+            status_code=422,
+            detail="prefer_element must be a valid chemical symbol, e.g. Na",
+        )
+        
     service = MaterialRecommendationService(db)
 
     result = service.get_scenario_recommendations(

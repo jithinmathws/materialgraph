@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session
 
 from app.services.material_similarity_service import MaterialSimilarityService
-from app.utils.chemical_formula import contains_element
+from app.services.scenario_policy import (
+    ScenarioPolicy,
+    ScenarioPolicyEvaluator,
+)
 
 
 class MaterialRecommendationService:
@@ -91,84 +94,30 @@ class MaterialRecommendationService:
             prefer_lower_criticality=True,
         )
 
+        policy = ScenarioPolicy(
+            element=element,
+            supply_risk_multiplier=supply_risk_multiplier,
+            avoid_elements=[avoid_element] if avoid_element else [],
+            prefer_elements=[prefer_element] if prefer_element else [],
+        )
+
+        evaluator = ScenarioPolicyEvaluator()
+
         scenario_recommendations = []
 
         for recommendation in base_result["recommendations"]:
-            recommendation_score = recommendation["recommendation_score"]
-            criticality_score = recommendation["criticality_score"] or 0
-            contains_scenario_element = contains_element(
-                recommendation["formula"],
-                element,
-            )
-
-            contains_avoid_element = (
-                avoid_element is not None
-                and contains_element(
-                    recommendation["formula"],
-                    avoid_element,
-                )
-            )
-
-            contains_prefer_element = (
-                prefer_element is not None
-                and contains_element(
-                    recommendation["formula"],
-                    prefer_element,
-                )
-            )
-
-            avoid_element_penalty = 0
-            if contains_avoid_element:
-                avoid_element_penalty = 25
-
-            prefer_element_bonus = 0
-            if contains_prefer_element:
-                prefer_element_bonus = 15
-
-            scenario_penalty = (
-                criticality_score
-                * (supply_risk_multiplier - 1.0)
-            )
-
-            scenario_penalty += avoid_element_penalty
-
-            if contains_scenario_element and supply_risk_multiplier > 1.0:
-                element_exposure_penalty = (
-                    recommendation_score
-                    * 0.15
-                    * (supply_risk_multiplier - 1.0)
-                )
-                scenario_penalty += element_exposure_penalty
-            else:
-                element_exposure_penalty = 0
-
-            scenario_score = round(
-                recommendation_score - scenario_penalty + prefer_element_bonus,
-                2,
+            policy_result = evaluator.evaluate(
+                recommendation_score=recommendation["recommendation_score"],
+                candidate_formula=recommendation["formula"],
+                policy=policy,
             )
 
             scenario_recommendations.append(
                 {
                     **recommendation,
-                    "scenario_score": scenario_score,
-                    "scenario_delta": round(
-                        scenario_score - recommendation_score,
-                        2,
-                    ),
-                    "scenario_reason": (
-                        f"{element} supply risk multiplier "
-                        f"{supply_risk_multiplier} applied; "
-                        f"criticality score {criticality_score}; "
-                        f"contains {element}: {contains_scenario_element}; "
-                        f"element exposure penalty {round(element_exposure_penalty, 2)}; "
-                        f"contains avoided element {avoid_element}: "
-                        f"{contains_avoid_element}; "
-                        f"avoid element penalty {avoid_element_penalty}; "
-                        f"contains preferred element {prefer_element}: "
-                        f"{contains_prefer_element}; "
-                        f"prefer element bonus {prefer_element_bonus}; "
-                        f"scenario penalty {round(scenario_penalty, 2)}"
-                    ),
+                    "scenario_score": policy_result.scenario_score,
+                    "scenario_delta": policy_result.scenario_delta,
+                    "scenario_reason": policy_result.scenario_reason,
                 }
             )
 
