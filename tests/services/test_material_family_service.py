@@ -3,13 +3,13 @@ def test_classify_family_detects_expected_families(db_session):
 
     service = MaterialFamilyService(db_session)
 
-    tags = service._classify_family(
+    relationships = service._classify_relationships(
         base_elements=["Li", "Fe", "P", "O"],
         candidate_elements=["Na", "Fe", "P", "O"],
     )
 
-    assert "same_element_family" in tags
-    assert "alkali_substitution_family" in tags
-    assert "transition_metal_family" in tags
-    assert "phosphate_family" in tags
-    assert "oxide_family" in tags
+    assert "shared_chemistry" in relationships
+    assert "alkali_substitution" in relationships
+    assert "transition_metal_related" in relationships
+    assert "phosphate_related" in relationships
+    assert "oxide_related" in relationships

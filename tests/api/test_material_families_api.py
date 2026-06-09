@@ -9,19 +9,24 @@ def test_get_material_families(client):
     assert "mp_id" in data
     assert "pretty_formula" in data
     assert "formula" in data
-    assert "families" in data
+    assert "related_materials" in data
+    
+    assert isinstance(data["related_materials"], list)
 
-    assert isinstance(data["families"], dict)
+    if data["related_materials"]:
+        item = data["related_materials"][0]
 
-    expected_families = {
-        "same_element_family",
-        "alkali_substitution_family",
-        "transition_metal_family",
-        "phosphate_family",
-        "oxide_family",
-    }
+        assert "material_id" in item
+        assert "mp_id" in item
+        assert "pretty_formula" in item
+        assert "formula" in item
+        assert "relationships" in item
+        assert "shared_elements" in item
+        assert "relationship_reason" in item
 
-    assert expected_families.issubset(set(data["families"].keys()))
+        assert isinstance(item["relationships"], list)
+        assert isinstance(item["shared_elements"], list)
+        assert isinstance(item["relationship_reason"], str)
 
 
 def test_get_material_families_not_found(client):

@@ -4,7 +4,7 @@
 
 ## Overview
 
-MaterialGraph is a graph-based material intelligence platform designed to support candidate screening, risk-aware ranking, substitution analysis, and scenario-driven decision support for battery materials.
+MaterialGraph is a graph-based materials intelligence platform designed to support candidate screening, explainable recommendation, material exploration layer, scenario policy evaluation, substitution analysis, and constraint-aware decision support for battery materials.
 
 The platform integrates scientific material datasets with supply-risk intelligence to help answer questions such as:
 
@@ -23,6 +23,7 @@ Additional project documentation is available in the `docs/` directory.
 | Document                                             | Description                                                              |
 | ---------------------------------------------------- | ------------------------------------------------------------------------ |
 | [Getting Started](docs/getting_started.md)           | Local development setup and project bootstrapping                        |
+| [System Architecture](docs/system_architecture.md)   | Current architecture and intelligence layer design                       |
 | [Phase 1 Scope](docs/phase_1_scope.md)               | Phase 1 objectives, constraints, and mission                             |
 | [Phase 1 Architecture](docs/phase_1_architecture.md) | System architecture and design decisions                                 |
 | [Phase 1 Review](docs/phase_1_review.md)             | Feature completion review and implementation summary                     |
@@ -117,26 +118,44 @@ Outputs:
 * Winner selection
 * Explainable reasoning
 
-### Scenario Ranking
+### Scenario Policy Engine
 
-Evaluate candidate rankings under strategic scenarios.
+Evaluate candidate materials under configurable scenario policies.
+
+Supports:
+
+* Supply-risk multipliers
+* Element avoidance penalties
+* Preferred element bonuses
+* Explainable policy scoring
+* Reusable policy evaluation pipeline
+
+The policy engine provides centralized scoring logic that can be extended to future geopolitical, toxicity, abundance, and recyclability constraints.
+
+### Material Exploration Layer
+
+Explore chemically related candidate materials through family relationships.
+
+Current family exploration includes:
+
+* Same element families
+* Alkali substitution families
+* Transition metal families
+* Phosphate families
+* Oxide families
+
+Family exploration supports explainable candidate expansion and future scientific intelligence workflows.
+
+### Policy Sensitivity Analysis
+
+Analyze how candidate recommendations change as policy parameters evolve.
 
 Examples:
 
-* Lithium Supply Shock
-* Cobalt Restriction
-* Critical Material Constraints
-
-### Sensitivity Analysis
-
-Analyze ranking sensitivity under changing risk conditions.
-
-Examples:
-
-* +25% supply risk
-* +50% supply risk
-* +25% geopolitical risk
-* +50% geopolitical risk
+* Increasing supply-risk multiplier
+* Changing preferred elements
+* Changing avoided elements
+* Comparing alternative policy configurations
 
 ### Substitution Analysis
 
@@ -206,23 +225,31 @@ Future:
 ## Architecture
 
 ```text
-Materials Project
-        ↓
-Material Import
-        ↓
-Material Graph
-        ↓
-Element Risk Profiles
-        ↓
-Material Criticality Engine
-        ↓
-Material Similarity Engine
-        ↓
-Neighborhood Analysis
-        ↓
-Recommendation Engine
-        ↓
-Decision Support
+                     Materials Project
+                             │
+                             ▼
+                     Material Import Layer
+                             │
+                             ▼
+                     Material Graph Layer
+                             │
+         ┌───────────────────┼───────────────────┐
+         ▼                   ▼                   ▼
+
+Criticality Engine   Similarity Engine   Family Exploration
+
+         └───────────────────┬───────────────────┘
+                             ▼
+
+                 Recommendation Engine
+                             │
+                             ▼
+
+                  Scenario Policy Engine
+                             │
+                             ▼
+
+            Explainable Decision Support Layer
 ```
 
 ---
@@ -333,10 +360,22 @@ Why is candidate A better than candidate B?
 How do rankings change when cobalt becomes constrained?
 ```
 
+### Material Exploration Layer
+
+```text
+What chemically related material families should I explore for LiFePO4?
+```
+
 ### Sensitivity Analysis
 
 ```text
 How sensitive is a candidate to worsening supply risk?
+```
+
+### Policy Evaluation
+
+```text
+How does candidate ranking change if cobalt is avoided and sodium is preferred?
 ```
 
 ### Substitution Analysis
@@ -347,14 +386,13 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
-## MaterialGraph Current Capabilities (v1.3.1)
+## MaterialGraph Current Capabilities (v1.6.0)
 
 ✓ Materials Project integration
 ✓ Material graph foundation
 ✓ Risk aggregation
 ✓ Candidate screening
 ✓ Candidate comparison
-✓ Scenario ranking
 ✓ Sensitivity analysis
 ✓ Substitution analysis
 
@@ -367,7 +405,11 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 ✓ Criticality-aware similarity
 ✓ Recommendation engine MVP
 ✓ Scenario-aware recommendations
-✓ Element-aware scenario ranking
+✓ Scenario Policy Engine
+✓ Policy-based scenario evaluation
+✓ Material exploration layer
+✓ Explainable policy scoring
+✓ Explainable family relationships
 ✓ Supply-risk multipliers
 ✓ Element avoidance constraints
 ✓ Recommendation explanations
@@ -388,12 +430,14 @@ Completed:
   - Similarity search
   - Candidate neighborhood analysis
   - Material criticality analysis
-  - Material family exploration
+  - Material exploration layer
   - Constraint-aware recommendations
   - Criticality-aware recommendations
   - Scenario-aware recommendations
   - Element-aware scenario scoring
   - Constraint-aware recommendation workflow
+  - Scenario Policy Engine
+  - Explainable policy evaluation
 
 Planned:
 * USGS-backed criticality enrichment
@@ -450,27 +494,22 @@ For complete deployment instructions, see:
 
 ### Phase 2.5 — Decision Intelligence Expansion
 
-* USGS integration
-* Multi-constraint recommendation scenarios
-* Geopolitical-risk-aware recommendations
-* Toxicity-aware recommendations
-* Supply concentration intelligence
-* Dynamic risk reweighting
-* Supply shock simulation
-* Enhanced graph relationships
-* Alternative ranking under constraints
-* Recommendation explanation
+* Constraint reasoning
+* Multi-element constraints
+* Material family intelligence
+* Application-aware candidate exploration
+* USGS-backed criticality enrichment
+* Geopolitical-risk-aware policies
+* Toxicity-aware policies
+* Recyclability-aware policies
 
 ### Phase 3 - Discovery Intelligence Layer
 
 * Graph analytics
 * Graph embeddings
-* Recommendation systems
-* Machine-assisted candidate exploration
-* Candidate generation workflows
-* Material relationship discovery
 * Scientific hypothesis exploration
 * Embedding-based similarity search
+* Explainable candidate expansion
 
 ### Phase 4 - Distributed Computation Layer
 
