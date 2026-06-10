@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -9,9 +9,24 @@ from app.services.material_query_service import MaterialQueryService
 router = APIRouter(prefix="/materials", tags=["Materials"])
 
 
-@router.get("", response_model=list[MaterialRead])
-def list_materials(db: Session = Depends(get_db)):
-    return db.query(Material).order_by(Material.id).all()
+@router.get(
+    "",
+    response_model=list[MaterialRead],
+    summary="List materials",
+    description="Returns materials ordered by internal ID.",
+)
+def list_materials(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(Material)
+        .order_by(Material.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{material_id}", response_model=MaterialRead)

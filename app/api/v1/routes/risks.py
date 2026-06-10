@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -8,9 +8,24 @@ from app.schemas.risk import ElementRiskProfileRead
 router = APIRouter(prefix="/risks", tags=["Risks"])
 
 
-@router.get("/elements", response_model=list[ElementRiskProfileRead])
-def list_element_risk_profiles(db: Session = Depends(get_db)):
-    return db.query(ElementRiskProfile).order_by(ElementRiskProfile.year.desc()).all()
+@router.get(
+    "/elements",
+    response_model=list[ElementRiskProfileRead],
+    summary="List element risk profiles",
+    description="Returns element-level risk profiles ordered by latest year first.",
+)
+def list_element_risk_profiles(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(ElementRiskProfile)
+        .order_by(ElementRiskProfile.year.desc(), ElementRiskProfile.id.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/elements/{risk_profile_id}", response_model=ElementRiskProfileRead)

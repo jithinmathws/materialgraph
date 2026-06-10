@@ -1,38 +1,21 @@
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.material_common import MaterialRiskSummary, MaterialRelationshipSummary
 
-class MaterialRecommendationRead(BaseModel):
-    material_id: int
-    mp_id: str
-    pretty_formula: str
-    formula: str
-    material_type: str | None
-    is_stable: bool
-    energy_above_hull: float | None
 
+class MaterialRecommendationRead(MaterialRiskSummary, MaterialRelationshipSummary):
     similarity_score: float
-
-    criticality_score: float | None
     criticality_delta: float | None
     criticality_direction: str
-
-    shared_element_count: int
-    shared_application_count: int
-    relationship_types: list[str]
-
     recommendation_score: float
     recommendation_reason: str
 
-class MaterialRecommendationResponse(BaseModel):
+
+class MaterialRecommendationResponse(MaterialRiskSummary):
     model_config = ConfigDict(from_attributes=True)
 
-    material_id: int
-    mp_id: str | None
-    pretty_formula: str | None
-    formula: str | None
-    criticality_score: float | None
-
     recommendations: list[MaterialRecommendationRead]
+
 
 class MaterialScenarioRead(MaterialRecommendationRead):
     scenario_score: float
@@ -48,14 +31,8 @@ class MaterialRecommendationScenario(BaseModel):
     limit: int
 
 
-class MaterialScenarioRecommendationResponse(BaseModel):
+class MaterialScenarioRecommendationResponse(MaterialRiskSummary):
     model_config = ConfigDict(from_attributes=True)
-
-    material_id: int
-    mp_id: str | None
-    pretty_formula: str | None
-    formula: str | None
-    criticality_score: float | None
 
     scenario: MaterialRecommendationScenario
     recommendations: list[MaterialScenarioRead]

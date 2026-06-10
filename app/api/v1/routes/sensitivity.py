@@ -8,7 +8,15 @@ from app.services.sensitivity_analysis_service import SensitivityAnalysisService
 router = APIRouter(prefix="/sensitivity", tags=["Sensitivity"])
 
 
-@router.post("/material", response_model=SensitivityAnalysisResult)
+@router.post(
+    "/material",
+    response_model=SensitivityAnalysisResult,
+    summary="Analyze material sensitivity",
+    description=(
+        "Runs sensitivity analysis for a material under adjusted screening "
+        "or risk assumptions and returns the resulting impact."
+    ),
+)
 def analyze_material_sensitivity(
     request: SensitivityAnalysisRequest,
     db: Session = Depends(get_db),

@@ -9,7 +9,15 @@ from app.services.scenario_ranking_service import ScenarioRankingService
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
 
-@router.post("/rank", response_model=list[ScenarioRankingResult])
+@router.post(
+    "/rank",
+    response_model=list[ScenarioRankingResult],
+    summary="Rank materials for a scenario",
+    description=(
+        "Ranks candidate materials for a given scenario using screening results "
+        "and scenario-specific weighting or constraints."
+    ),
+)
 def rank_scenario_candidates(
     request: ScenarioRankingRequest,
     db: Session = Depends(get_db),

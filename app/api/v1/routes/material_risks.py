@@ -8,7 +8,15 @@ from app.services.material_risk_service import MaterialRiskService
 router = APIRouter(prefix="/material-risks", tags=["Material Risks"])
 
 
-@router.get("/{material_id}", response_model=MaterialRiskRead)
+@router.get(
+    "/{material_id}",
+    response_model=MaterialRiskRead,
+    summary="Get material risk profile",
+    description=(
+        "Returns the computed risk profile for a material, including "
+        "element-level risk contribution and aggregate material risk."
+    ),
+)
 def get_material_risk(
     material_id: int,
     db: Session = Depends(get_db),

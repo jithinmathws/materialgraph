@@ -10,7 +10,13 @@ from app.services.graph_job_service import GraphJobService
 router = APIRouter(prefix="/graph-jobs", tags=["Graph Jobs"])
 
 
-@router.post("", response_model=GraphJobRead, status_code=201)
+@router.post(
+    "",
+    response_model=GraphJobRead,
+    status_code=201,
+    summary="Create graph job",
+    description="Creates a background graph-processing job.",
+)
 def create_graph_job(
     payload: GraphJobCreate,
     db: Session = Depends(get_db),
@@ -19,7 +25,12 @@ def create_graph_job(
     return service.create_job(payload)
 
 
-@router.get("", response_model=list[GraphJobRead])
+@router.get(
+    "",
+    response_model=list[GraphJobRead],
+    summary="List graph jobs",
+    description="Returns graph-processing jobs with limit/offset pagination.",
+)
 def list_graph_jobs(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -29,7 +40,12 @@ def list_graph_jobs(
     return service.list_jobs(limit=limit, offset=offset)
 
 
-@router.get("/{job_id}", response_model=GraphJobRead)
+@router.get(
+    "/{job_id}",
+    response_model=GraphJobRead,
+    summary="Get graph job",
+    description="Returns a graph-processing job by UUID.",
+)
 def get_graph_job(
     job_id: uuid.UUID,
     db: Session = Depends(get_db),

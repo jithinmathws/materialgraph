@@ -8,7 +8,15 @@ from app.services.candidate_comparison_service import CandidateComparisonService
 router = APIRouter(prefix="/comparison", tags=["Comparison"])
 
 
-@router.post("/materials", response_model=CandidateComparisonResult)
+@router.post(
+    "/materials",
+    response_model=CandidateComparisonResult,
+    summary="Compare candidate materials",
+    description=(
+        "Compares two candidate materials under selected constraints, "
+        "including similarity, risk, and recommendation-relevant signals."
+    ),
+)
 def compare_materials(
     request: CandidateComparisonRequest,
     db: Session = Depends(get_db),
