@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.material_family import MaterialFamiliesResponse
 from app.services.material_family_service import MaterialFamilyService
+
+from app.api.v1.route_utils import ensure_material_found
 
 router = APIRouter(
     prefix="/materials",
@@ -29,10 +31,6 @@ def get_material_families(
 
     result = service.get_material_families(material_id)
 
-    if result["mp_id"] is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Material not found",
-        )
+    ensure_material_found(result)
 
     return result

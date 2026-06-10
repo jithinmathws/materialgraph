@@ -17,12 +17,9 @@ from app.services.material_recommendation_service import MaterialRecommendationS
 from app.services.material_similarity_service import MaterialSimilarityService
 from app.utils.chemical_formula import is_valid_element_symbol
 
+from app.api.v1.route_utils import ensure_material_found
+
 router = APIRouter(prefix="/materials", tags=["Material Intelligence"])
-
-
-def ensure_material_found(result: dict) -> None:
-    if result["mp_id"] is None:
-        raise HTTPException(status_code=404, detail="Material not found")
 
 
 @router.get(
