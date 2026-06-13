@@ -6,6 +6,8 @@ from app.services.scenario_policy import (
     ScenarioPolicyEvaluator,
 )
 
+DEFAULT_RECOMMENDATION_POOL_SIZE = 50
+
 
 class MaterialRecommendationService:
     def __init__(self, db: Session):
@@ -20,18 +22,11 @@ class MaterialRecommendationService:
     ) -> dict:
         similarity_result = self.similarity_service.get_similar_materials(
             material_id=material_id,
-            limit=50,
+            limit=DEFAULT_RECOMMENDATION_POOL_SIZE,
         )
 
         if similarity_result["mp_id"] is None:
-            return {
-                "material_id": material_id,
-                "mp_id": None,
-                "pretty_formula": None,
-                "formula": None,
-                "criticality_score": None,
-                "recommendations": [],
-            }
+            return self._empty_recommendation_response(material_id)
 
         recommendations = []
 
@@ -90,9 +85,19 @@ class MaterialRecommendationService:
     ) -> dict:
         base_result = self.get_recommendations(
             material_id=material_id,
-            limit=50,
+            limit=DEFAULT_RECOMMENDATION_POOL_SIZE,
             prefer_lower_criticality=True,
         )
+
+        if base_result["mp_id"] is None:
+            return self._empty_scenario_recommendation_response(
+                material_id=material_id,
+                element=element,
+                supply_risk_multiplier=supply_risk_multiplier,
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
+                limit=limit,
+            )
 
         policy = ScenarioPolicy(
             element=element,
@@ -102,7 +107,6 @@ class MaterialRecommendationService:
         )
 
         evaluator = ScenarioPolicyEvaluator()
-
         scenario_recommendations = []
 
         for recommendation in base_result["recommendations"]:
@@ -132,13 +136,13 @@ class MaterialRecommendationService:
             "pretty_formula": base_result["pretty_formula"],
             "formula": base_result["formula"],
             "criticality_score": base_result["criticality_score"],
-            "scenario": {
-                "element": element,
-                "supply_risk_multiplier": supply_risk_multiplier,
-                "avoid_element": avoid_element,
-                "prefer_element": prefer_element,
-                "limit": limit,
-            },
+            "scenario": self._build_scenario_payload(
+                element=element,
+                supply_risk_multiplier=supply_risk_multiplier,
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
+                limit=limit,
+            ),
             "recommendations": scenario_recommendations[:limit],
         }
 
@@ -191,7 +195,9 @@ class MaterialRecommendationService:
             reasons.append(f"shares {candidate['shared_element_count']} element(s)")
 
         if candidate["shared_application_count"] > 0:
-            reasons.append(f"shares {candidate['shared_application_count']} application(s)")
+            reasons.append(
+                f"shares {candidate['shared_application_count']} application(s)"
+            )
 
         if candidate["is_stable"]:
             reasons.append("stable material")
@@ -199,3 +205,49 @@ class MaterialRecommendationService:
         reasons.append(f"recommendation score {recommendation_score}")
 
         return "; ".join(reasons)
+
+    def _empty_recommendation_response(self, material_id: int) -> dict:
+        return {
+            "material_id": material_id,
+            "mp_id": None,
+            "pretty_formula": None,
+            "formula": None,
+            "criticality_score": None,
+            "recommendations": [],
+        }
+
+    def _empty_scenario_recommendation_response(
+        self,
+        material_id: int,
+        element: str,
+        supply_risk_multiplier: float,
+        avoid_element: str | None,
+        prefer_element: str | None,
+        limit: int,
+    ) -> dict:
+        return {
+            **self._empty_recommendation_response(material_id),
+            "scenario": self._build_scenario_payload(
+                element=element,
+                supply_risk_multiplier=supply_risk_multiplier,
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
+                limit=limit,
+            ),
+        }
+
+    def _build_scenario_payload(
+        self,
+        element: str,
+        supply_risk_multiplier: float,
+        avoid_element: str | None,
+        prefer_element: str | None,
+        limit: int,
+    ) -> dict:
+        return {
+            "element": element,
+            "supply_risk_multiplier": supply_risk_multiplier,
+            "avoid_element": avoid_element,
+            "prefer_element": prefer_element,
+            "limit": limit,
+        }

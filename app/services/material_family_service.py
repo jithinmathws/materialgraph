@@ -9,6 +9,7 @@ from app.models.material_element import MaterialElement
 
 class MaterialFamilyService:
     MIN_SHARED_ELEMENTS = 3
+    TEST_MP_PREFIX = "mp-test"
 
     ALKALI_ELEMENTS = {"Li", "Na", "K", "Mg"}
     TRANSITION_METALS = {"Fe", "Mn", "Co", "Ni", "Ti", "V", "Cr"}
@@ -33,13 +34,7 @@ class MaterialFamilyService:
         )
 
         if base_material is None:
-            return {
-                "material_id": material_id,
-                "mp_id": None,
-                "pretty_formula": None,
-                "formula": None,
-                "related_materials": [],
-            }
+            return self._empty_family_response(material_id)
 
         elements_map = self._get_material_elements_map()
         base_elements = elements_map.get(material_id, [])
@@ -47,7 +42,7 @@ class MaterialFamilyService:
         candidates = (
             self.db.query(Material)
             .filter(Material.id != material_id)
-            .filter(~Material.mp_id.like("mp-test%"))
+            .filter(~Material.mp_id.like(f"{self.TEST_MP_PREFIX}%"))
             .all()
         )
 
@@ -101,6 +96,15 @@ class MaterialFamilyService:
             "pretty_formula": base_material.pretty_formula,
             "formula": base_material.formula,
             "related_materials": related_materials,
+        }
+
+    def _empty_family_response(self, material_id: int) -> dict:
+        return {
+            "material_id": material_id,
+            "mp_id": None,
+            "pretty_formula": None,
+            "formula": None,
+            "related_materials": [],
         }
 
     def _get_material_elements_map(self) -> dict[int, list[str]]:

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
-from app.services.material_neighbor_service import MaterialNeighborService
 from app.services.material_criticality_service import MaterialCriticalityService
+from app.services.material_neighbor_service import MaterialNeighborService
 
 
 class MaterialSimilarityService:
@@ -14,30 +14,26 @@ class MaterialSimilarityService:
         neighbor_result = self.neighbor_service.get_neighbors(material_id)
 
         if neighbor_result["mp_id"] is None:
-            return {
-                "material_id": material_id,
-                "mp_id": None,
-                "pretty_formula": None,
-                "formula": None,
-                "material_type": None,
-                "is_stable": None,
-                "energy_above_hull": None,
-                "criticality_score": None,
-                "similar_materials": [],
-            }
+            return self._empty_similarity_response(material_id)
 
-        source_criticality = self.criticality_service.get_material_criticality(material_id)
-        source_criticality_score = source_criticality["criticality_score"]
+        criticality_cache: dict[int, float | None] = {}
+
+        source_criticality_score = self._get_criticality_score(
+            material_id=material_id,
+            cache=criticality_cache,
+        )
 
         similar_materials = []
 
         for neighbor in neighbor_result["neighbors"][:limit]:
+            neighbor_material_id = neighbor["material_id"]
+
             similarity_score = self._calculate_similarity_score(neighbor)
 
-            neighbor_criticality = self.criticality_service.get_material_criticality(
-                neighbor["material_id"]
+            neighbor_criticality_score = self._get_criticality_score(
+                material_id=neighbor_material_id,
+                cache=criticality_cache,
             )
-            neighbor_criticality_score = neighbor_criticality["criticality_score"]
 
             criticality_delta = self._calculate_criticality_delta(
                 source_criticality_score=source_criticality_score,
@@ -46,7 +42,7 @@ class MaterialSimilarityService:
 
             similar_materials.append(
                 {
-                    "material_id": neighbor["material_id"],
+                    "material_id": neighbor_material_id,
                     "mp_id": neighbor["mp_id"],
                     "pretty_formula": neighbor["pretty_formula"],
                     "formula": neighbor["formula"],
@@ -59,7 +55,9 @@ class MaterialSimilarityService:
                     "similarity_score": similarity_score,
                     "criticality_score": neighbor_criticality_score,
                     "criticality_delta": criticality_delta,
-                    "criticality_direction": self._criticality_direction(criticality_delta),
+                    "criticality_direction": self._criticality_direction(
+                        criticality_delta
+                    ),
                     "reason_summary": self._build_reason_summary(
                         neighbor=neighbor,
                         criticality_delta=criticality_delta,
@@ -85,6 +83,30 @@ class MaterialSimilarityService:
             "energy_above_hull": neighbor_result["energy_above_hull"],
             "criticality_score": source_criticality_score,
             "similar_materials": similar_materials,
+        }
+
+    def _get_criticality_score(
+        self,
+        material_id: int,
+        cache: dict[int, float | None],
+    ) -> float | None:
+        if material_id not in cache:
+            result = self.criticality_service.get_material_criticality(material_id)
+            cache[material_id] = result["criticality_score"]
+
+        return cache[material_id]
+
+    def _empty_similarity_response(self, material_id: int) -> dict:
+        return {
+            "material_id": material_id,
+            "mp_id": None,
+            "pretty_formula": None,
+            "formula": None,
+            "material_type": None,
+            "is_stable": None,
+            "energy_above_hull": None,
+            "criticality_score": None,
+            "similar_materials": [],
         }
 
     def _calculate_criticality_delta(
@@ -139,7 +161,9 @@ class MaterialSimilarityService:
             reasons.append(f"shares {neighbor['shared_element_count']} element(s)")
 
         if neighbor["shared_application_count"] > 0:
-            reasons.append(f"shares {neighbor['shared_application_count']} application(s)")
+            reasons.append(
+                f"shares {neighbor['shared_application_count']} application(s)"
+            )
 
         if neighbor["is_stable"]:
             reasons.append("is stable")
