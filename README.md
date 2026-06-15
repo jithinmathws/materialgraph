@@ -420,6 +420,17 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
+## Production Hadening
+
+- Added shared material response schemas
+- Added material family response schema
+- Improved OpenAPI documentation
+- Added pagination validation tests
+- Centralized route-level material-not-found handling
+- Optimized material intelligence services
+- Reduced repeated criticality lookups
+- Improved neighborhood traversal performance
+
 ## Current Status
 
 Completed:
