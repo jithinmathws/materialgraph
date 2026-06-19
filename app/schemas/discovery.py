@@ -23,6 +23,7 @@ class DiscoveryCandidatesResponse(BaseModel):
     mp_id: str | None = None
     base_formula: str | None = None
     discovery_goal: DiscoveryGoal
+    discovery_warnings: list[str] = []
     candidates: list[DiscoveryCandidate]
 
 class SubstitutionPath(BaseModel):

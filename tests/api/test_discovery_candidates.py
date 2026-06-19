@@ -143,3 +143,32 @@ def test_discovery_candidate_score_breakdown_exists(client):
     assert "score_breakdown" in candidate
     assert isinstance(candidate["score_breakdown"], dict)
     assert len(candidate["score_breakdown"]) > 0
+
+def test_discovery_candidates_response_includes_warnings(client):
+    response = client.get(
+        "/api/v1/materials/5/discovery/candidates"
+        "?avoid_element=Li&prefer_element=Na&limit=10"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "discovery_warnings" in data
+    assert isinstance(data["discovery_warnings"], list)
+
+
+def test_discovery_candidates_warn_when_preferred_element_not_found(client):
+    response = client.get(
+        "/api/v1/materials/5/discovery/candidates"
+        "?avoid_element=Li&prefer_element=Co&limit=10"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert any(
+        "preferred element Co" in warning
+        for warning in data["discovery_warnings"]
+    )

@@ -7,6 +7,7 @@ from app.services.discovery_scoring_service import (
 )
 from app.services.material_family_service import MaterialFamilyService
 from app.services.material_recommendation_service import MaterialRecommendationService
+from app.services.discovery_warning_service import DiscoveryWarningService
 
 
 class DiscoveryCandidateService:
@@ -15,6 +16,7 @@ class DiscoveryCandidateService:
         self.recommendation_service = MaterialRecommendationService(db)
         self.scoring_service = DiscoveryScoringService()
         self.explanation_service = DiscoveryExplanationService()
+        self.warning_service = DiscoveryWarningService()
 
     def get_discovery_candidates(
         self,
@@ -50,12 +52,22 @@ class DiscoveryCandidateService:
             avoid_element=avoid_element,
             prefer_element=prefer_element,
         )
-
-        candidates = sorted(
+        
+        all_candidates = sorted(
             candidates_by_id.values(),
             key=lambda item: item["discovery_score"],
             reverse=True,
-        )[:limit]
+        )
+
+        candidates = all_candidates[:limit]
+
+        discovery_warnings = self.warning_service.build_warnings(
+            candidates=candidates,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
+            limit=limit,
+            total_candidate_count=len(all_candidates),
+        )
 
         for candidate in candidates:
             candidate.pop("_explanation_parts", None)
@@ -68,6 +80,7 @@ class DiscoveryCandidateService:
                 "avoid_element": avoid_element,
                 "prefer_element": prefer_element,
             },
+            "discovery_warnings": discovery_warnings,
             "candidates": candidates,
         }
 
@@ -277,5 +290,8 @@ class DiscoveryCandidateService:
                 "avoid_element": avoid_element,
                 "prefer_element": prefer_element,
             },
+            "discovery_warnings": [
+                "Material was not found, so discovery candidates could not be generated."
+            ],
             "candidates": [],
         }
