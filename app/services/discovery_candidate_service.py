@@ -1,34 +1,18 @@
 from sqlalchemy.orm import Session
 
-from app.services.material_family_service import MaterialFamilyService
-from app.services.material_recommendation_service import MaterialRecommendationService
-from app.services.discovery_substitution_path_service import (
-    DiscoverySubstitutionPathService,
-)
 from app.services.discovery_explanation_service import DiscoveryExplanationService
 from app.services.discovery_scoring_service import (
     SOURCE_DIVERSITY_BONUS,
     DiscoveryScoringService,
 )
-
-
-FAMILY_BONUS = 40.0
-SUBSTITUTION_BONUS = 35.0
-LOWER_CRITICALITY_BONUS = 30.0
-STABILITY_BONUS = 20.0
-PREFERRED_ELEMENT_BONUS = 25.0
-AVOIDED_ELEMENT_REMOVED_BONUS = 25.0
-AVOIDED_ELEMENT_PRESENT_PENALTY = 50.0
-SAME_APPLICATION_BONUS = 15.0
-SOURCE_DIVERSITY_BONUS = 10.0
+from app.services.material_family_service import MaterialFamilyService
+from app.services.material_recommendation_service import MaterialRecommendationService
 
 
 class DiscoveryCandidateService:
     def __init__(self, db: Session):
-        self.db = db
         self.family_service = MaterialFamilyService(db)
         self.recommendation_service = MaterialRecommendationService(db)
-        self.substitution_path_service = DiscoverySubstitutionPathService()
         self.scoring_service = DiscoveryScoringService()
         self.explanation_service = DiscoveryExplanationService()
 
@@ -47,13 +31,24 @@ class DiscoveryCandidateService:
         candidates_by_id: dict[int, dict] = {}
 
         self._add_family_candidates(
-            candidates_by_id, family_result, avoid_element, prefer_element
+            candidates_by_id=candidates_by_id,
+            family_result=family_result,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
         )
+
         self._add_recommendation_candidates(
-            candidates_by_id, material_id, avoid_element, prefer_element
+            candidates_by_id=candidates_by_id,
+            material_id=material_id,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
         )
+
         self._add_scenario_candidates(
-            candidates_by_id, material_id, avoid_element, prefer_element
+            candidates_by_id=candidates_by_id,
+            material_id=material_id,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
         )
 
         candidates = sorted(
@@ -84,17 +79,11 @@ class DiscoveryCandidateService:
         prefer_element: str | None,
     ) -> None:
         for candidate in family_result["related_materials"]:
-            discovery_path = ["family_related", *candidate["relationships"]]
-            score = 0.0
-            score_breakdown: dict[str, float] = {}
+            paths = ["family_related", *candidate["relationships"]]
 
-            if "shared_chemistry" in discovery_path:
-                score += FAMILY_BONUS
-                score_breakdown["family_bonus"] = FAMILY_BONUS
-
-            if "alkali_substitution" in discovery_path:
-                score += SUBSTITUTION_BONUS
-                score_breakdown["substitution_bonus"] = SUBSTITUTION_BONUS
+            score, score_breakdown = self.scoring_service.score_family_candidate(
+                relationships=candidate["relationships"],
+            )
 
             self._upsert_candidate(
                 candidates_by_id=candidates_by_id,
@@ -103,7 +92,7 @@ class DiscoveryCandidateService:
                 pretty_formula=candidate["pretty_formula"],
                 formula=candidate["formula"],
                 score=score,
-                paths=discovery_path,
+                paths=paths,
                 explanation_parts=[candidate["relationship_reason"]],
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
@@ -127,26 +116,9 @@ class DiscoveryCandidateService:
             return
 
         for candidate in recommendation_result["recommendations"]:
-            paths = ["recommendation_engine", "similar_material"]
-            score = candidate["recommendation_score"]
-            score_breakdown = {
-                "recommendation_score": candidate["recommendation_score"],
-            }
-
-            if candidate["criticality_direction"] == "LOWER_RISK":
-                score += LOWER_CRITICALITY_BONUS
-                paths.append("lower_criticality")
-                score_breakdown["lower_criticality_bonus"] = LOWER_CRITICALITY_BONUS
-
-            if candidate["is_stable"]:
-                score += STABILITY_BONUS
-                paths.append("stable_material")
-                score_breakdown["stability_bonus"] = STABILITY_BONUS
-
-            if candidate["shared_application_count"] > 0:
-                score += SAME_APPLICATION_BONUS
-                paths.append("same_application")
-                score_breakdown["same_application_bonus"] = SAME_APPLICATION_BONUS
+            score, paths, score_breakdown = (
+                self.scoring_service.score_recommendation_candidate(candidate)
+            )
 
             self._upsert_candidate(
                 candidates_by_id=candidates_by_id,
@@ -190,10 +162,9 @@ class DiscoveryCandidateService:
             return
 
         for candidate in scenario_result["recommendations"]:
-            paths = ["scenario_recommendation", "scenario_aligned"]
-            score_breakdown = {
-                "scenario_score": candidate["scenario_score"],
-            }
+            score, paths, score_breakdown = (
+                self.scoring_service.score_scenario_candidate(candidate)
+            )
 
             self._upsert_candidate(
                 candidates_by_id=candidates_by_id,
@@ -201,7 +172,7 @@ class DiscoveryCandidateService:
                 mp_id=candidate["mp_id"],
                 pretty_formula=candidate["pretty_formula"],
                 formula=candidate["formula"],
-                score=candidate["scenario_score"],
+                score=score,
                 paths=paths,
                 explanation_parts=[candidate["scenario_reason"]],
                 avoid_element=avoid_element,
@@ -225,27 +196,17 @@ class DiscoveryCandidateService:
     ) -> None:
         formula_for_check = pretty_formula or formula
         normalized_paths = set(paths)
-        adjusted_score = score
-        score_breakdown = dict(score_breakdown)
 
-        if prefer_element and prefer_element in formula_for_check:
-            adjusted_score += PREFERRED_ELEMENT_BONUS
-            normalized_paths.add("preferred_element")
-            score_breakdown["preferred_element_bonus"] = PREFERRED_ELEMENT_BONUS
-
-        if avoid_element and avoid_element not in formula_for_check:
-            adjusted_score += AVOIDED_ELEMENT_REMOVED_BONUS
-            normalized_paths.add("avoided_element_removed")
-            score_breakdown["avoided_element_removed_bonus"] = (
-                AVOIDED_ELEMENT_REMOVED_BONUS
+        adjusted_score, score_breakdown, normalized_paths = (
+            self.scoring_service.apply_element_constraints(
+                score=score,
+                score_breakdown=score_breakdown,
+                paths=normalized_paths,
+                formula=formula_for_check,
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
             )
-
-        if avoid_element and avoid_element in formula_for_check:
-            adjusted_score -= AVOIDED_ELEMENT_PRESENT_PENALTY
-            normalized_paths.add("contains_avoided_element")
-            score_breakdown["avoided_element_present_penalty"] = (
-                -AVOIDED_ELEMENT_PRESENT_PENALTY
-            )
+        )
 
         existing = candidates_by_id.get(material_id)
 
@@ -262,10 +223,10 @@ class DiscoveryCandidateService:
                 existing["score_breakdown"],
                 score_breakdown,
             )
-            existing["score_breakdown"]["source_diversity_bonus"] = round(
-                existing["score_breakdown"].get("source_diversity_bonus", 0.0)
-                + SOURCE_DIVERSITY_BONUS,
-                2,
+            existing["score_breakdown"] = (
+                self.scoring_service.apply_source_diversity_bonus(
+                    existing["score_breakdown"]
+                )
             )
             existing["_explanation_parts"] = list(
                 dict.fromkeys(existing["_explanation_parts"] + explanation_parts)
