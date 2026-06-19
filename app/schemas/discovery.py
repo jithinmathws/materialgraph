@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class DiscoveryGoal(BaseModel):
@@ -12,6 +12,7 @@ class DiscoveryCandidate(BaseModel):
     pretty_formula: str | None = None
     formula: str
     discovery_score: float
+    score_breakdown: dict[str, float]
     discovery_path: list[str]
     explanation: str
 

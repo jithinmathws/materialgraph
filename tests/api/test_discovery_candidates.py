@@ -129,3 +129,17 @@ def test_discovery_candidates_penalize_avoided_element(client):
 
         assert "contains_avoided_element" in candidate["discovery_path"]
         assert "penalized" in candidate["explanation"]
+
+def test_discovery_candidate_score_breakdown_exists(client):
+    response = client.get(
+        "/api/v1/materials/5/discovery/candidates"
+        "?avoid_element=Li&prefer_element=Na&limit=10"
+    )
+
+    assert response.status_code == 200
+
+    candidate = response.json()["candidates"][0]
+
+    assert "score_breakdown" in candidate
+    assert isinstance(candidate["score_breakdown"], dict)
+    assert len(candidate["score_breakdown"]) > 0
