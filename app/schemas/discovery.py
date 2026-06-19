@@ -6,6 +6,16 @@ class DiscoveryGoal(BaseModel):
     prefer_element: str | None = None
 
 
+class SubstitutionPath(BaseModel):
+    from_formula: str
+    to_formula: str
+    path_type: str
+    replaced_elements: list[str]
+    introduced_elements: list[str]
+    preserved_framework: list[str]
+    reason: str
+
+
 class DiscoveryCandidate(BaseModel):
     material_id: int
     mp_id: str | None = None
@@ -25,12 +35,3 @@ class DiscoveryCandidatesResponse(BaseModel):
     discovery_goal: DiscoveryGoal
     discovery_warnings: list[str] = []
     candidates: list[DiscoveryCandidate]
-
-class SubstitutionPath(BaseModel):
-    from_formula: str
-    to_formula: str
-    path_type: str
-    replaced_elements: list[str]
-    introduced_elements: list[str]
-    preserved_framework: list[str]
-    reason: str
