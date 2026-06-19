@@ -9,6 +9,13 @@ SAME_APPLICATION_BONUS = 15.0
 SOURCE_DIVERSITY_BONUS = 10.0
 
 
+NON_ADDITIVE_SCORE_KEYS = {
+    "preferred_element_bonus",
+    "avoided_element_removed_bonus",
+    "avoided_element_present_penalty",
+}
+
+
 class DiscoveryScoringService:
     def score_family_candidate(
         self,
@@ -105,7 +112,14 @@ class DiscoveryScoringService:
         merged = dict(existing)
 
         for key, value in incoming.items():
-            merged[key] = merged.get(key, 0.0) + value
+            if key in NON_ADDITIVE_SCORE_KEYS:
+                merged[key] = self._merge_non_additive_score(
+                    key=key,
+                    existing_value=merged.get(key),
+                    incoming_value=value,
+                )
+            else:
+                merged[key] = merged.get(key, 0.0) + value
 
         return {
             key: round(value, 2)
@@ -123,3 +137,17 @@ class DiscoveryScoringService:
         )
 
         return score_breakdown
+
+    def _merge_non_additive_score(
+        self,
+        key: str,
+        existing_value: float | None,
+        incoming_value: float,
+    ) -> float:
+        if existing_value is None:
+            return incoming_value
+
+        if key == "avoided_element_present_penalty":
+            return min(existing_value, incoming_value)
+
+        return max(existing_value, incoming_value)
