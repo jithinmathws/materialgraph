@@ -2,6 +2,14 @@ from sqlalchemy.orm import Session
 
 from app.services.material_family_service import MaterialFamilyService
 from app.services.material_recommendation_service import MaterialRecommendationService
+from app.services.discovery_substitution_path_service import (
+    DiscoverySubstitutionPathService,
+)
+from app.services.discovery_explanation_service import DiscoveryExplanationService
+from app.services.discovery_scoring_service import (
+    SOURCE_DIVERSITY_BONUS,
+    DiscoveryScoringService,
+)
 
 
 FAMILY_BONUS = 40.0
@@ -20,6 +28,9 @@ class DiscoveryCandidateService:
         self.db = db
         self.family_service = MaterialFamilyService(db)
         self.recommendation_service = MaterialRecommendationService(db)
+        self.substitution_path_service = DiscoverySubstitutionPathService()
+        self.scoring_service = DiscoveryScoringService()
+        self.explanation_service = DiscoveryExplanationService()
 
     def get_discovery_candidates(
         self,
@@ -247,7 +258,7 @@ class DiscoveryCandidateService:
             existing["discovery_path"] = sorted(
                 set(existing["discovery_path"]) | normalized_paths
             )
-            existing["score_breakdown"] = self._merge_score_breakdowns(
+            existing["score_breakdown"] = self.scoring_service.merge_score_breakdowns(
                 existing["score_breakdown"],
                 score_breakdown,
             )
@@ -259,7 +270,7 @@ class DiscoveryCandidateService:
             existing["_explanation_parts"] = list(
                 dict.fromkeys(existing["_explanation_parts"] + explanation_parts)
             )
-            existing["explanation"] = self._build_explanation(
+            existing["explanation"] = self.explanation_service.build_explanation(
                 formula=formula_for_check,
                 paths=existing["discovery_path"],
                 explanation_parts=existing["_explanation_parts"],
@@ -268,7 +279,7 @@ class DiscoveryCandidateService:
             )
             return
 
-        explanation = self._build_explanation(
+        explanation = self.explanation_service.build_explanation(
             formula=formula_for_check,
             paths=sorted(normalized_paths),
             explanation_parts=explanation_parts,
@@ -289,63 +300,6 @@ class DiscoveryCandidateService:
             "discovery_path": sorted(normalized_paths),
             "explanation": explanation,
             "_explanation_parts": explanation_parts,
-        }
-
-    def _build_explanation(
-        self,
-        formula: str,
-        paths: list[str],
-        explanation_parts: list[str],
-        avoid_element: str | None,
-        prefer_element: str | None,
-    ) -> str:
-        reasons = [f"{formula} is identified as a discovery candidate."]
-
-        reasons.extend(explanation_parts)
-
-        if "preferred_element" in paths and prefer_element:
-            reasons.append(f"It contains the preferred element {prefer_element}.")
-
-        if "avoided_element_removed" in paths and avoid_element:
-            reasons.append(f"It does not contain the avoided element {avoid_element}.")
-
-        if "contains_avoided_element" in paths and avoid_element:
-            reasons.append(
-                f"It still contains the avoided element {avoid_element}, "
-                "so it is penalized."
-            )
-
-        if "lower_criticality" in paths:
-            reasons.append("It has lower estimated criticality than the base material.")
-
-        if "stable_material" in paths:
-            reasons.append("It is marked as stable in the material dataset.")
-
-        if "same_application" in paths:
-            reasons.append(
-                "It shares at least one application context with the base material."
-            )
-
-        reasons.append(
-            "This is a deterministic discovery suggestion and should be validated "
-            "for structure, synthesis feasibility, and application performance."
-        )
-
-        return " ".join(reasons)
-
-    def _merge_score_breakdowns(
-        self,
-        existing: dict[str, float],
-        incoming: dict[str, float],
-    ) -> dict[str, float]:
-        merged = dict(existing)
-
-        for key, value in incoming.items():
-            merged[key] = merged.get(key, 0.0) + value
-
-        return {
-            key: round(value, 2)
-            for key, value in merged.items()
         }
 
     def _empty_response(

@@ -14,6 +14,7 @@ class DiscoveryCandidate(BaseModel):
     discovery_score: float
     score_breakdown: dict[str, float]
     discovery_path: list[str]
+    substitution_path: SubstitutionPath | None = None
     explanation: str
 
 
@@ -23,3 +24,12 @@ class DiscoveryCandidatesResponse(BaseModel):
     base_formula: str | None = None
     discovery_goal: DiscoveryGoal
     candidates: list[DiscoveryCandidate]
+
+class SubstitutionPath(BaseModel):
+    from_formula: str
+    to_formula: str
+    path_type: str
+    replaced_elements: list[str]
+    introduced_elements: list[str]
+    preserved_framework: list[str]
+    reason: str
