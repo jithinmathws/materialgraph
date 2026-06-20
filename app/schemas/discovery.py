@@ -54,6 +54,7 @@ class DiscoveryChainTransition(BaseModel):
     from_formula: str
     to_formula: str
     transition_type: str
+    family: str | None = None
     reason: str
     preserved_framework: list[str]
     removed_elements: list[str]
@@ -72,4 +73,25 @@ class DiscoveryChainsResponse(BaseModel):
     mp_id: str | None = None
     base_formula: str | None = None
     discovery_goal: DiscoveryChainGoal
+    chains: list[DiscoveryChain]
+
+class ResearchObjective(BaseModel):
+    avoid_elements: list[str] = []
+    prefer_elements: list[str] = []
+    preserve_elements: list[str] = []
+    target_family: str | None = None
+    max_hops: int = Field(default=2, ge=1, le=3)
+    limit: int = Field(default=5, ge=1, le=20)
+    prefer_lower_criticality: bool = True
+    require_stable_materials: bool = False
+
+
+class ResearchObjectiveChainRequest(BaseModel):
+    objective: ResearchObjective
+
+
+class ResearchObjectiveChainResponse(BaseModel):
+    material_id: int
+    base_formula: str | None = None
+    objective: ResearchObjective
     chains: list[DiscoveryChain]

@@ -58,10 +58,13 @@ class DiscoveryTransitionValidator:
             substitution_path=substitution_path,
         )
 
+        family = self._infer_family(relationships)
+
         reason = self._build_reason(
             from_formula=from_material["formula"],
             to_formula=to_material["formula"],
             transition_type=transition_type,
+            family=family,
             preserved_framework=preserved_framework,
             removed_elements=removed_elements,
             introduced_elements=introduced_elements,
@@ -74,6 +77,7 @@ class DiscoveryTransitionValidator:
             "from_formula": from_material["formula"],
             "to_formula": to_material["formula"],
             "transition_type": transition_type,
+            "family": family,
             "reason": reason,
             "preserved_framework": preserved_framework,
             "removed_elements": removed_elements,
@@ -108,30 +112,41 @@ class DiscoveryTransitionValidator:
 
         return False
 
+    def _infer_family(
+        self,
+        relationships: list[str],
+    ) -> str | None:
+        relationship_set = set(relationships)
+
+        if "phosphate_related" in relationship_set:
+            return "phosphate"
+
+        if "oxide_related" in relationship_set:
+            return "oxide"
+
+        return None
+
     def _select_transition_type(
         self,
         relationships: list[str],
         substitution_path: dict | None,
     ) -> str:
-        if substitution_path is not None:
+        relationship_set = set(relationships)
+
+        if substitution_path:
             return substitution_path["path_type"]
 
-        if "alkali_substitution" in relationships:
-            return "alkali_substitution"
+        if "shared_chemistry" in relationship_set:
+            return "family_expansion"
 
-        if "phosphate_related" in relationships and "shared_chemistry" in relationships:
-            return "phosphate_family_expansion"
-
-        if "shared_chemistry" in relationships:
-            return "shared_chemistry_transition"
-
-        return relationships[0]
+        return "framework_preserving"
 
     def _build_reason(
         self,
         from_formula: str,
         to_formula: str,
         transition_type: str,
+        family: str | None,
         preserved_framework: list[str],
         removed_elements: list[str],
         introduced_elements: list[str],
@@ -150,13 +165,16 @@ class DiscoveryTransitionValidator:
                 f"preserving {'-'.join(preserved_framework)} chemistry"
             )
 
-        if transition_type == "phosphate_family_expansion":
-            parts.append("within a related phosphate material family")
+        if transition_type == "family_expansion" and family:
+            parts.append(f"expanding within the {family} material family")
 
         if prefer_element and prefer_element in introduced_elements:
             parts.append(f"introducing preferred element {prefer_element}")
 
         if not parts:
-            return f"{from_formula} transitions to {to_formula} through {transition_type}."
+            return (
+                f"{from_formula} transitions to {to_formula} "
+                f"through {transition_type}."
+            )
 
         return f"{from_formula} → {to_formula}: " + "; ".join(parts) + "."

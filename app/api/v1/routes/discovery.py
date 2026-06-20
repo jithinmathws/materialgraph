@@ -5,6 +5,11 @@ from app.core.database import get_db
 from app.schemas.discovery import DiscoveryCandidatesResponse, DiscoveryChainsResponse
 from app.services.discovery_candidate_service import DiscoveryCandidateService
 from app.services.discovery_chain_service import DiscoveryChainService
+from app.schemas.discovery import (
+    ResearchObjectiveChainRequest,
+    ResearchObjectiveChainResponse,
+)
+from app.services.research_objective_service import ResearchObjectiveService
 
 router = APIRouter(
     prefix="/materials",
@@ -57,4 +62,20 @@ def get_discovery_chains(
         prefer_element=prefer_element,
         max_hops=max_hops,
         limit=limit,
+    )
+
+@router.post(
+    "/{material_id}/discovery/objective/chains",
+    response_model=ResearchObjectiveChainResponse,
+)
+def generate_discovery_chains_for_objective(
+    material_id: int,
+    request: ResearchObjectiveChainRequest,
+    db: Session = Depends(get_db),
+):
+    service = ResearchObjectiveService(db)
+
+    return service.generate_chains_for_objective(
+        material_id=material_id,
+        objective=request.objective,
     )
