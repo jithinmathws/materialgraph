@@ -133,11 +133,20 @@ class DiscoveryTransitionValidator:
     ) -> str:
         relationship_set = set(relationships)
 
-        if substitution_path:
-            return substitution_path["path_type"]
+        if "alkali_substitution" in relationship_set:
+            return "alkali_substitution"
+
+        if "phosphate_related" in relationship_set:
+            return "family_expansion"
+
+        if "oxide_related" in relationship_set:
+            return "family_expansion"
 
         if "shared_chemistry" in relationship_set:
             return "family_expansion"
+
+        if substitution_path:
+            return substitution_path["path_type"]
 
         return "framework_preserving"
 
