@@ -8,10 +8,16 @@ from app.services.discovery_scoring_service import (
 from app.services.material_family_service import MaterialFamilyService
 from app.services.material_recommendation_service import MaterialRecommendationService
 from app.services.discovery_warning_service import DiscoveryWarningService
-
+from app.models.element import Element
+from app.models.material_element import MaterialElement
+from app.services.discovery_substitution_path_service import (
+    DiscoverySubstitutionPathService,
+)
 
 class DiscoveryCandidateService:
     def __init__(self, db: Session):
+        self.db = db
+        self.substitution_path_service = DiscoverySubstitutionPathService()
         self.family_service = MaterialFamilyService(db)
         self.recommendation_service = MaterialRecommendationService(db)
         self.scoring_service = DiscoveryScoringService()
@@ -84,6 +90,16 @@ class DiscoveryCandidateService:
             "candidates": candidates,
         }
 
+    def _get_material_elements(self, material_id: int) -> list[str]:
+        rows = (
+            self.db.query(Element.symbol)
+            .join(MaterialElement, MaterialElement.element_id == Element.id)
+            .filter(MaterialElement.material_id == material_id)
+            .all()
+        )
+
+        return sorted(row[0] for row in rows)
+
     def _add_family_candidates(
         self,
         candidates_by_id: dict[int, dict],
@@ -91,7 +107,21 @@ class DiscoveryCandidateService:
         avoid_element: str | None,
         prefer_element: str | None,
     ) -> None:
+        base_formula = family_result["pretty_formula"] or family_result["formula"]
+        base_elements = self._get_material_elements(family_result["material_id"])
+
         for candidate in family_result["related_materials"]:
+            candidate_formula = candidate["pretty_formula"] or candidate["formula"]
+            candidate_elements = self._get_material_elements(candidate["material_id"])
+
+            substitution_path = self.substitution_path_service.build_path(
+                base_formula=base_formula,
+                candidate_formula=candidate_formula,
+                base_elements=base_elements,
+                candidate_elements=candidate_elements,
+                relationships=candidate["relationships"],
+            )
+
             paths = ["family_related", *candidate["relationships"]]
 
             score, score_breakdown = self.scoring_service.score_family_candidate(
@@ -110,6 +140,7 @@ class DiscoveryCandidateService:
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
+                substitution_path=substitution_path,
             )
 
     def _add_recommendation_candidates(
@@ -206,6 +237,7 @@ class DiscoveryCandidateService:
         avoid_element: str | None,
         prefer_element: str | None,
         score_breakdown: dict[str, float],
+        substitution_path: dict | None = None,
     ) -> None:
         formula_for_check = pretty_formula or formula
         normalized_paths = set(paths)
@@ -241,6 +273,10 @@ class DiscoveryCandidateService:
                     existing["score_breakdown"]
                 )
             )
+
+            if existing.get("substitution_path") is None and substitution_path is not None:
+                existing["substitution_path"] = substitution_path
+
             existing["_explanation_parts"] = list(
                 dict.fromkeys(existing["_explanation_parts"] + explanation_parts)
             )
@@ -274,6 +310,7 @@ class DiscoveryCandidateService:
             "discovery_path": sorted(normalized_paths),
             "explanation": explanation,
             "_explanation_parts": explanation_parts,
+            "substitution_path": substitution_path,
         }
 
     def _empty_response(

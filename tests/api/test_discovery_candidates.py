@@ -172,3 +172,35 @@ def test_discovery_candidates_warn_when_preferred_element_not_found(client):
         "preferred element Co" in warning
         for warning in data["discovery_warnings"]
     )
+
+def test_discovery_candidates_include_substitution_path_for_alkali_candidates(client):
+    response = client.get(
+        "/api/v1/materials/5/discovery/candidates"
+        "?avoid_element=Li&prefer_element=Na&limit=10"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    alkali_candidates = [
+        candidate
+        for candidate in data["candidates"]
+        if "alkali_substitution" in candidate["discovery_path"]
+    ]
+
+    assert len(alkali_candidates) > 0
+
+    candidate = alkali_candidates[0]
+    substitution_path = candidate["substitution_path"]
+
+    assert substitution_path is not None
+    assert substitution_path["path_type"] == "alkali_substitution"
+    assert substitution_path["from_formula"] == "LiFePO4"
+    assert substitution_path["to_formula"] == candidate["pretty_formula"]
+    assert "Li" in substitution_path["replaced_elements"]
+    assert "Na" in substitution_path["introduced_elements"]
+    assert "Fe" in substitution_path["preserved_framework"]
+    assert "P" in substitution_path["preserved_framework"]
+    assert "O" in substitution_path["preserved_framework"]
+    assert len(substitution_path["reason"]) > 0
