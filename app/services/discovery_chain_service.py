@@ -8,7 +8,7 @@ from app.models.material_element import MaterialElement
 from app.services.discovery_candidate_service import DiscoveryCandidateService
 from app.services.discovery_transition_validator import DiscoveryTransitionValidator
 from app.services.material_family_service import MaterialFamilyService
-
+from app.services.discovery_graph_builder import DiscoveryGraphBuilder
 
 class DiscoveryChainService:
     DEFAULT_MAX_HOPS = 2
@@ -20,6 +20,7 @@ class DiscoveryChainService:
         self.db = db
         self.candidate_service = DiscoveryCandidateService(db)
         self.family_service = MaterialFamilyService(db)
+        self.graph_builder = DiscoveryGraphBuilder(db)
         self.transition_validator = DiscoveryTransitionValidator()
 
     def get_discovery_chains(
@@ -75,6 +76,13 @@ class DiscoveryChainService:
         max_hops: int,
         limit: int,
     ) -> list[dict]:
+        adjacency = self.graph_builder.build_adjacency(
+            start_material_id=base_material.id,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
+            max_depth=max_hops,
+        )
+
         queue = deque()
 
         base_node = self._material_to_node(base_material)
@@ -95,16 +103,10 @@ class DiscoveryChainService:
             current_hops = len(current_chain["transitions"])
 
             if current_hops >= max_hops:
-                completed_chains.append(
-                    self._finalize_chain(current_chain)
-                )
+                completed_chains.append(self._finalize_chain(current_chain))
                 continue
 
-            next_candidates = self._get_next_candidates(
-                material_id=current_material["material_id"],
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
-            )
+            next_candidates = adjacency.get(current_material["material_id"], [])
 
             for candidate in next_candidates:
                 candidate_id = candidate["material_id"]
@@ -139,9 +141,7 @@ class DiscoveryChainService:
                 }
 
                 if len(next_chain["transitions"]) == max_hops:
-                    completed_chains.append(
-                        self._finalize_chain(next_chain)
-                    )
+                    completed_chains.append(self._finalize_chain(next_chain))
 
                     if len(completed_chains) >= limit:
                         break
