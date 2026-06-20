@@ -33,6 +33,8 @@ class DiscoveryCandidateService:
     ) -> dict:
         family_result = self.family_service.get_material_families(material_id)
 
+        elements_map = self._get_material_elements_map()
+
         if family_result["mp_id"] is None:
             return self._empty_response(material_id, avoid_element, prefer_element)
 
@@ -43,6 +45,7 @@ class DiscoveryCandidateService:
             family_result=family_result,
             avoid_element=avoid_element,
             prefer_element=prefer_element,
+            elements_map=elements_map,
         )
 
         self._add_recommendation_candidates(
@@ -90,15 +93,25 @@ class DiscoveryCandidateService:
             "candidates": candidates,
         }
 
-    def _get_material_elements(self, material_id: int) -> list[str]:
+    def _get_material_elements_map(self) -> dict[int, list[str]]:
         rows = (
-            self.db.query(Element.symbol)
-            .join(MaterialElement, MaterialElement.element_id == Element.id)
-            .filter(MaterialElement.material_id == material_id)
+            self.db.query(
+                MaterialElement.material_id,
+                Element.symbol,
+            )
+            .join(Element, MaterialElement.element_id == Element.id)
             .all()
         )
 
-        return sorted(row[0] for row in rows)
+        elements_map: dict[int, set[str]] = {}
+
+        for material_id, symbol in rows:
+            elements_map.setdefault(material_id, set()).add(symbol)
+
+        return {
+            material_id: sorted(symbols)
+            for material_id, symbols in elements_map.items()
+        }
 
     def _add_family_candidates(
         self,
@@ -106,13 +119,14 @@ class DiscoveryCandidateService:
         family_result: dict,
         avoid_element: str | None,
         prefer_element: str | None,
+        elements_map: dict[int, list[str]],
     ) -> None:
         base_formula = family_result["pretty_formula"] or family_result["formula"]
-        base_elements = self._get_material_elements(family_result["material_id"])
+        base_elements = elements_map.get(family_result["material_id"], [])
 
         for candidate in family_result["related_materials"]:
             candidate_formula = candidate["pretty_formula"] or candidate["formula"]
-            candidate_elements = self._get_material_elements(candidate["material_id"])
+            candidate_elements = elements_map.get(candidate["material_id"], [])
 
             substitution_path = self.substitution_path_service.build_path(
                 base_formula=base_formula,
