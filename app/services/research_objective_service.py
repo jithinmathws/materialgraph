@@ -101,6 +101,12 @@ class ResearchObjectiveService:
             if target in transition["transition_type"].lower():
                 return True
 
+            reason = (
+                transition.get("scientific_reason")
+                or transition.get("reason")
+                or ""
+            )
+
             if target in transition["reason"].lower():
                 return True
 
