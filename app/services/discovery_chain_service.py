@@ -8,7 +8,6 @@ from app.models.material_element import MaterialElement
 from app.services.discovery_candidate_service import DiscoveryCandidateService
 from app.services.discovery_transition_validator import DiscoveryTransitionValidator
 from app.services.material_family_service import MaterialFamilyService
-from app.services.discovery_graph_builder import DiscoveryGraphBuilder
 
 class DiscoveryChainService:
     DEFAULT_MAX_HOPS = 2
@@ -20,7 +19,6 @@ class DiscoveryChainService:
         self.db = db
         self.candidate_service = DiscoveryCandidateService(db)
         self.family_service = MaterialFamilyService(db)
-        self.graph_builder = DiscoveryGraphBuilder(db)
         self.transition_validator = DiscoveryTransitionValidator()
 
     def get_discovery_chains(
@@ -76,13 +74,6 @@ class DiscoveryChainService:
         max_hops: int,
         limit: int,
     ) -> list[dict]:
-        adjacency = self.graph_builder.build_adjacency(
-            start_material_id=base_material.id,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
-            max_depth=max_hops,
-        )
-
         queue = deque()
 
         base_node = self._material_to_node(base_material)
@@ -106,7 +97,11 @@ class DiscoveryChainService:
                 completed_chains.append(self._finalize_chain(current_chain))
                 continue
 
-            next_candidates = adjacency.get(current_material["material_id"], [])
+            next_candidates = self._get_next_candidates(
+                material_id=current_material["material_id"],
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
+            )
 
             for candidate in next_candidates:
                 candidate_id = candidate["material_id"]
@@ -160,10 +155,14 @@ class DiscoveryChainService:
             material_id=material_id,
             avoid_element=avoid_element,
             prefer_element=prefer_element,
-            limit=self.EXPANSION_LIMIT,
+            limit=10,
         )
 
-        return result["candidates"]
+        return [
+            candidate
+            for candidate in result["candidates"]
+            if not (candidate.get("mp_id") or "").startswith("mp-test")
+        ]
 
     def _build_transition(
         self,
