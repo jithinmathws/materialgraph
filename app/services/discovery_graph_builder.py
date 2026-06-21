@@ -72,6 +72,7 @@ class DiscoveryGraphBuilder:
                 material_id=material_id,
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
+                limit=10,
             )
 
             adjacency.setdefault(material_id, [])
@@ -181,12 +182,13 @@ class DiscoveryGraphBuilder:
         material_id: int,
         avoid_element: str | None,
         prefer_element: str | None,
+        limit: int | None = None,
     ) -> list[dict]:
         result = self.candidate_service.get_discovery_candidates(
             material_id=material_id,
             avoid_element=avoid_element,
             prefer_element=prefer_element,
-            limit=self.EXPANSION_LIMIT,
+            limit=limit or self.EXPANSION_LIMIT,
         )
 
         return [
