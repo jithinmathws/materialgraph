@@ -1,5 +1,3 @@
-from collections import deque
-
 from sqlalchemy.orm import Session
 
 from app.models.material import Material
@@ -115,88 +113,43 @@ class DiscoveryTraversalService:
         prefer_element: str | None = None,
         max_hops: int = DEFAULT_MAX_HOPS,
     ) -> dict:
-        base_material = self.db.get(Material, material_id)
+        from app.services.discovery_chain_service import DiscoveryChainService
 
-        if base_material is None:
-            return {
-                "material_id": material_id,
-                "target_material_id": target_material_id,
-                "path_found": False,
-                "materials": [],
-                "transitions": [],
-            }
+        chain_service = DiscoveryChainService(self.db)
 
-        graph = self.graph_builder.build_graph(
-            start_material_id=material_id,
+        result = chain_service.get_discovery_chains(
+            material_id=material_id,
             avoid_element=avoid_element,
             prefer_element=prefer_element,
-            max_depth=max_hops,
+            max_hops=max_hops,
+            limit=20,
         )
 
-        node_by_id = {
-            node["material_id"]: node
-            for node in graph["nodes"]
-        }
+        for chain in result["chains"]:
+            material_ids = [
+                material["material_id"]
+                for material in chain["materials"]
+            ]
 
-        edges_by_source: dict[int, list[dict]] = {}
-
-        for edge in graph["edges"]:
-            edges_by_source.setdefault(edge["source_material_id"], []).append(edge)
-
-        queue = deque([
-            {
-                "material_ids": [material_id],
-                "transitions": [],
-            }
-        ])
-
-        while queue:
-            current = queue.popleft()
-            current_material_id = current["material_ids"][-1]
-
-            if current_material_id == target_material_id:
+            if target_material_id in material_ids:
                 return {
                     "material_id": material_id,
                     "target_material_id": target_material_id,
                     "path_found": True,
-                    "hop_count": len(current["transitions"]),
-                    "materials": [
-                        node_by_id[item]
-                        for item in current["material_ids"]
-                        if item in node_by_id
-                    ],
-                    "transitions": current["transitions"],
-                    "path_reason": self._build_path_reason(current["transitions"]),
+                    "hop_count": chain["hop_count"],
+                    "materials": chain["materials"],
+                    "transitions": chain["transitions"],
+                    "path_reason": chain["chain_reason"],
                 }
-
-            if len(current["transitions"]) >= max_hops:
-                continue
-
-            for edge in edges_by_source.get(current_material_id, []):
-                next_material_id = edge["target_material_id"]
-
-                if next_material_id in current["material_ids"]:
-                    continue
-
-                queue.append(
-                    {
-                        "material_ids": [
-                            *current["material_ids"],
-                            next_material_id,
-                        ],
-                        "transitions": [
-                            *current["transitions"],
-                            edge,
-                        ],
-                    }
-                )
 
         return {
             "material_id": material_id,
             "target_material_id": target_material_id,
             "path_found": False,
+            "hop_count": None,
             "materials": [],
             "transitions": [],
+            "path_reason": None,
         }
 
     def _build_path_reason(self, transitions: list[dict]) -> str:
