@@ -11,7 +11,7 @@ from app.services.material_family_service import MaterialFamilyService
 
 
 class DiscoveryGraphBuilder:
-    EXPANSION_LIMIT = 50
+    EXPANSION_LIMIT = 10
     DEFAULT_MAX_DEPTH = 2
     MAX_ALLOWED_DEPTH = 3
 
