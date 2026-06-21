@@ -88,7 +88,7 @@ def generate_discovery_chains_for_objective(
     )
 
 @router.get(
-    "/materials/{material_id}/discovery/graph",
+    "/{material_id}/discovery/graph",
     response_model=DiscoveryGraphResponse,
 )
 def get_discovery_graph(
@@ -111,7 +111,7 @@ def get_discovery_graph(
 
 
 @router.get(
-    "/materials/{material_id}/discovery/subgraph",
+    "/{material_id}/discovery/subgraph",
     response_model=DiscoverySubgraphResponse,
 )
 def get_discovery_subgraph(
@@ -138,7 +138,7 @@ def get_discovery_subgraph(
 
 
 @router.get(
-    "/materials/{material_id}/discovery/path",
+    "/{material_id}/discovery/path",
     response_model=DiscoveryPathResponse,
 )
 def get_discovery_path(
