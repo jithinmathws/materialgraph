@@ -13,7 +13,7 @@ from app.services.material_family_service import MaterialFamilyService
 class DiscoveryGraphBuilder:
     EXPANSION_LIMIT = 10
     DEFAULT_MAX_DEPTH = 2
-    MAX_ALLOWED_DEPTH = 3
+    MAX_ALLOWED_DEPTH = 1
 
     def __init__(self, db: Session):
         self.db = db
@@ -28,7 +28,7 @@ class DiscoveryGraphBuilder:
         prefer_element: str | None = None,
         max_depth: int = DEFAULT_MAX_DEPTH,
     ) -> dict:
-        max_depth = min(max_depth, self.MAX_ALLOWED_DEPTH)
+        max_depth = min(max_depth, 1)
 
         base_material = self.db.get(Material, start_material_id)
 
