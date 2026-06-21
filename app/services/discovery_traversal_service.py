@@ -113,47 +113,92 @@ class DiscoveryTraversalService:
         prefer_element: str | None = None,
         max_hops: int = DEFAULT_MAX_HOPS,
     ) -> dict:
-        from app.services.discovery_chain_service import DiscoveryChainService
+        from app.services.discovery_candidate_service import DiscoveryCandidateService
 
-        chain_service = DiscoveryChainService(self.db)
+        max_hops = min(max_hops, 2)
+        candidate_service = DiscoveryCandidateService(self.db)
 
-        result = chain_service.get_discovery_chains(
-            material_id=material_id,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
-            max_hops=max_hops,
-            limit=20,
-        )
+        base_material = self.db.get(Material, material_id)
+        if base_material is None:
+            return self._empty_path_response(material_id, target_material_id)
 
-        for chain in result["chains"]:
-            material_ids = [
-                material["material_id"]
-                for material in chain["materials"]
-            ]
+        queue = [
+            {
+                "materials": [self._material_to_node(base_material)],
+                "transitions": [],
+                "visited_ids": {material_id},
+            }
+        ]
 
-            if target_material_id in material_ids:
+        while queue:
+            current = queue.pop(0)
+            current_node = current["materials"][-1]
+
+            if current_node["material_id"] == target_material_id:
                 return {
                     "material_id": material_id,
                     "target_material_id": target_material_id,
                     "path_found": True,
-                    "hop_count": chain["hop_count"],
-                    "materials": chain["materials"],
-                    "transitions": [
-                        self._chain_transition_to_graph_edge(transition)
-                        for transition in chain["transitions"]
-                    ],
-                    "path_reason": chain["chain_reason"],
+                    "hop_count": len(current["transitions"]),
+                    "materials": current["materials"],
+                    "transitions": current["transitions"],
+                    "path_reason": self._build_path_reason(current["transitions"]),
                 }
 
-        return {
-            "material_id": material_id,
-            "target_material_id": target_material_id,
-            "path_found": False,
-            "hop_count": None,
-            "materials": [],
-            "transitions": [],
-            "path_reason": None,
-        }
+            if len(current["transitions"]) >= max_hops:
+                continue
+
+            result = candidate_service.get_discovery_candidates(
+                material_id=current_node["material_id"],
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
+                limit=10,
+            )
+
+            for candidate in result["candidates"]:
+                if (candidate.get("mp_id") or "").startswith("mp-test"):
+                    continue
+
+                candidate_id = candidate["material_id"]
+
+                if candidate_id in current["visited_ids"]:
+                    continue
+
+                graph = self.graph_builder.build_graph(
+                    start_material_id=current_node["material_id"],
+                    avoid_element=avoid_element,
+                    prefer_element=prefer_element,
+                    max_depth=1,
+                )
+
+                edge = next(
+                    (
+                        item for item in graph["edges"]
+                        if item["source_material_id"] == current_node["material_id"]
+                        and item["target_material_id"] == candidate_id
+                    ),
+                    None,
+                )
+
+                if edge is None:
+                    continue
+
+                next_node = {
+                    "material_id": candidate["material_id"],
+                    "mp_id": candidate["mp_id"],
+                    "pretty_formula": candidate["pretty_formula"],
+                    "formula": candidate["pretty_formula"] or candidate["formula"],
+                }
+
+                queue.append(
+                    {
+                        "materials": [*current["materials"], next_node],
+                        "transitions": [*current["transitions"], edge],
+                        "visited_ids": {*current["visited_ids"], candidate_id},
+                    }
+                )
+
+        return self._empty_path_response(material_id, target_material_id)
 
     def _build_path_reason(self, transitions: list[dict]) -> str:
         if not transitions:
@@ -216,4 +261,28 @@ class DiscoveryTraversalService:
             "introduced_elements": transition.get("introduced_elements", []),
             "scientific_reason": transition.get("reason")
             or "Scientific transition identified by deterministic chain rules.",
+        }
+
+    def _material_to_node(self, material: Material) -> dict:
+        return {
+            "material_id": material.id,
+            "mp_id": material.mp_id,
+            "pretty_formula": material.pretty_formula,
+            "formula": material.pretty_formula or material.formula,
+        }
+
+
+    def _empty_path_response(
+        self,
+        material_id: int,
+        target_material_id: int,
+    ) -> dict:
+        return {
+            "material_id": material_id,
+            "target_material_id": target_material_id,
+            "path_found": False,
+            "hop_count": None,
+            "materials": [],
+            "transitions": [],
+            "path_reason": None,
         }
