@@ -113,90 +113,40 @@ class DiscoveryTraversalService:
         prefer_element: str | None = None,
         max_hops: int = DEFAULT_MAX_HOPS,
     ) -> dict:
-        from app.services.discovery_candidate_service import DiscoveryCandidateService
-
-        max_hops = min(max_hops, 2)
-        candidate_service = DiscoveryCandidateService(self.db)
-
         base_material = self.db.get(Material, material_id)
+
         if base_material is None:
             return self._empty_path_response(material_id, target_material_id)
 
-        queue = [
-            {
-                "materials": [self._material_to_node(base_material)],
-                "transitions": [],
-                "visited_ids": {material_id},
-            }
-        ]
+        graph = self.graph_builder.build_graph(
+            start_material_id=material_id,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
+            max_depth=1,
+        )
 
-        while queue:
-            current = queue.pop(0)
-            current_node = current["materials"][-1]
+        node_by_id = {
+            node["material_id"]: node
+            for node in graph["nodes"]
+        }
 
-            if current_node["material_id"] == target_material_id:
+        for edge in graph["edges"]:
+            if (
+                edge["source_material_id"] == material_id
+                and edge["target_material_id"] == target_material_id
+            ):
                 return {
                     "material_id": material_id,
                     "target_material_id": target_material_id,
                     "path_found": True,
-                    "hop_count": len(current["transitions"]),
-                    "materials": current["materials"],
-                    "transitions": current["transitions"],
-                    "path_reason": self._build_path_reason(current["transitions"]),
+                    "hop_count": 1,
+                    "materials": [
+                        node_by_id[material_id],
+                        node_by_id[target_material_id],
+                    ],
+                    "transitions": [edge],
+                    "path_reason": self._build_path_reason([edge]),
                 }
-
-            if len(current["transitions"]) >= max_hops:
-                continue
-
-            result = candidate_service.get_discovery_candidates(
-                material_id=current_node["material_id"],
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
-                limit=10,
-            )
-
-            for candidate in result["candidates"]:
-                if (candidate.get("mp_id") or "").startswith("mp-test"):
-                    continue
-
-                candidate_id = candidate["material_id"]
-
-                if candidate_id in current["visited_ids"]:
-                    continue
-
-                graph = self.graph_builder.build_graph(
-                    start_material_id=current_node["material_id"],
-                    avoid_element=avoid_element,
-                    prefer_element=prefer_element,
-                    max_depth=1,
-                )
-
-                edge = next(
-                    (
-                        item for item in graph["edges"]
-                        if item["source_material_id"] == current_node["material_id"]
-                        and item["target_material_id"] == candidate_id
-                    ),
-                    None,
-                )
-
-                if edge is None:
-                    continue
-
-                next_node = {
-                    "material_id": candidate["material_id"],
-                    "mp_id": candidate["mp_id"],
-                    "pretty_formula": candidate["pretty_formula"],
-                    "formula": candidate["pretty_formula"] or candidate["formula"],
-                }
-
-                queue.append(
-                    {
-                        "materials": [*current["materials"], next_node],
-                        "transitions": [*current["transitions"], edge],
-                        "visited_ids": {*current["visited_ids"], candidate_id},
-                    }
-                )
 
         return self._empty_path_response(material_id, target_material_id)
 
