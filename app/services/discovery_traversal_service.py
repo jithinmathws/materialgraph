@@ -138,7 +138,10 @@ class DiscoveryTraversalService:
                     "path_found": True,
                     "hop_count": chain["hop_count"],
                     "materials": chain["materials"],
-                    "transitions": chain["transitions"],
+                    "transitions": [
+                        self._chain_transition_to_graph_edge(transition)
+                        for transition in chain["transitions"]
+                    ],
                     "path_reason": chain["chain_reason"],
                 }
 
@@ -200,4 +203,17 @@ class DiscoveryTraversalService:
             },
             "nodes": [],
             "edges": [],
+        }
+
+    def _chain_transition_to_graph_edge(self, transition: dict) -> dict:
+        return {
+            "source_material_id": transition["from_material_id"],
+            "target_material_id": transition["to_material_id"],
+            "transition_type": transition["transition_type"],
+            "family": transition.get("family"),
+            "preserved_framework": transition.get("preserved_framework", []),
+            "removed_elements": transition.get("removed_elements", []),
+            "introduced_elements": transition.get("introduced_elements", []),
+            "scientific_reason": transition.get("reason")
+            or "Scientific transition identified by deterministic chain rules.",
         }
