@@ -48,3 +48,24 @@ def test_discovery_graph_nodes_include_quality_metadata(db_session):
     assert "criticality_score" in node
     assert "risk_score" in node
     assert "quality_score" in node
+
+def test_discovery_graph_edges_include_edge_intelligence(db_session):
+    from app.services.discovery_graph_builder import DiscoveryGraphBuilder
+
+    builder = DiscoveryGraphBuilder(db_session)
+
+    result = builder.build_graph(
+        start_material_id=5,
+        avoid_element="Li",
+        prefer_element="Na",
+        max_depth=1,
+    )
+
+    assert result["edges"]
+
+    edge = result["edges"][0]
+
+    assert "scientific_plausibility" in edge
+    assert "edge_score" in edge
+    assert isinstance(edge["scientific_plausibility"], float)
+    assert isinstance(edge["edge_score"], float)

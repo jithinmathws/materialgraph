@@ -29,6 +29,8 @@ class DiscoveryGraphEdge(BaseModel):
     removed_elements: list[str] = Field(default_factory=list)
     introduced_elements: list[str] = Field(default_factory=list)
     scientific_reason: str
+    scientific_plausibility: float
+    edge_score: float
 
 
 class DiscoveryGraphResponse(BaseModel):

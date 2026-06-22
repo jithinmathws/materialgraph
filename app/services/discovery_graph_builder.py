@@ -9,6 +9,9 @@ from app.services.discovery_candidate_service import DiscoveryCandidateService
 from app.services.discovery_transition_validator import DiscoveryTransitionValidator
 from app.services.material_family_service import MaterialFamilyService
 from app.services.material_quality_service import MaterialQualityService
+from app.services.discovery_edge_intelligence_service import (
+    DiscoveryEdgeIntelligenceService,
+)
 
 
 class DiscoveryGraphBuilder:
@@ -22,6 +25,7 @@ class DiscoveryGraphBuilder:
         self.family_service = MaterialFamilyService(db)
         self.transition_validator = DiscoveryTransitionValidator()
         self.material_quality_service = MaterialQualityService(db)
+        self.edge_intelligence_service = DiscoveryEdgeIntelligenceService()
 
     def build_graph(
         self,
@@ -234,24 +238,40 @@ class DiscoveryGraphBuilder:
         hop_depth: int,
     ) -> dict:
         preserved_framework = transition.get("preserved_framework", [])
+        transition_type = transition.get("transition_type")
+        removed_elements = transition.get("removed_elements", [])
+        introduced_elements = transition.get("introduced_elements", [])
+
+        family = self._infer_family(
+            transition_type=transition_type,
+            preserved_framework=preserved_framework,
+            candidate=candidate,
+        )
+
+        scientific_reason = (
+            transition.get("scientific_reason")
+            or transition.get("reason")
+            or "Scientific transition identified by deterministic graph rules."
+        )
+
+        edge_intelligence = self.edge_intelligence_service.build_edge_intelligence(
+            transition_type=transition_type,
+            family=family,
+            preserved_framework=preserved_framework,
+            removed_elements=removed_elements,
+            introduced_elements=introduced_elements,
+            scientific_reason=scientific_reason,
+        )
 
         return {
             "source_material_id": source_material_id,
             "target_material_id": target_material_id,
-            "transition_type": transition.get("transition_type"),
-            "family": self._infer_family(
-                transition_type=transition.get("transition_type"),
-                preserved_framework=preserved_framework,
-                candidate=candidate,
-            ),
+            "transition_type": transition_type,
+            "family": family,
             "preserved_framework": preserved_framework,
-            "removed_elements": transition.get("removed_elements", []),
-            "introduced_elements": transition.get("introduced_elements", []),
-            "scientific_reason": (
-                transition.get("scientific_reason")
-                or transition.get("reason")
-                or "Scientific transition identified by deterministic graph rules."
-            ),
+            "removed_elements": removed_elements,
+            "introduced_elements": introduced_elements,
+            **edge_intelligence,
             "hop_depth": hop_depth,
         }
 
