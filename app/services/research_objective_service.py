@@ -1,12 +1,14 @@
 from sqlalchemy.orm import Session
 
 from app.services.discovery_chain_service import DiscoveryChainService
+from app.services.discovery_path_ranking_service import DiscoveryPathRankingService
 
 
 class ResearchObjectiveService:
     def __init__(self, db: Session):
         self.db = db
         self.chain_service = DiscoveryChainService(db)
+        self.path_ranking_service = DiscoveryPathRankingService()
 
     def generate_chains_for_objective(
         self,
@@ -38,11 +40,16 @@ class ResearchObjectiveService:
             objective=objective,
         )
 
+        ranked_chains = self._rank_chains(
+            chains=filtered_chains,
+            objective=objective,
+        )
+
         return {
             "material_id": result["material_id"],
             "base_formula": result["base_formula"],
             "objective": objective,
-            "chains": filtered_chains,
+            "chains": ranked_chains,
         }
 
     def _filter_chains(
@@ -98,16 +105,56 @@ class ResearchObjectiveService:
                     return True
 
         for transition in chain["transitions"]:
-            if target in transition["transition_type"].lower():
-                return True
-
+            transition_type = transition.get("transition_type", "")
             reason = (
                 transition.get("scientific_reason")
                 or transition.get("reason")
                 or ""
             )
 
-            if target in transition["reason"].lower():
+            if target in transition_type.lower():
+                return True
+
+            if target in reason.lower():
                 return True
 
         return False
+
+    def _rank_chains(
+        self,
+        chains: list[dict],
+        objective,
+    ) -> list[dict]:
+        avoid_element = (
+            objective.avoid_elements[0]
+            if objective.avoid_elements
+            else None
+        )
+
+        prefer_element = (
+            objective.prefer_elements[0]
+            if objective.prefer_elements
+            else None
+        )
+
+        ranked_chains = []
+
+        for chain in chains:
+            ranking = self.path_ranking_service.rank_path(
+                materials=chain["materials"],
+                transitions=chain["transitions"],
+                avoid_element=avoid_element,
+                prefer_element=prefer_element,
+            )
+
+            ranked_chains.append({
+                **chain,
+                **ranking,
+            })
+
+        ranked_chains.sort(
+            key=lambda item: item["scientific_usefulness_score"],
+            reverse=True,
+        )
+
+        return ranked_chains

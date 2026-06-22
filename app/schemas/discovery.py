@@ -67,6 +67,10 @@ class DiscoveryChain(BaseModel):
     transitions: list[DiscoveryChainTransition]
     chain_reason: str
 
+    scientific_usefulness_score: float | None = None
+    score_breakdown: dict[str, float] | None = None
+    usefulness_reason: str | None = None
+
 
 class DiscoveryChainsResponse(BaseModel):
     material_id: int
