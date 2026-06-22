@@ -8,7 +8,7 @@ class ResearchObjectiveService:
     def __init__(self, db: Session):
         self.db = db
         self.chain_service = DiscoveryChainService(db)
-        self.path_ranking_service = DiscoveryPathRankingService()
+        self.path_ranking_service = DiscoveryPathRankingService(db)
 
     def generate_chains_for_objective(
         self,

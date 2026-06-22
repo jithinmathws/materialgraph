@@ -1,8 +1,29 @@
+from sqlalchemy.orm import Session
+
+from app.models.material import Material
+from app.services.material_criticality_service import MaterialCriticalityService
+from app.services.material_risk_service import MaterialRiskService
+
+
 class DiscoveryPathRankingService:
-    FRAMEWORK_WEIGHT = 35.0
-    OBJECTIVE_WEIGHT = 30.0
-    PLAUSIBILITY_WEIGHT = 25.0
+    FRAMEWORK_WEIGHT = 30.0
+    OBJECTIVE_WEIGHT = 25.0
+    PLAUSIBILITY_WEIGHT = 20.0
+    MATERIAL_QUALITY_WEIGHT = 15.0
     EFFICIENCY_WEIGHT = 10.0
+
+    def __init__(self, db: Session | None = None):
+        self.db = db
+        self.criticality_service = (
+            MaterialCriticalityService(db)
+            if db is not None
+            else None
+        )
+        self.risk_service = (
+            MaterialRiskService(db)
+            if db is not None
+            else None
+        )
 
     def rank_path(
         self,
@@ -19,12 +40,14 @@ class DiscoveryPathRankingService:
         )
         plausibility_score = self._score_transition_plausibility(transitions)
         efficiency_score = self._score_path_efficiency(transitions)
+        material_quality_score = self._score_material_quality(materials)
 
         total_score = round(
             framework_score
             + objective_score
             + plausibility_score
-            + efficiency_score,
+            + efficiency_score
+            + material_quality_score,
             2,
         )
 
@@ -35,6 +58,7 @@ class DiscoveryPathRankingService:
                 "objective_alignment": objective_score,
                 "transition_plausibility": plausibility_score,
                 "path_efficiency": efficiency_score,
+                "material_quality": material_quality_score,
             },
             "usefulness_reason": self._build_usefulness_reason(
                 transitions=transitions,
@@ -200,3 +224,66 @@ class DiscoveryPathRankingService:
             )
 
         return "This path is scientifically useful because it " + "; ".join(reasons) + "."
+
+    def _score_material_quality(
+        self,
+        materials: list[dict],
+    ) -> float:
+        if self.db is None or not materials:
+            return 0.0
+
+        final_material_id = materials[-1].get("material_id")
+
+        if final_material_id is None:
+            return 0.0
+
+        material = self.db.get(Material, final_material_id)
+
+        if material is None:
+            return 0.0
+
+        score = 0.0
+
+        if material.is_stable:
+            score += self.MATERIAL_QUALITY_WEIGHT * 0.35
+
+        energy_above_hull = material.energy_above_hull
+
+        if energy_above_hull is not None:
+            if energy_above_hull <= 0.01:
+                score += self.MATERIAL_QUALITY_WEIGHT * 0.35
+            elif energy_above_hull <= 0.05:
+                score += self.MATERIAL_QUALITY_WEIGHT * 0.25
+            elif energy_above_hull <= 0.1:
+                score += self.MATERIAL_QUALITY_WEIGHT * 0.15
+
+        score += self._score_risk_quality(final_material_id)
+
+        return round(min(score, self.MATERIAL_QUALITY_WEIGHT), 2)
+
+    def _score_risk_quality(
+        self,
+        material_id: int,
+    ) -> float:
+        if self.criticality_service is None or self.risk_service is None:
+            return 0.0
+
+        criticality = self.criticality_service.get_material_criticality(material_id)
+        risk_score = self.risk_service.get_material_risk_score(material_id)
+
+        criticality_score = criticality.get("criticality_score")
+
+        risk_component = 0.0
+
+        if criticality_score is not None:
+            if criticality_score <= 30:
+                risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.15
+            elif criticality_score <= 60:
+                risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.08
+
+        if risk_score <= 3:
+            risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.15
+        elif risk_score <= 6:
+            risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.08
+
+        return risk_component

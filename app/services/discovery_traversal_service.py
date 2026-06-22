@@ -13,7 +13,7 @@ class DiscoveryTraversalService:
     def __init__(self, db: Session):
         self.db = db
         self.graph_builder = DiscoveryGraphBuilder(db)
-        self.path_ranking_service = DiscoveryPathRankingService()
+        self.path_ranking_service = DiscoveryPathRankingService(db)
 
     def get_graph(
         self,
