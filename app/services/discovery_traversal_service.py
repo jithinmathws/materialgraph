@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.models.material import Material
 from app.services.discovery_graph_builder import DiscoveryGraphBuilder
+from app.services.discovery_path_ranking_service import DiscoveryPathRankingService
 
 
 class DiscoveryTraversalService:
@@ -12,6 +13,7 @@ class DiscoveryTraversalService:
     def __init__(self, db: Session):
         self.db = db
         self.graph_builder = DiscoveryGraphBuilder(db)
+        self.path_ranking_service = DiscoveryPathRankingService()
 
     def get_graph(
         self,
@@ -38,7 +40,7 @@ class DiscoveryTraversalService:
             prefer_element=prefer_element,
             max_depth=max_hops,
         )
-
+            
         return {
             "material_id": base_material.id,
             "mp_id": base_material.mp_id,
@@ -129,12 +131,22 @@ class DiscoveryTraversalService:
             node["material_id"]: node
             for node in graph["nodes"]
         }
-
+        
         for edge in graph["edges"]:
             if (
                 edge["source_material_id"] == material_id
                 and edge["target_material_id"] == target_material_id
             ):
+                ranking = self.path_ranking_service.rank_path(
+                    materials=[
+                        node_by_id[material_id],
+                        node_by_id[target_material_id],
+                    ],
+                    transitions=[edge],
+                    avoid_element=avoid_element,
+                    prefer_element=prefer_element,
+                )
+
                 return {
                     "material_id": material_id,
                     "target_material_id": target_material_id,
@@ -146,6 +158,7 @@ class DiscoveryTraversalService:
                     ],
                     "transitions": [edge],
                     "path_reason": self._build_path_reason([edge]),
+                    **ranking,
                 }
 
         return self._empty_path_response(material_id, target_material_id)
@@ -235,4 +248,7 @@ class DiscoveryTraversalService:
             "materials": [],
             "transitions": [],
             "path_reason": None,
+            "scientific_usefulness_score": None,
+            "score_breakdown": None,
+            "usefulness_reason": None,
         }

@@ -47,3 +47,6 @@ class DiscoveryPathResponse(BaseModel):
     materials: list[DiscoveryGraphNode]
     transitions: list[DiscoveryGraphEdge]
     path_reason: str | None = None
+    scientific_usefulness_score: float | None = None
+    score_breakdown: dict[str, float] | None = None
+    usefulness_reason: str | None = None
