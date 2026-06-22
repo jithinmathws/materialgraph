@@ -24,6 +24,7 @@ class DiscoveryPathRankingService:
             if db is not None
             else None
         )
+        self._material_quality_cache: dict[int, float] = {}
 
     def rank_path(
         self,
@@ -232,34 +233,25 @@ class DiscoveryPathRankingService:
         if self.db is None or not materials:
             return 0.0
 
-        final_material_id = materials[-1].get("material_id")
+        material_scores = []
 
-        if final_material_id is None:
+        for material_data in materials:
+            material_id = material_data.get("material_id")
+
+            if material_id is None:
+                continue
+
+            score = self._score_single_material_quality(material_id)
+
+            material_scores.append(score)
+
+        if not material_scores:
             return 0.0
 
-        material = self.db.get(Material, final_material_id)
-
-        if material is None:
-            return 0.0
-
-        score = 0.0
-
-        if material.is_stable:
-            score += self.MATERIAL_QUALITY_WEIGHT * 0.35
-
-        energy_above_hull = material.energy_above_hull
-
-        if energy_above_hull is not None:
-            if energy_above_hull <= 0.01:
-                score += self.MATERIAL_QUALITY_WEIGHT * 0.35
-            elif energy_above_hull <= 0.05:
-                score += self.MATERIAL_QUALITY_WEIGHT * 0.25
-            elif energy_above_hull <= 0.1:
-                score += self.MATERIAL_QUALITY_WEIGHT * 0.15
-
-        score += self._score_risk_quality(final_material_id)
-
-        return round(min(score, self.MATERIAL_QUALITY_WEIGHT), 2)
+        return round(
+            sum(material_scores) / len(material_scores),
+            2,
+        )
 
     def _score_risk_quality(
         self,
@@ -287,3 +279,38 @@ class DiscoveryPathRankingService:
             risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.08
 
         return risk_component
+
+    def _score_single_material_quality(
+        self,
+        material_id: int,
+    ) -> float:
+        if material_id in self._material_quality_cache:
+            return self._material_quality_cache[material_id]
+
+        material = self.db.get(Material, material_id)
+
+        if material is None:
+            self._material_quality_cache[material_id] = 0.0
+            return 0.0
+
+        score = 0.0
+
+        if material.is_stable:
+            score += self.MATERIAL_QUALITY_WEIGHT * 0.35
+
+        energy_above_hull = material.energy_above_hull
+
+        if energy_above_hull is not None:
+            if energy_above_hull <= 0.01:
+                score += self.MATERIAL_QUALITY_WEIGHT * 0.35
+            elif energy_above_hull <= 0.05:
+                score += self.MATERIAL_QUALITY_WEIGHT * 0.25
+            elif energy_above_hull <= 0.1:
+                score += self.MATERIAL_QUALITY_WEIGHT * 0.15
+
+        score += self._score_risk_quality(material_id)
+
+        final_score = round(min(score, self.MATERIAL_QUALITY_WEIGHT), 2)
+        self._material_quality_cache[material_id] = final_score
+
+        return final_score

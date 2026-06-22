@@ -82,3 +82,23 @@ def test_rank_path_handles_empty_path():
     assert result["score_breakdown"]["transition_plausibility"] == 0.0
     assert result["score_breakdown"]["path_efficiency"] == 0.0
     assert result["usefulness_reason"] == "No discovery path was available for ranking."
+
+def test_rank_path_without_db_has_zero_material_quality():
+    service = DiscoveryPathRankingService()
+
+    result = service.rank_path(
+        materials=[{"material_id": 5}, {"material_id": 7}],
+        transitions=[
+            {
+                "transition_type": "alkali_substitution",
+                "family": "phosphate",
+                "preserved_framework": ["Fe", "O", "P"],
+                "removed_elements": ["Li"],
+                "introduced_elements": ["Na"],
+            }
+        ],
+        avoid_element="Li",
+        prefer_element="Na",
+    )
+
+    assert result["score_breakdown"]["material_quality"] == 0.0
