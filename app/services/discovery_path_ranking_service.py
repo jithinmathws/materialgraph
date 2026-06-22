@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.material import Material
-from app.services.material_criticality_service import MaterialCriticalityService
-from app.services.material_risk_service import MaterialRiskService
+from app.services.material_quality_service import MaterialQualityService
 
 
 class DiscoveryPathRankingService:
@@ -14,17 +12,11 @@ class DiscoveryPathRankingService:
 
     def __init__(self, db: Session | None = None):
         self.db = db
-        self.criticality_service = (
-            MaterialCriticalityService(db)
+        self.material_quality_service = (
+            MaterialQualityService(db)
             if db is not None
             else None
         )
-        self.risk_service = (
-            MaterialRiskService(db)
-            if db is not None
-            else None
-        )
-        self._material_quality_cache: dict[int, float] = {}
 
     def rank_path(
         self,
@@ -253,64 +245,11 @@ class DiscoveryPathRankingService:
             2,
         )
 
-    def _score_risk_quality(
-        self,
-        material_id: int,
-    ) -> float:
-        if self.criticality_service is None or self.risk_service is None:
-            return 0.0
-
-        criticality = self.criticality_service.get_material_criticality(material_id)
-        risk_score = self.risk_service.get_material_risk_score(material_id)
-
-        criticality_score = criticality.get("criticality_score")
-
-        risk_component = 0.0
-
-        if criticality_score is not None:
-            if criticality_score <= 30:
-                risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.15
-            elif criticality_score <= 60:
-                risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.08
-
-        if risk_score <= 3:
-            risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.15
-        elif risk_score <= 6:
-            risk_component += self.MATERIAL_QUALITY_WEIGHT * 0.08
-
-        return risk_component
-
     def _score_single_material_quality(
         self,
         material_id: int,
     ) -> float:
-        if material_id in self._material_quality_cache:
-            return self._material_quality_cache[material_id]
-
-        material = self.db.get(Material, material_id)
-
-        if material is None:
-            self._material_quality_cache[material_id] = 0.0
+        if self.material_quality_service is None:
             return 0.0
 
-        score = 0.0
-
-        if material.is_stable:
-            score += self.MATERIAL_QUALITY_WEIGHT * 0.35
-
-        energy_above_hull = material.energy_above_hull
-
-        if energy_above_hull is not None:
-            if energy_above_hull <= 0.01:
-                score += self.MATERIAL_QUALITY_WEIGHT * 0.35
-            elif energy_above_hull <= 0.05:
-                score += self.MATERIAL_QUALITY_WEIGHT * 0.25
-            elif energy_above_hull <= 0.1:
-                score += self.MATERIAL_QUALITY_WEIGHT * 0.15
-
-        score += self._score_risk_quality(material_id)
-
-        final_score = round(min(score, self.MATERIAL_QUALITY_WEIGHT), 2)
-        self._material_quality_cache[material_id] = final_score
-
-        return final_score
+        return self.material_quality_service.get_material_quality_score(material_id)
