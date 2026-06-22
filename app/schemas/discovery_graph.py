@@ -13,6 +13,11 @@ class DiscoveryGraphNode(BaseModel):
     mp_id: str | None = None
     pretty_formula: str | None = None
     formula: str
+    stability_score: float | None = None
+    energy_above_hull: float | None = None
+    criticality_score: float | None = None
+    risk_score: float | None = None
+    quality_score: float | None = None
 
 
 class DiscoveryGraphEdge(BaseModel):

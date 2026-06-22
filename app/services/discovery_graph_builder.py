@@ -8,6 +8,7 @@ from app.models.material_element import MaterialElement
 from app.services.discovery_candidate_service import DiscoveryCandidateService
 from app.services.discovery_transition_validator import DiscoveryTransitionValidator
 from app.services.material_family_service import MaterialFamilyService
+from app.services.material_quality_service import MaterialQualityService
 
 
 class DiscoveryGraphBuilder:
@@ -20,6 +21,7 @@ class DiscoveryGraphBuilder:
         self.candidate_service = DiscoveryCandidateService(db)
         self.family_service = MaterialFamilyService(db)
         self.transition_validator = DiscoveryTransitionValidator()
+        self.material_quality_service = MaterialQualityService(db)
 
     def build_graph(
         self,
@@ -307,17 +309,24 @@ class DiscoveryGraphBuilder:
         }
 
     def _material_to_node(self, material: Material) -> dict:
+        quality = self.material_quality_service.get_material_quality(material.id)
+
         return {
             "material_id": material.id,
             "mp_id": material.mp_id,
             "pretty_formula": material.pretty_formula,
             "formula": material.pretty_formula or material.formula,
+            **quality,
         }
 
     def _candidate_to_node(self, candidate: dict) -> dict:
+        quality = self.material_quality_service.get_material_quality(
+            candidate["material_id"]
+        )
         return {
             "material_id": candidate["material_id"],
             "mp_id": candidate["mp_id"],
             "pretty_formula": candidate["pretty_formula"],
             "formula": candidate["pretty_formula"] or candidate["formula"],
+            **quality,
         }
