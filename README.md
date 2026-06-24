@@ -1,18 +1,25 @@
 # MaterialGraph
 
-**Graph-Based Material Intelligence Platform for Battery Material Candidate Screening, Risk Analysis, and Decision Support**
+**Deterministic Materials Discovery Knowledge Graph for Candidate Exploration, Scientific Pathways, and Explainable Decision Support**
 
 ## Overview
 
-MaterialGraph is a graph-based materials intelligence platform designed to support candidate screening, explainable recommendation, material exploration layer, scenario policy evaluation, substitution analysis, and constraint-aware decision support for battery materials.
+MaterialGraph is a deterministic, explainable Materials Discovery Knowledge Graph designed to support candidate exploration, substitution analysis, scientific pathway discovery, graph analytics, and risk-aware decision support.
 
-The platform integrates scientific material datasets with supply-risk intelligence to help answer questions such as:
-
-> Given lithium or cobalt scarcity, which alternative battery material candidates remain attractive under defined constraints?
-
-MaterialGraph is intentionally designed as a **decision-support platform**, not a material discovery system.
+MaterialGraph does not perform autonomous scientific reasoning or replace computational chemistry workflows. Instead, it provides graph-driven, explainable discovery intelligence built upon known materials and scientific constraints.
 
 The platform evaluates and compares known material candidates using explainable scoring, risk models, graph relationships, and scenario analysis.
+
+---
+
+## Design Principles
+
+- Deterministic
+- Explainable
+- Graph-driven
+- Scientifically grounded
+- Production-ready
+- No LLM reasoning
 
 ---
 
@@ -178,6 +185,62 @@ Using:
 
 ---
 
+### Discovery Knowledge Graph
+
+MaterialGraph has evolved from a material intelligence platform into an explainable Materials Discovery Knowledge Graph.
+
+The graph contains:
+
+#### Node Intelligence
+
+Each material node exposes:
+
+- stability_score
+- energy_above_hull
+- criticality_score
+- risk_score
+- quality_score
+
+#### Edge Intelligence
+
+Each transition exposes:
+
+- transition_type
+- scientific_plausibility
+- edge_score
+- scientific_reason
+
+#### Multi-Path Intelligence
+
+Supports:
+
+- K-best scientific paths
+- K-shortest paths
+- weighted shortest path search
+
+#### Graph Algorithms
+
+Supports:
+
+- BFS traversal
+- DFS traversal
+- shortest path
+- weighted shortest path
+- K-shortest path search
+
+#### Graph Analytics
+
+Supports:
+
+- degree centrality
+- betweenness centrality
+- closeness centrality
+- material importance scoring
+
+All reasoning is deterministic and explainable.
+
+No LLM reasoning is used.
+
 ## Technology Stack
 
 ### Backend
@@ -225,32 +288,88 @@ Future:
 ## Architecture
 
 ```text
-                     Materials Project
-                             │
-                             ▼
-                     Material Import Layer
-                             │
-                             ▼
-                     Material Graph Layer
-                             │
-         ┌───────────────────┼───────────────────┐
-         ▼                   ▼                   ▼
+                        Materials Project
+                                │
+                                ▼
 
-Criticality Engine   Similarity Engine   Family Exploration
+                Material Graph Foundation
+                                │
+                                ▼
 
-         └───────────────────┬───────────────────┘
-                             ▼
+                Material Intelligence Layer
+        ┌──────────────┬──────────────┬──────────────┐
+        ▼              ▼              ▼
 
-                 Recommendation Engine
-                             │
-                             ▼
+        Similarity   Criticality    Recommendation
 
-                  Scenario Policy Engine
-                             │
-                             ▼
+                                │
+                                ▼
 
-            Explainable Decision Support Layer
+                Scenario Policy Engine
+                                │
+                                ▼
+
+                Discovery Intelligence
+        ┌──────────────┬──────────────┬──────────────┐
+        ▼              ▼              ▼
+
+        Candidates     Chains      Path Ranking
+
+                                │
+                                ▼
+
+                Discovery Knowledge Graph
+        ┌──────────────┬──────────────┬──────────────┐
+        ▼              ▼              ▼
+
+        Node        Edge         Multi-Path
+        Intelligence Intelligence Intelligence
+
+                                │
+                                ▼
+
+                Graph Algorithms Layer
+                                │
+                                ▼
+
+                Graph Analytics Layer
+                                │
+                                ▼
+
+                Explainable Discovery Intelligence
 ```
+---
+
+## Current Architecture
+
+### Foundation Layer
+✓ Material Graph Foundation
+✓ Material Neighborhood Intelligence
+✓ Material Family Intelligence
+
+### Discovery Layer
+✓ Candidate Engine
+✓ Multi-Hop Chains
+✓ Path Ranking
+
+### Knowledge Graph Layer
+✓ Node Intelligence
+✓ Edge Intelligence
+
+### Multi-Path Intelligence
+✓ K-Best Paths
+✓ K-Shortest Paths
+
+### Graph Algorithms
+✓ BFS
+✓ DFS
+✓ Weighted Shortest Path
+
+### Graph Analytics
+✓ Degree Centrality
+✓ Betweenness Centrality
+✓ Closeness Centrality
+✓ Material Importance Scoring
 
 ---
 
@@ -386,37 +505,62 @@ If LiFePO4 becomes unattractive, what should I consider instead?
 
 ---
 
-## MaterialGraph Current Capabilities (v1.6.0)
+## MaterialGraph Current Capabilities (v1.9.0)
 
-✓ Materials Project integration
-✓ Material graph foundation
-✓ Risk aggregation
-✓ Candidate screening
-✓ Candidate comparison
-✓ Sensitivity analysis
-✓ Substitution analysis
+### Foundation Layer
 
-✓ PostgreSQL-backed graph job system
-
-✓ Material neighbors
-✓ Material neighborhoods
-✓ Similarity search
-✓ Material criticality analysis
-✓ Criticality-aware similarity
-✓ Recommendation engine MVP
-✓ Scenario-aware recommendations
+✓ Material Graph Foundation
+✓ Material Neighborhood Intelligence
+✓ Material Family Intelligence
+✓ Similarity Engine
+✓ Criticality Analysis
+✓ Recommendation Engine
 ✓ Scenario Policy Engine
-✓ Policy-based scenario evaluation
-✓ Material exploration layer
-✓ Explainable policy scoring
-✓ Explainable family relationships
-✓ Supply-risk multipliers
-✓ Element avoidance constraints
-✓ Recommendation explanations
 
-✓ Service tests
-✓ API tests
-✓ AWS deployment
+### Discovery Layer
+
+✓ Discovery Candidate Engine
+✓ Discovery Scoring
+✓ Discovery Warnings
+✓ Explainable Discovery Reasoning
+✓ Substitution Path Engine
+✓ Multi-Hop Discovery Chain Engine
+
+### Knowledge Graph Layer
+
+✓ Material Quality Layer
+✓ Node Intelligence
+✓ Edge Intelligence
+✓ Scientific transition scoring
+
+### Multi-Path Intelligence
+
+✓ K-best paths
+✓ K-shortest paths
+
+### Graph Algorithms
+
+✓ BFS
+✓ DFS
+✓ Shortest path
+✓ Weighted shortest path (Dijkstra)
+
+### Graph Analytics
+
+✓ Degree centrality
+✓ Betweenness centrality
+✓ Closeness centrality
+✓ Material importance scoring
+
+### Production
+
+✓ FastAPI
+✓ PostgreSQL
+✓ SQLAlchemy
+✓ AWS EC2 deployment
+✓ Tests passing
+✓ Deterministic reasoning
+✓ No LLM reasoning
 
 ---
 
@@ -459,9 +603,9 @@ Planned:
 
 ## Project Scope
 
-MaterialGraph does **not**:
+MaterialGraph does not:
 
-* Perform autonomous material discovery
+* Perform autonomous scientific reasoning
 * Replace computational chemistry workflows
 * Replace DFT calculations
 * Guarantee synthesis feasibility
@@ -469,11 +613,12 @@ MaterialGraph does **not**:
 
 MaterialGraph focuses on:
 
-* Candidate exploration
-* Risk-aware reasoning
+* Explainable candidate exploration
+* Scientific pathway discovery
+* Graph analytics
 * Substitution analysis
-* Decision support
-* Graph-based material intelligence
+* Risk-aware reasoning
+* Deterministic discovery intelligence
 
 ---
 
@@ -514,31 +659,31 @@ For complete deployment instructions, see:
 * Toxicity-aware policies
 * Recyclability-aware policies
 
-### Phase 3 - Discovery Intelligence Layer
+### Phase 3 - Community Intelligence & Scientific Exploration
 
-* Graph analytics
-* Graph embeddings
-* Scientific hypothesis exploration
-* Embedding-based similarity search
-* Explainable candidate expansion
+- Community detection
+- Community importance scoring
+- Ranked subgraph exploration
+- Phosphate neighborhoods
+- Na-substitution neighborhoods
+- Battery-material subgraphs
+- Research objective exploration
+- Scientific pathway analysis
 
 ### Phase 4 - Distributed Computation Layer
 
-* PostgreSQL-backed job system
-* Go GraphCompute worker
-* Background scenario processing
-* Candidate ranking jobs
-* Supply-risk recomputation
-* Async graph computation
+- PostgreSQL-backed graph jobs
+- Go GraphCompute Worker
+- Background graph analytics
+- Candidate ranking jobs
+- Supply-risk recomputation
 
 ### Phase 5 - High Performance Graph Engine
 
-* Rust-based multigraph engine
-* High-performance graph traversal
-* Candidate scoring engine
-* Path explanation engine
-* Substitution analysis engine
-* Large-scale graph optimization
+- Rust multigraph engine
+- Large-scale graph traversal
+- High-performance scientific path search
+- Graph optimization
 
 ---
 
