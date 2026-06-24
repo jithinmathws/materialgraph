@@ -58,3 +58,25 @@ def test_shortest_path_returns_response(db_session):
     assert result["target_material_id"] == 7
     assert "path_found" in result
     assert "path" in result
+
+def test_weighted_shortest_path_returns_response(db_session):
+    from app.services.discovery_graph_algorithms_service import (
+        DiscoveryGraphAlgorithmsService,
+    )
+
+    service = DiscoveryGraphAlgorithmsService(db_session)
+
+    result = service.weighted_shortest_path(
+        start_material_id=5,
+        target_material_id=7,
+        avoid_element="Li",
+        prefer_element="Na",
+        max_depth=1,
+    )
+
+    assert result["algorithm"] == "weighted_shortest_path"
+    assert result["start_material_id"] == 5
+    assert result["target_material_id"] == 7
+    assert "path_found" in result
+    assert "path" in result
+    assert "path_cost" in result
