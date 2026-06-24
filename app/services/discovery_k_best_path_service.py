@@ -9,6 +9,7 @@ from app.services.discovery_path_ranking_service import DiscoveryPathRankingServ
 class DiscoveryKBestPathService:
     DEFAULT_MAX_HOPS = 2
     DEFAULT_K = 5
+    INTERNAL_PATH_LIMIT = 100
 
     def __init__(self, db: Session):
         self.db = db
@@ -24,6 +25,77 @@ class DiscoveryKBestPathService:
         max_hops: int = DEFAULT_MAX_HOPS,
         k: int = DEFAULT_K,
     ) -> dict:
+        ranked_paths = self._build_ranked_paths(
+            start_material_id=start_material_id,
+            target_material_id=target_material_id,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
+            max_hops=max_hops,
+        )
+
+        ranked_paths.sort(
+            key=lambda item: item["scientific_usefulness_score"],
+            reverse=True,
+        )
+
+        limited_paths = ranked_paths[:k]
+
+        return {
+            "algorithm": "k_best_paths",
+            "start_material_id": start_material_id,
+            "target_material_id": target_material_id,
+            "path_count": len(limited_paths),
+            "total_path_count": len(ranked_paths),
+            "k": k,
+            "max_hops": max_hops,
+            "paths": limited_paths,
+        }
+
+    def get_k_shortest_paths(
+        self,
+        start_material_id: int,
+        target_material_id: int,
+        avoid_element: str | None = None,
+        prefer_element: str | None = None,
+        max_hops: int = DEFAULT_MAX_HOPS,
+        k: int = DEFAULT_K,
+    ) -> dict:
+        ranked_paths = self._build_ranked_paths(
+            start_material_id=start_material_id,
+            target_material_id=target_material_id,
+            avoid_element=avoid_element,
+            prefer_element=prefer_element,
+            max_hops=max_hops,
+        )
+
+        ranked_paths.sort(
+            key=lambda item: (
+                item["hop_count"],
+                -item["scientific_usefulness_score"],
+            ),
+        )
+
+        limited_paths = ranked_paths[:k]
+
+        return {
+            "algorithm": "k_shortest_paths",
+            "start_material_id": start_material_id,
+            "target_material_id": target_material_id,
+            "path_count": len(limited_paths),
+            "total_path_count": len(ranked_paths),
+            "k": k,
+            "max_hops": max_hops,
+            "paths": limited_paths,
+        }
+
+    def _build_ranked_paths(
+        self,
+        start_material_id: int,
+        target_material_id: int,
+        avoid_element: str | None,
+        prefer_element: str | None,
+        max_hops: int,
+    ) -> list[dict]:
         adjacency = self.graph_builder.build_adjacency(
             start_material_id=start_material_id,
             avoid_element=avoid_element,
@@ -69,22 +141,7 @@ class DiscoveryKBestPathService:
                 }
             )
 
-        ranked_paths.sort(
-            key=lambda item: item["scientific_usefulness_score"],
-            reverse=True,
-        )
-
-        limited_paths = ranked_paths[:k]
-
-        return {
-            "start_material_id": start_material_id,
-            "target_material_id": target_material_id,
-            "path_count": len(limited_paths),
-            "total_path_count": len(ranked_paths),
-            "k": k,
-            "max_hops": max_hops,
-            "paths": limited_paths,
-        }
+        return ranked_paths
 
     def _enumerate_simple_paths(
         self,
@@ -130,11 +187,7 @@ class DiscoveryKBestPathService:
 
         for index, material_id in enumerate(path_ids):
             if index == 0:
-                materials.append(
-                    {
-                        "material_id": start_material_id,
-                    }
-                )
+                materials.append({"material_id": start_material_id})
                 continue
 
             candidate = self._find_candidate_by_id(
@@ -143,11 +196,7 @@ class DiscoveryKBestPathService:
             )
 
             if candidate is None:
-                materials.append(
-                    {
-                        "material_id": material_id,
-                    }
-                )
+                materials.append({"material_id": material_id})
                 continue
 
             materials.append(
@@ -155,7 +204,8 @@ class DiscoveryKBestPathService:
                     "material_id": candidate["material_id"],
                     "mp_id": candidate.get("mp_id"),
                     "pretty_formula": candidate.get("pretty_formula"),
-                    "formula": candidate.get("pretty_formula") or candidate.get("formula"),
+                    "formula": candidate.get("pretty_formula")
+                    or candidate.get("formula"),
                     "discovery_score": candidate.get("discovery_score"),
                     "discovery_path": candidate.get("discovery_path", []),
                     "explanation": candidate.get("explanation"),

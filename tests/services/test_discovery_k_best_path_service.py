@@ -56,3 +56,22 @@ def test_k_best_path_service_respects_k_limit(db_session):
     )
 
     assert len(result["paths"]) <= 1
+
+def test_k_shortest_paths_are_ordered_by_hop_count(db_session):
+    from app.services.discovery_k_best_path_service import DiscoveryKBestPathService
+
+    service = DiscoveryKBestPathService(db_session)
+
+    result = service.get_k_shortest_paths(
+        start_material_id=5,
+        target_material_id=7,
+        avoid_element="Li",
+        prefer_element="Na",
+        max_hops=2,
+        k=5,
+    )
+
+    hop_counts = [path["hop_count"] for path in result["paths"]]
+
+    assert result["algorithm"] == "k_shortest_paths"
+    assert hop_counts == sorted(hop_counts)
