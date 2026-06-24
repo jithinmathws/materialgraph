@@ -34,7 +34,7 @@ class DiscoveryGraphBuilder:
         prefer_element: str | None = None,
         max_depth: int = DEFAULT_MAX_DEPTH,
     ) -> dict:
-        max_depth = min(max_depth, 1)
+        max_depth = min(max_depth, self.MAX_ALLOWED_DEPTH)
 
         base_material = self.db.get(Material, start_material_id)
 
