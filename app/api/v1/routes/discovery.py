@@ -16,6 +16,9 @@ from app.schemas.discovery_graph import (
     DiscoverySubgraphResponse,
 )
 from app.services.discovery_traversal_service import DiscoveryTraversalService
+from app.services.discovery_graph_analytics_service import (
+    DiscoveryGraphAnalyticsService,
+)
 
 
 router = APIRouter(
@@ -116,10 +119,12 @@ def get_discovery_graph(
 )
 def get_discovery_subgraph(
     material_id: int,
-    avoid_element: str | None = None,
-    prefer_element: str | None = None,
-    family: str | None = None,
-    transition_type: str | None = None,
+    avoid_element: str | None = Query(default=None, min_length=1, max_length=3),
+    prefer_element: str | None = Query(default=None, min_length=1, max_length=3),
+    family: str | None = Query(default=None),
+    transition_type: str | None = Query(default=None),
+    min_quality_score: float | None = Query(default=None, ge=0.0, le=15.0),
+    min_edge_score: float | None = Query(default=None, ge=0.0, le=100.0),
     max_hops: int = Query(2, ge=1, le=3),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -132,6 +137,8 @@ def get_discovery_subgraph(
         prefer_element=prefer_element,
         family=family,
         transition_type=transition_type,
+        min_quality_score=min_quality_score,
+        min_edge_score=min_edge_score,
         max_hops=max_hops,
         limit=limit,
     )
@@ -157,4 +164,45 @@ def get_discovery_path(
         avoid_element=avoid_element,
         prefer_element=prefer_element,
         max_hops=max_hops,
+    )
+
+@router.get(
+    "/{material_id}/discovery/communities/connected",
+    summary="Get connected discovery communities",
+)
+def get_connected_discovery_communities(
+    material_id: int,
+    avoid_element: str | None = Query(default=None, min_length=1, max_length=3),
+    prefer_element: str | None = Query(default=None, min_length=1, max_length=3),
+    max_depth: int = Query(default=2, ge=1, le=2),
+    db: Session = Depends(get_db),
+):
+    service = DiscoveryGraphAnalyticsService(db)
+
+    return service.connected_components(
+        start_material_id=material_id,
+        avoid_element=avoid_element,
+        prefer_element=prefer_element,
+        max_depth=max_depth,
+    )
+
+
+@router.get(
+    "/{material_id}/discovery/communities/modularity",
+    summary="Get modularity-based discovery communities",
+)
+def get_modularity_discovery_communities(
+    material_id: int,
+    avoid_element: str | None = Query(default=None, min_length=1, max_length=3),
+    prefer_element: str | None = Query(default=None, min_length=1, max_length=3),
+    max_depth: int = Query(default=2, ge=1, le=2),
+    db: Session = Depends(get_db),
+):
+    service = DiscoveryGraphAnalyticsService(db)
+
+    return service.greedy_modularity_communities(
+        start_material_id=material_id,
+        avoid_element=avoid_element,
+        prefer_element=prefer_element,
+        max_depth=max_depth,
     )

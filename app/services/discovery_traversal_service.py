@@ -62,6 +62,8 @@ class DiscoveryTraversalService:
         prefer_element: str | None = None,
         family: str | None = None,
         transition_type: str | None = None,
+        min_quality_score: float | None = None,
+        min_edge_score: float | None = None,
         max_hops: int = DEFAULT_MAX_HOPS,
         limit: int = DEFAULT_LIMIT,
     ) -> dict:
@@ -73,39 +75,148 @@ class DiscoveryTraversalService:
             limit=limit,
         )
 
-        edges = result["edges"]
+        edges = self._filter_edges(
+            edges=result["edges"],
+            family=family,
+            transition_type=transition_type,
+            min_edge_score=min_edge_score,
+        )
 
-        if family:
-            edges = [
-                edge for edge in edges
-                if edge["family"] == family
-            ]
+        connected_ids = self._collect_connected_node_ids(edges)
 
-        if transition_type:
-            edges = [
-                edge for edge in edges
-                if edge["transition_type"] == transition_type
-            ]
+        nodes = self._filter_nodes(
+            nodes=result["nodes"],
+            connected_ids=connected_ids,
+            min_quality_score=min_quality_score,
+        )
 
-        connected_ids = set()
+        allowed_node_ids = {
+            node["material_id"]
+            for node in nodes
+        }
 
-        for edge in edges:
-            connected_ids.add(edge["source_material_id"])
-            connected_ids.add(edge["target_material_id"])
-
-        nodes = [
-            node for node in result["nodes"]
-            if node["material_id"] in connected_ids
+        edges = [
+            edge for edge in edges
+            if (
+                edge["source_material_id"] in allowed_node_ids
+                and edge["target_material_id"] in allowed_node_ids
+            )
         ]
 
         result["subgraph_filter"] = {
             "family": family,
             "transition_type": transition_type,
+            "prefer_element": prefer_element,
+            "avoid_element": avoid_element,
+            "min_quality_score": min_quality_score,
+            "min_edge_score": min_edge_score,
         }
-        result["nodes"] = nodes
+
+        result["subgraph_metadata"] = self._build_subgraph_metadata(
+            nodes=nodes,
+            edges=edges,
+        )
+
+        result["nodes"] = nodes[:limit]
         result["edges"] = edges[:limit]
 
         return result
+
+    def _filter_edges(
+        self,
+        edges: list[dict],
+        *,
+        family: str | None = None,
+        transition_type: str | None = None,
+        min_edge_score: float | None = None,
+    ) -> list[dict]:
+        filtered_edges = edges
+
+        if family:
+            filtered_edges = [
+                edge for edge in filtered_edges
+                if edge.get("family") == family
+            ]
+
+        if transition_type:
+            filtered_edges = [
+                edge for edge in filtered_edges
+                if edge.get("transition_type") == transition_type
+            ]
+
+        if min_edge_score is not None:
+            filtered_edges = [
+                edge for edge in filtered_edges
+                if (edge.get("edge_score") or 0.0) >= min_edge_score
+            ]
+
+        return filtered_edges
+
+    def _collect_connected_node_ids(
+        self,
+        edges: list[dict],
+    ) -> set[int]:
+        connected_ids: set[int] = set()
+
+        for edge in edges:
+            connected_ids.add(edge["source_material_id"])
+            connected_ids.add(edge["target_material_id"])
+
+        return connected_ids
+
+    def _filter_nodes(
+        self,
+        nodes: list[dict],
+        connected_ids: set[int],
+        *,
+        min_quality_score: float | None = None,
+    ) -> list[dict]:
+        filtered_nodes = [
+            node for node in nodes
+            if node["material_id"] in connected_ids
+        ]
+
+        if min_quality_score is not None:
+            filtered_nodes = [
+                node for node in filtered_nodes
+                if (node.get("quality_score") or 0.0) >= min_quality_score
+            ]
+
+        return filtered_nodes
+
+    def _build_subgraph_metadata(
+        self,
+        nodes: list[dict],
+        edges: list[dict],
+    ) -> dict:
+        quality_scores = [
+            node.get("quality_score") or 0.0
+            for node in nodes
+        ]
+
+        edge_scores = [
+            edge.get("edge_score") or 0.0
+            for edge in edges
+        ]
+
+        average_quality_score = (
+            sum(quality_scores) / len(quality_scores)
+            if quality_scores
+            else 0.0
+        )
+
+        average_edge_score = (
+            sum(edge_scores) / len(edge_scores)
+            if edge_scores
+            else 0.0
+        )
+
+        return {
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "average_quality_score": round(average_quality_score, 2),
+            "average_edge_score": round(average_edge_score, 2),
+        }
 
     def get_path(
         self,

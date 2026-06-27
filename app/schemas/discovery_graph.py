@@ -43,7 +43,9 @@ class DiscoveryGraphResponse(BaseModel):
 
 
 class DiscoverySubgraphResponse(DiscoveryGraphResponse):
-    subgraph_filter: dict
+    subgraph_filter: dict | None = None
+    subgraph_metadata: dict | None = None
+
 
 
 class DiscoveryPathResponse(BaseModel):

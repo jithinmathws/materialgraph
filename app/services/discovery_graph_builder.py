@@ -16,8 +16,10 @@ from app.services.discovery_edge_intelligence_service import (
 
 class DiscoveryGraphBuilder:
     EXPANSION_LIMIT = 10
+    ANALYTICS_EXPANSION_LIMIT = 6
     DEFAULT_MAX_DEPTH = 2
     MAX_ALLOWED_DEPTH = 1
+    MAX_ANALYTICS_DEPTH = 2
 
     def __init__(self, db: Session):
         self.db = db
@@ -33,8 +35,15 @@ class DiscoveryGraphBuilder:
         avoid_element: str | None = None,
         prefer_element: str | None = None,
         max_depth: int = DEFAULT_MAX_DEPTH,
+        analytics_mode: bool = False,
     ) -> dict:
-        max_depth = min(max_depth, self.MAX_ALLOWED_DEPTH)
+        allowed_depth = (
+            self.MAX_ANALYTICS_DEPTH
+            if analytics_mode
+            else self.MAX_ALLOWED_DEPTH
+        )
+
+        max_depth = min(max_depth, allowed_depth)
 
         base_material = self.db.get(Material, start_material_id)
 
@@ -74,11 +83,17 @@ class DiscoveryGraphBuilder:
             source_node = self._material_to_node(source_material)
             nodes_by_id[source_material.id] = source_node
 
+            candidate_limit = (
+                self.ANALYTICS_EXPANSION_LIMIT
+                if analytics_mode
+                else self.EXPANSION_LIMIT
+            )
+
             candidates = self._get_candidates(
                 material_id=material_id,
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
-                limit=10,
+                limit=candidate_limit,
             )
 
             adjacency.setdefault(material_id, [])
