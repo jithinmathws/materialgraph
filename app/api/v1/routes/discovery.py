@@ -19,6 +19,14 @@ from app.services.discovery_traversal_service import DiscoveryTraversalService
 from app.services.discovery_graph_analytics_service import (
     DiscoveryGraphAnalyticsService,
 )
+from app.schemas.research_objective_exploration import (
+    ResearchObjectiveExplorationRequest,
+    ResearchObjectiveExplorationResponse,
+)
+from app.services.research_objective_exploration_service import (
+    ResearchObjectiveExplorationService,
+)
+
 
 
 router = APIRouter(
@@ -205,4 +213,21 @@ def get_modularity_discovery_communities(
         avoid_element=avoid_element,
         prefer_element=prefer_element,
         max_depth=max_depth,
+    )
+
+@router.post(
+    "/{material_id}/discovery/objective/explore",
+    response_model=ResearchObjectiveExplorationResponse,
+    summary="Explore a research objective",
+)
+def explore_research_objective(
+    material_id: int,
+    request: ResearchObjectiveExplorationRequest,
+    db: Session = Depends(get_db),
+):
+    service = ResearchObjectiveExplorationService(db)
+
+    return service.explore(
+        material_id=material_id,
+        request=request,
     )
