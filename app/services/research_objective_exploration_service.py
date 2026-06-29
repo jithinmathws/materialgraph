@@ -52,13 +52,33 @@ class ResearchObjectiveExplorationService:
                     }
 
                 candidate = candidate_map[material_id]
-                candidate["score"] += self._score_material(material, transitions, objective, mode)
+                score = self._score_material(
+                    material=material,
+                    transitions=transitions,
+                    objective=objective,
+                    mode=mode,
+                )
+
+                candidate["score"] = max(candidate["score"], score)
+
                 candidate["reasons"].extend(
-                    self._build_reasons(material, transitions, objective)
+                    self._build_reasons(
+                        material=material,
+                        transitions=transitions,
+                        objective=objective,
+                    )
                 )
+
                 candidate["warnings"].extend(
-                    self._build_candidate_warnings(material, objective, mode)
+                    self._build_candidate_warnings(
+                        material=material,
+                        objective=objective,
+                        mode=mode,
+                    )
                 )
+
+                candidate["reasons"] = list(dict.fromkeys(candidate["reasons"]))
+                candidate["warnings"] = list(dict.fromkeys(candidate["warnings"]))
 
         return sorted(
             candidate_map.values(),
