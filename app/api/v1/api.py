@@ -15,6 +15,7 @@ from app.api.v1.routes.graph_jobs import router as graph_jobs_router
 from app.api.v1.routes.material_neighbors import router as material_neighbors_router
 from app.api.v1.routes.material_families import router as material_families_router
 from app.api.v1.routes.discovery import router as discovery_router
+from app.api.v1.routes.research import router as research_router
 
 api_router = APIRouter()
 
@@ -33,3 +34,4 @@ api_router.include_router(graph_jobs_router)
 api_router.include_router(material_neighbors_router)
 api_router.include_router(material_families_router)
 api_router.include_router(discovery_router)
+api_router.include_router(research_router)
