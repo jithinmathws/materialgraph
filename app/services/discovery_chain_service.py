@@ -175,18 +175,25 @@ class DiscoveryChainService:
         if cache_key in self._candidate_cache:
             return self._candidate_cache[cache_key]
 
-        result = self.candidate_service.get_discovery_candidates(
-            material_id=material_id,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
-            limit=self.EXPANSION_LIMIT,
-        )
+        family_result = self._get_family_result(material_id)
 
-        candidates = [
-            candidate
-            for candidate in result["candidates"]
-            if not (candidate.get("mp_id") or "").startswith("mp-test")
-        ]
+        candidates = []
+
+        for candidate in family_result["related_materials"]:
+            mp_id = candidate.get("mp_id") or ""
+
+            if mp_id.startswith("mp-test"):
+                continue
+
+            formula = candidate.get("pretty_formula") or candidate.get("formula") or ""
+
+            if prefer_element and prefer_element not in formula:
+                continue
+
+            candidates.append(candidate)
+
+            if len(candidates) >= self.EXPANSION_LIMIT:
+                break
 
         self._candidate_cache[cache_key] = candidates
         return candidates
@@ -227,12 +234,7 @@ class DiscoveryChainService:
         if cache_key in self._relationship_cache:
             return self._relationship_cache[cache_key]
 
-        if from_material_id not in self._family_result_cache:
-            self._family_result_cache[from_material_id] = (
-                self.family_service.get_material_families(from_material_id)
-            )
-
-        family_result = self._family_result_cache[from_material_id]
+        family_result = self._get_family_result(from_material_id)
 
         relationships = []
 
@@ -341,3 +343,11 @@ class DiscoveryChainService:
             },
             "chains": [],
         }
+
+    def _get_family_result(self, material_id: int) -> dict:
+        if material_id not in self._family_result_cache:
+            self._family_result_cache[material_id] = (
+                self.family_service.get_material_families(material_id)
+            )
+
+        return self._family_result_cache[material_id]
