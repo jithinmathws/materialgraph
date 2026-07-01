@@ -20,6 +20,8 @@ class DiscoveryChainService:
         self.candidate_service = DiscoveryCandidateService(db)
         self.family_service = MaterialFamilyService(db)
         self.transition_validator = DiscoveryTransitionValidator()
+        self._candidate_cache: dict[tuple[int, str | None, str | None], list[dict]] = {}
+        self._relationship_cache: dict[tuple[int, int], list[str]] = {}
 
     def get_discovery_chains(
         self,
@@ -151,6 +153,11 @@ class DiscoveryChainService:
         avoid_element: str | None,
         prefer_element: str | None,
     ) -> list[dict]:
+        cache_key = (material_id, avoid_element, prefer_element)
+
+        if cache_key in self._candidate_cache:
+            return self._candidate_cache[cache_key]
+
         result = self.candidate_service.get_discovery_candidates(
             material_id=material_id,
             avoid_element=avoid_element,
@@ -158,11 +165,14 @@ class DiscoveryChainService:
             limit=self.EXPANSION_LIMIT,
         )
 
-        return [
+        candidates = [
             candidate
             for candidate in result["candidates"]
             if not (candidate.get("mp_id") or "").startswith("mp-test")
         ]
+
+        self._candidate_cache[cache_key] = candidates
+        return candidates
 
     def _build_transition(
         self,
@@ -195,12 +205,20 @@ class DiscoveryChainService:
         from_material_id: int,
         to_material_id: int,
     ) -> list[str]:
+        cache_key = (from_material_id, to_material_id)
+
+        if cache_key in self._relationship_cache:
+            return self._relationship_cache[cache_key]
+
         family_result = self.family_service.get_material_families(from_material_id)
 
         for candidate in family_result["related_materials"]:
             if candidate["material_id"] == to_material_id:
-                return candidate["relationships"]
+                relationships = candidate["relationships"]
+                self._relationship_cache[cache_key] = relationships
+                return relationships
 
+        self._relationship_cache[cache_key] = []
         return []
 
     def _finalize_chain(self, chain: dict) -> dict:
