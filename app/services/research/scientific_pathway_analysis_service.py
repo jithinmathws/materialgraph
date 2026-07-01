@@ -1,3 +1,5 @@
+import time
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.services.material_quality_service import MaterialQualityService
@@ -12,34 +14,57 @@ class ScientificPathwayAnalysisService:
         self.objective_service = ResearchObjectiveService(db)
         self.quality_service = MaterialQualityService(db)
         self.evidence_service = ResearchEvidenceIntelligenceService()
+        self._quality_cache: dict[int, dict] = {}
 
     def analyze(self, material_id: int, objective) -> dict:
+        start = time.perf_counter()
+
+        chain_start = time.perf_counter()
         result = self.objective_service.generate_chains_for_objective(
             material_id=material_id,
             objective=objective,
         )
+        logger.info(
+            "Scientific pathway objective chains took {:.3f}s",
+            time.perf_counter() - chain_start,
+        )
 
+        opportunity_start = time.perf_counter()
         opportunities = [
             self.evidence_service.enrich_opportunity(
                 self._build_opportunity(index + 1, chain)
             )
             for index, chain in enumerate(result["chains"])
         ]
+        logger.info(
+            "Scientific pathway opportunity building took {:.3f}s",
+            time.perf_counter() - opportunity_start,
+        )
 
+        comparison_start = time.perf_counter()
         comparison = self._compare_opportunities(opportunities)
+        logger.info(
+            "Scientific pathway comparison took {:.3f}s",
+            time.perf_counter() - comparison_start,
+        )
+
+        logger.info(
+            "Scientific pathway analysis total took {:.3f}s",
+            time.perf_counter() - start,
+        )
 
         return {
             "material_id": result["material_id"],
             "base_formula": result["base_formula"],
             "objective": objective,
             "pathway_opportunities": opportunities,
+            "pathway_comparison": comparison,
             "researcher_decision_required": True,
             "decision_boundary": (
                 "MaterialGraph computes, ranks, explains, and contextualizes "
                 "pathway opportunities. Researchers remain responsible for "
                 "scientific selection, validation, and experimental decisions."
             ),
-            "pathway_comparison": comparison,
         }
 
     def _build_opportunity(self, rank: int, chain: dict) -> dict:
@@ -86,8 +111,9 @@ class ScientificPathwayAnalysisService:
 
         for material in materials:
             material_id = material.get("material_id")
+
             if material_id is not None:
-                qualities.append(self.quality_service.get_material_quality(material_id))
+                qualities.append(self._get_material_quality(material_id))
 
         return qualities
 
@@ -335,3 +361,11 @@ class ScientificPathwayAnalysisService:
             return 999.0
 
         return sum(item.get("risk_score", 999.0) for item in quality) / len(quality)
+
+    def _get_material_quality(self, material_id: int) -> dict:
+        if material_id not in self._quality_cache:
+            self._quality_cache[material_id] = (
+                self.quality_service.get_material_quality(material_id)
+            )
+
+        return self._quality_cache[material_id]

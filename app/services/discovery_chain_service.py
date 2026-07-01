@@ -13,7 +13,7 @@ class DiscoveryChainService:
     DEFAULT_MAX_HOPS = 2
     MAX_ALLOWED_HOPS = 3
     DEFAULT_LIMIT = 5
-    EXPANSION_LIMIT = 20
+    EXPANSION_LIMIT = 6
 
     def __init__(self, db: Session):
         self.db = db
@@ -155,7 +155,7 @@ class DiscoveryChainService:
             material_id=material_id,
             avoid_element=avoid_element,
             prefer_element=prefer_element,
-            limit=10,
+            limit=self.EXPANSION_LIMIT,
         )
 
         return [
