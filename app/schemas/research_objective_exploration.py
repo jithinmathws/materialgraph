@@ -46,6 +46,12 @@ class ScientificFacts(BaseModel):
     introduced_elements: list[str]
     material_quality: list[dict]
 
+class EvidenceSummary(BaseModel):
+    supporting_signals: list[str]
+    missing_evidence: list[str]
+    weak_assumptions: list[str]
+    validation_priorities: list[str]
+    evidence_confidence: str
 
 class ScientificPathway(BaseModel):
     hop_count: int
@@ -86,10 +92,3 @@ class ScientificPathwayAnalysisResponse(BaseModel):
     pathway_comparison: PathwayComparison | dict
     researcher_decision_required: bool
     decision_boundary: str
-
-class EvidenceSummary(BaseModel):
-    supporting_signals: list[str]
-    missing_evidence: list[str]
-    weak_assumptions: list[str]
-    validation_priorities: list[str]
-    evidence_confidence: str
