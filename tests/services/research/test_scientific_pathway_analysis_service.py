@@ -45,11 +45,32 @@ def test_scientific_pathway_analysis_returns_opportunities(db_session):
     assert "missing_evidence" in evidence
     assert "weak_assumptions" in evidence
     assert "validation_priorities" in evidence
-    assert evidence["evidence_confidence"] in {
+    assert evidence["evidence_readiness"] in {
         "limited",
         "moderate",
         "strong",
     }
+
+    signal = evidence["supporting_signals"][0]
+    assert "statement" in signal
+    assert "source_service" in signal
+    assert "derived_from" in signal
+    assert "confidence" in signal
+
+    missing = evidence["missing_evidence"][0]
+    assert "statement" in missing
+    assert "reason" in missing
+    assert "researcher_action" in missing
+
+    assumption = evidence["weak_assumptions"][0]
+    assert "assumption" in assumption
+    assert "based_on" in assumption
+    assert "requires_validation" in assumption
+
+    priority = evidence["validation_priorities"][0]
+    assert "priority" in priority
+    assert "action" in priority
+    assert "reason" in priority
 
 
 def test_scientific_pathway_analysis_confidence_is_explainable(db_session):

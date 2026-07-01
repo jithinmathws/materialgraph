@@ -46,12 +46,37 @@ class ScientificFacts(BaseModel):
     introduced_elements: list[str]
     material_quality: list[dict]
 
+class SupportingSignal(BaseModel):
+    statement: str
+    source_service: str
+    derived_from: str
+    confidence: str
+
+
+class MissingEvidence(BaseModel):
+    statement: str
+    reason: str
+    researcher_action: str
+
+
+class WeakAssumption(BaseModel):
+    assumption: str
+    based_on: str
+    requires_validation: bool = True
+
+
+class ValidationPriority(BaseModel):
+    priority: int
+    action: str
+    reason: str
+
+
 class EvidenceSummary(BaseModel):
-    supporting_signals: list[str]
-    missing_evidence: list[str]
-    weak_assumptions: list[str]
-    validation_priorities: list[str]
-    evidence_confidence: str
+    supporting_signals: list[SupportingSignal]
+    missing_evidence: list[MissingEvidence]
+    weak_assumptions: list[WeakAssumption]
+    validation_priorities: list[ValidationPriority]
+    evidence_readiness: str
 
 class ScientificPathway(BaseModel):
     hop_count: int

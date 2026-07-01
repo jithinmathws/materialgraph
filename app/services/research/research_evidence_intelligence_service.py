@@ -18,13 +18,13 @@ class ResearchEvidenceIntelligenceService:
             "missing_evidence": missing_evidence,
             "weak_assumptions": weak_assumptions,
             "validation_priorities": validation_priorities,
-            "evidence_confidence": self._evidence_confidence(
+            "evidence_readiness": self._evidence_readiness(
                 supporting_signals=supporting_signals,
                 weak_assumptions=weak_assumptions,
             ),
         }
 
-    def _supporting_signals(self, opportunity: dict) -> list[str]:
+    def _supporting_signals(self, opportunity: dict) -> list[dict]:
         signals = []
 
         score_breakdown = opportunity.get("score_breakdown", {})
@@ -32,105 +32,194 @@ class ResearchEvidenceIntelligenceService:
         quality_summary = opportunity.get("quality_summary", {})
 
         if score_breakdown.get("framework_preservation", 0.0) >= 20:
-            signals.append("Strong framework-preservation signal.")
+            signals.append({
+                "statement": "Framework chemistry is preserved.",
+                "source_service": "DiscoveryPathRankingService",
+                "derived_from": "framework_preservation",
+                "confidence": "high",
+            })
 
         if score_breakdown.get("objective_alignment", 0.0) >= 20:
-            signals.append("Pathway aligns with the stated research objective.")
+            signals.append({
+                "statement": "Pathway aligns with the stated research objective.",
+                "source_service": "DiscoveryPathRankingService",
+                "derived_from": "objective_alignment",
+                "confidence": "high",
+            })
 
         if score_breakdown.get("transition_plausibility", 0.0) >= 15:
-            signals.append("Transition plausibility is strong under current deterministic rules.")
+            signals.append({
+                "statement": "Transition plausibility is strong under deterministic rules.",
+                "source_service": "DiscoveryPathRankingService",
+                "derived_from": "transition_plausibility",
+                "confidence": "high",
+            })
 
         if quality_summary.get("average_quality_score", 0.0) >= 12:
-            signals.append("Average material quality is strong.")
+            signals.append({
+                "statement": "Average material quality is strong.",
+                "source_service": "MaterialQualityService",
+                "derived_from": "quality_score",
+                "confidence": "high",
+            })
 
-        if scientific_facts.get("preserved_framework"):
-            framework = "-".join(scientific_facts["preserved_framework"])
-            signals.append(f"Preserved framework chemistry identified: {framework}.")
+        preserved = scientific_facts.get("preserved_framework", [])
+        if preserved:
+            signals.append({
+                "statement": f"Preserved framework chemistry identified: {'-'.join(preserved)}.",
+                "source_service": "DiscoveryChainService",
+                "derived_from": "preserved_framework",
+                "confidence": "high",
+            })
 
-        if scientific_facts.get("removed_elements"):
-            removed = ", ".join(scientific_facts["removed_elements"])
-            signals.append(f"Pathway removes element(s): {removed}.")
+        removed = scientific_facts.get("removed_elements", [])
+        if removed:
+            signals.append({
+                "statement": f"Pathway removes element(s): {', '.join(removed)}.",
+                "source_service": "DiscoveryChainService",
+                "derived_from": "removed_elements",
+                "confidence": "high",
+            })
 
-        if scientific_facts.get("introduced_elements"):
-            introduced = ", ".join(scientific_facts["introduced_elements"])
-            signals.append(f"Pathway introduces element(s): {introduced}.")
+        introduced = scientific_facts.get("introduced_elements", [])
+        if introduced:
+            signals.append({
+                "statement": f"Pathway introduces element(s): {', '.join(introduced)}.",
+                "source_service": "DiscoveryChainService",
+                "derived_from": "introduced_elements",
+                "confidence": "high",
+            })
 
-        return signals or ["No strong deterministic supporting evidence was identified."]
+        return signals
 
-    def _missing_evidence(self) -> list[str]:
+    def _missing_evidence(self) -> list[dict]:
         return [
-            "Experimental synthesis evidence is not available in MaterialGraph.",
-            "Electrochemical performance data is not available in MaterialGraph.",
-            "Scientific literature support is not yet integrated.",
-            "DFT validation is not performed by MaterialGraph.",
-            "Manufacturing feasibility is not evaluated.",
+            {
+                "statement": "Experimental synthesis evidence is unavailable.",
+                "reason": "MaterialGraph does not ingest experimental synthesis datasets.",
+                "researcher_action": "Consult experimental literature and synthesis reports.",
+            },
+            {
+                "statement": "Electrochemical performance evidence is unavailable.",
+                "reason": "Battery performance datasets are not yet integrated.",
+                "researcher_action": "Compare against published capacity, voltage, cycling, and rate-performance data.",
+            },
+            {
+                "statement": "Scientific literature support is not yet integrated.",
+                "reason": "MaterialGraph currently uses deterministic graph and material-property signals only.",
+                "researcher_action": "Search relevant publications before prioritizing experimental work.",
+            },
+            {
+                "statement": "DFT validation is not performed by MaterialGraph.",
+                "reason": "MaterialGraph does not run first-principles calculations.",
+                "researcher_action": "Run DFT or use trusted computational databases for validation.",
+            },
+            {
+                "statement": "Manufacturing feasibility is not evaluated.",
+                "reason": "Processing, scale-up, and cost constraints are outside the current dataset.",
+                "researcher_action": "Review synthesis route, precursor availability, processing conditions, and scalability.",
+            },
         ]
 
-    def _weak_assumptions(self, opportunity: dict) -> list[str]:
+    def _weak_assumptions(self, opportunity: dict) -> list[dict]:
         weak = []
 
         score_breakdown = opportunity.get("score_breakdown", {})
+        scientific_facts = opportunity.get("scientific_facts", {})
         quality_summary = opportunity.get("quality_summary", {})
 
+        if scientific_facts.get("preserved_framework"):
+            weak.append({
+                "assumption": "Framework preservation may indicate related chemical behavior.",
+                "based_on": "preserved_framework transition field",
+                "requires_validation": True,
+            })
+
         if score_breakdown.get("path_efficiency", 0.0) < 10:
-            weak.append(
-                "Multi-hop reasoning assumes intermediate pathway steps remain scientifically meaningful."
-            )
+            weak.append({
+                "assumption": "Multi-hop pathway steps remain scientifically meaningful.",
+                "based_on": "path_efficiency score",
+                "requires_validation": True,
+            })
 
         if score_breakdown.get("transition_plausibility", 0.0) < 15:
-            weak.append(
-                "Transition plausibility is moderate or weak under current scoring rules."
-            )
+            weak.append({
+                "assumption": "Transition plausibility is sufficient for research exploration.",
+                "based_on": "transition_plausibility score",
+                "requires_validation": True,
+            })
 
         if quality_summary.get("overall_quality") in {"weak", "unknown"}:
-            weak.append(
-                "Material quality is weak or unknown for at least part of the pathway."
-            )
+            weak.append({
+                "assumption": "Material quality is sufficient for pathway consideration.",
+                "based_on": "quality_summary.overall_quality",
+                "requires_validation": True,
+            })
 
         if not weak:
-            weak.append(
-                "Current assumptions are mostly structural and scoring-based, not experimentally validated."
-            )
+            weak.append({
+                "assumption": "Current support is deterministic and graph-derived, not experimentally validated.",
+                "based_on": "MaterialGraph scoring and relationship model",
+                "requires_validation": True,
+            })
 
         return weak
 
-    def _validation_priorities(self, opportunity: dict) -> list[str]:
+    def _validation_priorities(self, opportunity: dict) -> list[dict]:
         priorities = []
+        priority = 1
 
         scientific_facts = opportunity.get("scientific_facts", {})
+        score_breakdown = opportunity.get("score_breakdown", {})
 
-        if scientific_facts.get("material_quality"):
-            priorities.append("Validate material stability and energy-above-hull assumptions.")
+        if score_breakdown.get("framework_preservation", 0.0) >= 20:
+            priorities.append({
+                "priority": priority,
+                "action": "Validate framework preservation.",
+                "reason": "Framework preservation is a major contributor to scientific usefulness.",
+            })
+            priority += 1
 
         if scientific_facts.get("introduced_elements"):
-            priorities.append("Validate whether introduced element(s) preserve target functionality.")
+            priorities.append({
+                "priority": priority,
+                "action": "Validate whether introduced element(s) preserve target functionality.",
+                "reason": "The pathway depends on substitution or introduction of new elements.",
+            })
+            priority += 1
 
-        if scientific_facts.get("preserved_framework"):
-            priorities.append("Verify whether preserved framework chemistry supports comparable behavior.")
+        if scientific_facts.get("material_quality"):
+            priorities.append({
+                "priority": priority,
+                "action": "Validate material stability and energy-above-hull assumptions.",
+                "reason": "Material quality contributes to pathway ranking.",
+            })
+            priority += 1
 
-        priorities.extend(
-            [
-                "Check literature for synthesis reports or related compounds.",
-                "Run computational validation before experimental prioritization.",
-            ]
-        )
+        priorities.append({
+            "priority": priority,
+            "action": "Check literature for synthesis reports or related compounds.",
+            "reason": "MaterialGraph does not yet include literature evidence.",
+        })
+        priority += 1
+
+        priorities.append({
+            "priority": priority,
+            "action": "Run computational validation before experimental prioritization.",
+            "reason": "MaterialGraph does not replace DFT or domain-specific simulation workflows.",
+        })
 
         return priorities
 
-    def _evidence_confidence(
+    def _evidence_readiness(
         self,
-        supporting_signals: list[str],
-        weak_assumptions: list[str],
+        supporting_signals: list[dict],
+        weak_assumptions: list[dict],
     ) -> str:
-        signal_count = len([
-            signal
-            for signal in supporting_signals
-            if not signal.startswith("No strong")
-        ])
-
+        signal_count = len(supporting_signals)
         weak_count = len(weak_assumptions)
 
-        if signal_count >= 5 and weak_count <= 1:
+        if signal_count >= 5 and weak_count <= 2:
             return "strong"
 
         if signal_count >= 3:
