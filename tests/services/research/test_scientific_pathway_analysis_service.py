@@ -37,6 +37,20 @@ def test_scientific_pathway_analysis_returns_opportunities(db_session):
     assert "confidence" in opportunity
     assert "recommended_next_investigation" in opportunity
 
+    assert "evidence_summary" in opportunity
+
+    evidence = opportunity["evidence_summary"]
+
+    assert "supporting_signals" in evidence
+    assert "missing_evidence" in evidence
+    assert "weak_assumptions" in evidence
+    assert "validation_priorities" in evidence
+    assert evidence["evidence_confidence"] in {
+        "limited",
+        "moderate",
+        "strong",
+    }
+
 
 def test_scientific_pathway_analysis_confidence_is_explainable(db_session):
     service = ScientificPathwayAnalysisService(db_session)

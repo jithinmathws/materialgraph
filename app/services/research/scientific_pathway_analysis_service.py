@@ -2,12 +2,16 @@ from sqlalchemy.orm import Session
 
 from app.services.material_quality_service import MaterialQualityService
 from app.services.research_objective_service import ResearchObjectiveService
+from app.services.research.research_evidence_intelligence_service import (
+    ResearchEvidenceIntelligenceService,
+)
 
 
 class ScientificPathwayAnalysisService:
     def __init__(self, db: Session):
         self.objective_service = ResearchObjectiveService(db)
         self.quality_service = MaterialQualityService(db)
+        self.evidence_service = ResearchEvidenceIntelligenceService()
 
     def analyze(self, material_id: int, objective) -> dict:
         result = self.objective_service.generate_chains_for_objective(
@@ -16,7 +20,9 @@ class ScientificPathwayAnalysisService:
         )
 
         opportunities = [
-            self._build_opportunity(index + 1, chain)
+            self.evidence_service.enrich_opportunity(
+                self._build_opportunity(index + 1, chain)
+            )
             for index, chain in enumerate(result["chains"])
         ]
 

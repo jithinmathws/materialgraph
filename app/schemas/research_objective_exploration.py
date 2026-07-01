@@ -55,6 +55,7 @@ class ScientificPathway(BaseModel):
 
 
 class ScientificPathwayOpportunity(BaseModel):
+    evidence_summary: EvidenceSummary | None = None
     rank: int
     pathway: ScientificPathway
     scientific_usefulness_score: float
@@ -85,3 +86,10 @@ class ScientificPathwayAnalysisResponse(BaseModel):
     pathway_comparison: PathwayComparison | dict
     researcher_decision_required: bool
     decision_boundary: str
+
+class EvidenceSummary(BaseModel):
+    supporting_signals: list[str]
+    missing_evidence: list[str]
+    weak_assumptions: list[str]
+    validation_priorities: list[str]
+    evidence_confidence: str
