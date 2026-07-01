@@ -1,3 +1,5 @@
+import time
+from loguru import logger
 from collections import deque
 
 from sqlalchemy.orm import Session
@@ -22,6 +24,7 @@ class DiscoveryChainService:
         self.transition_validator = DiscoveryTransitionValidator()
         self._candidate_cache: dict[tuple[int, str | None, str | None], list[dict]] = {}
         self._relationship_cache: dict[tuple[int, int], list[str]] = {}
+        self._family_result_cache: dict[int, dict] = {}
 
     def get_discovery_chains(
         self,
@@ -99,10 +102,17 @@ class DiscoveryChainService:
                 completed_chains.append(self._finalize_chain(current_chain))
                 continue
 
+            candidate_start = time.perf_counter()
             next_candidates = self._get_next_candidates(
                 material_id=current_material["material_id"],
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
+            )
+            logger.info(
+                "Next candidates for material {} took {:.3f}s count={}",
+                current_material["material_id"],
+                time.perf_counter() - candidate_start,
+                len(next_candidates),
             )
 
             for candidate in next_candidates:
@@ -111,12 +121,19 @@ class DiscoveryChainService:
                 if candidate_id in current_chain["visited_ids"]:
                     continue
 
+                transition_start = time.perf_counter()
                 transition = self._build_transition(
                     from_material=current_material,
                     to_candidate=candidate,
                     elements_map=elements_map,
                     avoid_element=avoid_element,
                     prefer_element=prefer_element,
+                )
+                logger.info(
+                    "Transition {} -> {} took {:.3f}s",
+                    current_material["material_id"],
+                    candidate_id,
+                    time.perf_counter() - transition_start,
                 )
 
                 if transition is None:
@@ -210,16 +227,22 @@ class DiscoveryChainService:
         if cache_key in self._relationship_cache:
             return self._relationship_cache[cache_key]
 
-        family_result = self.family_service.get_material_families(from_material_id)
+        if from_material_id not in self._family_result_cache:
+            self._family_result_cache[from_material_id] = (
+                self.family_service.get_material_families(from_material_id)
+            )
+
+        family_result = self._family_result_cache[from_material_id]
+
+        relationships = []
 
         for candidate in family_result["related_materials"]:
             if candidate["material_id"] == to_material_id:
                 relationships = candidate["relationships"]
-                self._relationship_cache[cache_key] = relationships
-                return relationships
+                break
 
-        self._relationship_cache[cache_key] = []
-        return []
+        self._relationship_cache[cache_key] = relationships
+        return relationships
 
     def _finalize_chain(self, chain: dict) -> dict:
         return {
