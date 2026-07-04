@@ -121,28 +121,37 @@ class DiscoveryGraphBuilder:
                 ):
                     for candidate in candidates:
                         target_id = candidate["material_id"]
-                        target_node = self._candidate_to_node(candidate)
+                        with timed_block(
+                            f"DiscoveryGraphBuilder.candidate_to_node source={material_id} target={target_id}"
+                        ):
+                            target_node = self._candidate_to_node(candidate)
 
                         nodes_by_id[target_id] = target_node
 
-                        transition = self._build_transition(
-                            from_material=source_node,
-                            to_candidate=candidate,
-                            elements_map=elements_map,
-                            avoid_element=avoid_element,
-                            prefer_element=prefer_element,
-                        )
+                        with timed_block(
+                            f"DiscoveryGraphBuilder.build_transition source={material_id} target={target_id}"
+                        ):
+                            transition = self._build_transition(
+                                from_material=source_node,
+                                to_candidate=candidate,
+                                elements_map=elements_map,
+                                avoid_element=avoid_element,
+                                prefer_element=prefer_element,
+                            )
 
                         if transition is None:
                             continue
 
-                        edge = self._build_edge(
-                            source_material_id=material_id,
-                            target_material_id=target_id,
-                            transition=transition,
-                            candidate=candidate,
-                            hop_depth=depth + 1,
-                        )
+                        with timed_block(
+                            f"DiscoveryGraphBuilder.build_edge source={material_id} target={target_id}"
+                        ):
+                            edge = self._build_edge(
+                                source_material_id=material_id,
+                                target_material_id=target_id,
+                                transition=transition,
+                                candidate=candidate,
+                                hop_depth=depth + 1,
+                            )
 
                         edge_key = (
                             edge["source_material_id"],
