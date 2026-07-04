@@ -2,6 +2,7 @@ from collections import deque
 
 from sqlalchemy.orm import Session
 
+from app.core.performance import timed_block
 from app.models.element import Element
 from app.models.material import Material
 from app.models.material_element import MaterialElement
@@ -40,128 +41,148 @@ class DiscoveryGraphBuilder:
         max_depth: int = DEFAULT_MAX_DEPTH,
         analytics_mode: bool = False,
     ) -> dict:
-        allowed_depth = (
-            self.MAX_ANALYTICS_DEPTH
-            if analytics_mode
-            else self.MAX_ALLOWED_DEPTH
-        )
-
-        max_depth = min(max_depth, allowed_depth)
-
-        base_material = self.db.get(Material, start_material_id)
-
-        if base_material is None:
-            return {
-                "nodes": [],
-                "edges": [],
-                "adjacency": {},
-            }
-
-        elements_map = self._get_material_elements_map()
-        nodes_by_id: dict[int, dict] = {
-            base_material.id: self._material_to_node(base_material)
-        }
-        edges_by_key: dict[tuple[int, int, str], dict] = {}
-        adjacency: dict[int, list[int]] = {}
-
-        visited: set[int] = set()
-        queue = deque([(base_material.id, 0)])
-
-        while queue:
-            material_id, depth = queue.popleft()
-
-            if material_id in visited:
-                continue
-
-            visited.add(material_id)
-
-            if depth >= max_depth:
-                continue
-
-            source_material = self.db.get(Material, material_id)
-
-            if source_material is None:
-                continue
-
-            source_node = self._material_to_node(source_material)
-            nodes_by_id[source_material.id] = source_node
-
-            candidate_limit = (
-                self.ANALYTICS_EXPANSION_LIMIT
+        with timed_block(
+            f"DiscoveryGraphBuilder.total start_material_id={start_material_id}"
+        ):
+            allowed_depth = (
+                self.MAX_ANALYTICS_DEPTH
                 if analytics_mode
-                else self.EXPANSION_LIMIT
+                else self.MAX_ALLOWED_DEPTH
             )
 
-            candidates = self._get_candidates(
-                material_id=material_id,
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
-                limit=candidate_limit,
-            )
+            max_depth = min(max_depth, allowed_depth)
 
-            adjacency.setdefault(material_id, [])
+            with timed_block(
+                f"DiscoveryGraphBuilder.base_material start_material_id={start_material_id}"
+            ):
+                base_material = self.db.get(Material, start_material_id)
 
-            for candidate in candidates:
-                target_id = candidate["material_id"]
-                target_node = self._candidate_to_node(candidate)
+            if base_material is None:
+                return {
+                    "nodes": [],
+                    "edges": [],
+                    "adjacency": {},
+                }
 
-                nodes_by_id[target_id] = target_node
+            with timed_block("DiscoveryGraphBuilder.elements_map"):
+                elements_map = self._get_material_elements_map()
 
-                transition = self._build_transition(
-                    from_material=source_node,
-                    to_candidate=candidate,
-                    elements_map=elements_map,
-                    avoid_element=avoid_element,
-                    prefer_element=prefer_element,
-                )
+            nodes_by_id: dict[int, dict] = {
+                base_material.id: self._material_to_node(base_material)
+            }
+            edges_by_key: dict[tuple[int, int, str], dict] = {}
+            adjacency: dict[int, list[int]] = {}
 
-                if transition is None:
+            visited: set[int] = set()
+            queue = deque([(base_material.id, 0)])
+
+            while queue:
+                material_id, depth = queue.popleft()
+
+                if material_id in visited:
                     continue
 
-                edge = self._build_edge(
-                    source_material_id=material_id,
-                    target_material_id=target_id,
-                    transition=transition,
-                    candidate=candidate,
-                    hop_depth=depth + 1,
+                visited.add(material_id)
+
+                if depth >= max_depth:
+                    continue
+
+                with timed_block(
+                    f"DiscoveryGraphBuilder.source_load material_id={material_id}"
+                ):
+                    source_material = self.db.get(Material, material_id)
+
+                if source_material is None:
+                    continue
+
+                source_node = self._material_to_node(source_material)
+                nodes_by_id[source_material.id] = source_node
+
+                candidate_limit = (
+                    self.ANALYTICS_EXPANSION_LIMIT
+                    if analytics_mode
+                    else self.EXPANSION_LIMIT
                 )
 
-                edge_key = (
-                    edge["source_material_id"],
-                    edge["target_material_id"],
-                    edge["transition_type"],
-                )
+                with timed_block(
+                    f"DiscoveryGraphBuilder.get_candidates material_id={material_id}"
+                ):
+                    candidates = self._get_candidates(
+                        material_id=material_id,
+                        avoid_element=avoid_element,
+                        prefer_element=prefer_element,
+                        limit=candidate_limit,
+                    )
 
-                edges_by_key[edge_key] = edge
+                adjacency.setdefault(material_id, [])
 
-                if target_id not in adjacency[material_id]:
-                    adjacency[material_id].append(target_id)
+                with timed_block(
+                    f"DiscoveryGraphBuilder.process_candidates material_id={material_id} count={len(candidates)}"
+                ):
+                    for candidate in candidates:
+                        target_id = candidate["material_id"]
+                        target_node = self._candidate_to_node(candidate)
 
-                if target_id not in visited:
-                    queue.append((target_id, depth + 1))
+                        nodes_by_id[target_id] = target_node
 
-        return {
-            "nodes": sorted(
-                nodes_by_id.values(),
-                key=lambda item: (
-                    0 if item["material_id"] == start_material_id else 1,
-                    item["material_id"],
-                ),
-            ),
-            "edges": sorted(
-                edges_by_key.values(),
-                key=lambda item: (
-                    item.get("hop_depth", 999),
-                    item["source_material_id"],
-                    item["target_material_id"],
-                    item["transition_type"],
-                ),
-            ),
-            "adjacency": {
-                source_id: sorted(target_ids)
-                for source_id, target_ids in sorted(adjacency.items())
-            },
-        }
+                        transition = self._build_transition(
+                            from_material=source_node,
+                            to_candidate=candidate,
+                            elements_map=elements_map,
+                            avoid_element=avoid_element,
+                            prefer_element=prefer_element,
+                        )
+
+                        if transition is None:
+                            continue
+
+                        edge = self._build_edge(
+                            source_material_id=material_id,
+                            target_material_id=target_id,
+                            transition=transition,
+                            candidate=candidate,
+                            hop_depth=depth + 1,
+                        )
+
+                        edge_key = (
+                            edge["source_material_id"],
+                            edge["target_material_id"],
+                            edge["transition_type"],
+                        )
+
+                        edges_by_key[edge_key] = edge
+
+                        if target_id not in adjacency[material_id]:
+                            adjacency[material_id].append(target_id)
+
+                        if target_id not in visited:
+                            queue.append((target_id, depth + 1))
+
+            with timed_block(
+                f"DiscoveryGraphBuilder.response_build start_material_id={start_material_id}"
+            ):
+                return {
+                    "nodes": sorted(
+                        nodes_by_id.values(),
+                        key=lambda item: (
+                            0 if item["material_id"] == start_material_id else 1,
+                            item["material_id"],
+                        ),
+                    ),
+                    "edges": sorted(
+                        edges_by_key.values(),
+                        key=lambda item: (
+                            item.get("hop_depth", 999),
+                            item["source_material_id"],
+                            item["target_material_id"],
+                            item["transition_type"],
+                        ),
+                    ),
+                    "adjacency": {
+                        source_id: sorted(target_ids)
+                        for source_id, target_ids in sorted(adjacency.items())
+                    },
+                }
 
     def build_adjacency(
         self,
