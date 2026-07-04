@@ -15,7 +15,7 @@ from app.services.discovery.edge_intelligence_service import (
 
 
 class DiscoveryGraphBuilder:
-    EXPANSION_LIMIT = 10
+    EXPANSION_LIMIT = 6
     ANALYTICS_EXPANSION_LIMIT = 6
     DEFAULT_MAX_DEPTH = 2
     MAX_ALLOWED_DEPTH = 1
@@ -371,7 +371,7 @@ class DiscoveryGraphBuilder:
 
     def _candidate_to_node(self, candidate: dict) -> dict:
         quality = self._get_material_quality(candidate["material_id"])
-        
+
         return {
             "material_id": candidate["material_id"],
             "mp_id": candidate["mp_id"],
