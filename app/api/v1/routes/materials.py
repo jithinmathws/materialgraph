@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.material import Material
 from app.schemas.material import MaterialDetail, MaterialRead
-from app.services.material_query_service import MaterialQueryService
+from app.services.material.query_service import MaterialQueryService
 
 router = APIRouter(prefix="/materials", tags=["Materials"])
 

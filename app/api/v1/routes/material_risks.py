@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.material_risk import MaterialRiskRead
-from app.services.material_risk_service import MaterialRiskService
+from app.services.material.risk_service import MaterialRiskService
 
 router = APIRouter(prefix="/material-risks", tags=["Material Risks"])
 

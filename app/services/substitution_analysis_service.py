@@ -9,7 +9,7 @@ from app.schemas.substitution import (
     SubstitutionRequest,
     SubstitutionResult,
 )
-from app.services.material_risk_service import MaterialRiskService
+from app.services.material.risk_service import MaterialRiskService
 
 
 class SubstitutionAnalysisService:

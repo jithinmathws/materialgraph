@@ -10,11 +10,11 @@ from app.schemas.material_recommendation import (
     MaterialScenarioRecommendationResponse,
 )
 from app.schemas.material_similarity import MaterialSimilarityResponse
-from app.services.material_criticality_service import MaterialCriticalityService
-from app.services.material_neighbor_service import MaterialNeighborService
-from app.services.material_neighborhood_service import MaterialNeighborhoodService
-from app.services.material_recommendation_service import MaterialRecommendationService
-from app.services.material_similarity_service import MaterialSimilarityService
+from app.services.material.criticality_service import MaterialCriticalityService
+from app.services.material.neighbor_service import MaterialNeighborService
+from app.services.material.neighborhood_service import MaterialNeighborhoodService
+from app.services.material.recommendation_service import MaterialRecommendationService
+from app.services.material.similarity_service import MaterialSimilarityService
 from app.utils.chemical_formula import is_valid_element_symbol
 
 from app.api.v1.route_utils import ensure_material_found

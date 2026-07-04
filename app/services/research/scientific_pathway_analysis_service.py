@@ -2,8 +2,8 @@ import time
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.services.material_quality_service import MaterialQualityService
-from app.services.research_objective_service import ResearchObjectiveService
+from app.services.material.quality_service import MaterialQualityService
+from app.services.research.objective_service import ResearchObjectiveService
 from app.services.research.research_evidence_intelligence_service import (
     ResearchEvidenceIntelligenceService,
 )

@@ -5,7 +5,7 @@ from app.models.element import Element
 from app.models.material import Material
 from app.models.material_element import MaterialElement
 from app.schemas.screening import CandidateScreeningRequest, CandidateScreeningResult
-from app.services.material_risk_service import MaterialRiskService
+from app.services.material.risk_service import MaterialRiskService
 
 
 DEFAULT_SCREENING_WEIGHTS = {

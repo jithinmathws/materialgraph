@@ -3,27 +3,28 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.discovery import DiscoveryCandidatesResponse, DiscoveryChainsResponse
-from app.services.discovery_candidate_service import DiscoveryCandidateService
-from app.services.discovery_chain_service import DiscoveryChainService
+from app.services.discovery.candidate_service import DiscoveryCandidateService
+from app.services.discovery.chain_service import DiscoveryChainService
 from app.schemas.discovery import (
     ResearchObjectiveChainRequest,
     ResearchObjectiveChainResponse,
 )
-from app.services.research_objective_service import ResearchObjectiveService
+
 from app.schemas.discovery_graph import (
     DiscoveryGraphResponse,
     DiscoveryPathResponse,
     DiscoverySubgraphResponse,
 )
-from app.services.discovery_traversal_service import DiscoveryTraversalService
-from app.services.discovery_graph_analytics_service import (
+from app.services.discovery.traversal_service import DiscoveryTraversalService
+from app.services.discovery.graph_analytics_service import (
     DiscoveryGraphAnalyticsService,
 )
 from app.schemas.research_objective_exploration import (
     ResearchObjectiveExplorationRequest,
     ResearchObjectiveExplorationResponse,
 )
-from app.services.research_objective_exploration_service import (
+from app.services.research.objective_exploration_service import (
+    ResearchObjectiveService,
     ResearchObjectiveExplorationService,
 )
 
