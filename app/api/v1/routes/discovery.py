@@ -45,6 +45,18 @@ def get_discovery_candidates(
     avoid_element: str | None = Query(default=None, min_length=1, max_length=3),
     prefer_element: str | None = Query(default=None, min_length=1, max_length=3),
     limit: int = Query(default=10, ge=1, le=50),
+    include_recommendations: bool = Query(
+        default=False,
+        description="Include recommendation-engine candidates. Disabled by default for faster responses.",
+    ),
+    include_scenarios: bool = Query(
+        default=False,
+        description="Include scenario-policy candidates. Disabled by default for faster responses.",
+    ),
+    include_substitution_paths: bool = Query(
+        default=True,
+        description="Include substitution path explanations for family candidates.",
+    ),
     db: Session = Depends(get_db),
 ):
     service = DiscoveryCandidateService(db)
@@ -54,6 +66,9 @@ def get_discovery_candidates(
         avoid_element=avoid_element,
         prefer_element=prefer_element,
         limit=limit,
+        include_recommendations=include_recommendations,
+        include_scenarios=include_scenarios,
+        include_substitution_paths=include_substitution_paths,
     )
 
     if result["mp_id"] is None:
