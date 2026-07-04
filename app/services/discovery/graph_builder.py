@@ -210,6 +210,9 @@ class DiscoveryGraphBuilder:
             avoid_element=avoid_element,
             prefer_element=prefer_element,
             limit=limit or self.EXPANSION_LIMIT,
+            include_recommendations=False,
+            include_scenarios=False,
+            include_substitution_paths=False,
         )
 
         return [
