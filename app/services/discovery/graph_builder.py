@@ -244,11 +244,18 @@ class DiscoveryGraphBuilder:
         return adjacency
 
     def _preload_material_quality(self, material_ids: list[int]) -> None:
-        for material_id in material_ids:
-            if material_id not in self._quality_cache:
-                self._quality_cache[material_id] = (
-                    self.material_quality_service.get_material_quality(material_id)
-                )
+        missing_ids = [
+            material_id
+            for material_id in dict.fromkeys(material_ids)
+            if material_id not in self._quality_cache
+        ]
+
+        if not missing_ids:
+            return
+
+        self._quality_cache.update(
+            self.material_quality_service.get_material_quality_bulk(missing_ids)
+        )
 
     def _get_candidates(
         self,

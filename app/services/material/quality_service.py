@@ -54,6 +54,17 @@ class MaterialQualityService:
         self._quality_cache[material_id] = quality
         return quality
 
+    def get_material_quality_bulk(
+        self,
+        material_ids: list[int],
+    ) -> dict[int, dict]:
+        qualities: dict[int, dict] = {}
+
+        for material_id in dict.fromkeys(material_ids):
+            qualities[material_id] = self.get_material_quality(material_id)
+
+        return qualities
+
     def get_material_quality_score(self, material_id: int) -> float:
         return self.get_material_quality(material_id)["quality_score"]
 
