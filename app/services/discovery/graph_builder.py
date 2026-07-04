@@ -7,12 +7,12 @@ from app.models.element import Element
 from app.models.material import Material
 from app.models.material_element import MaterialElement
 from app.services.discovery.candidate_service import DiscoveryCandidateService
-from app.services.discovery.transition_validator import DiscoveryTransitionValidator
-from app.services.material.family_service import MaterialFamilyService
-from app.services.material.quality_service import MaterialQualityService
 from app.services.discovery.edge_intelligence_service import (
     DiscoveryEdgeIntelligenceService,
 )
+from app.services.discovery.transition_validator import DiscoveryTransitionValidator
+from app.services.material.family_service import MaterialFamilyService
+from app.services.material.quality_service import MaterialQualityService
 
 
 class DiscoveryGraphBuilder:
@@ -29,6 +29,7 @@ class DiscoveryGraphBuilder:
         self.transition_validator = DiscoveryTransitionValidator()
         self.material_quality_service = MaterialQualityService(db)
         self.edge_intelligence_service = DiscoveryEdgeIntelligenceService()
+
         self._family_result_cache: dict[int, dict] = {}
         self._relationship_cache: dict[tuple[int, int], list[str]] = {}
         self._quality_cache: dict[int, dict] = {}
@@ -114,6 +115,16 @@ class DiscoveryGraphBuilder:
                         limit=candidate_limit,
                     )
 
+                with timed_block(
+                    f"DiscoveryGraphBuilder.preload_quality material_id={material_id} count={len(candidates)}"
+                ):
+                    self._preload_material_quality(
+                        [
+                            candidate["material_id"]
+                            for candidate in candidates
+                        ]
+                    )
+
                 adjacency.setdefault(material_id, [])
 
                 with timed_block(
@@ -121,6 +132,7 @@ class DiscoveryGraphBuilder:
                 ):
                     for candidate in candidates:
                         target_id = candidate["material_id"]
+
                         with timed_block(
                             f"DiscoveryGraphBuilder.candidate_to_node source={material_id} target={target_id}"
                         ):
@@ -133,7 +145,7 @@ class DiscoveryGraphBuilder:
                         ):
                             transition = self._build_transition(
                                 from_material=source_node,
-                                to_candidate=candidate,
+                                to_candidate=target_node,
                                 elements_map=elements_map,
                                 avoid_element=avoid_element,
                                 prefer_element=prefer_element,
@@ -231,6 +243,13 @@ class DiscoveryGraphBuilder:
 
         return adjacency
 
+    def _preload_material_quality(self, material_ids: list[int]) -> None:
+        for material_id in material_ids:
+            if material_id not in self._quality_cache:
+                self._quality_cache[material_id] = (
+                    self.material_quality_service.get_material_quality(material_id)
+                )
+
     def _get_candidates(
         self,
         material_id: int,
@@ -272,7 +291,7 @@ class DiscoveryGraphBuilder:
 
         return self.transition_validator.validate_transition(
             from_material=from_material,
-            to_material=self._candidate_to_node(to_candidate),
+            to_material=to_candidate,
             from_elements=from_elements,
             to_elements=to_elements,
             relationships=relationships,
@@ -417,7 +436,6 @@ class DiscoveryGraphBuilder:
             )
 
         return self._family_result_cache[material_id]
-
 
     def _get_material_quality(self, material_id: int) -> dict:
         if material_id not in self._quality_cache:

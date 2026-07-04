@@ -15,11 +15,7 @@ class MaterialRiskService:
         self,
         material_id: int,
     ) -> MaterialRiskRead | None:
-        material = (
-            self.db.query(Material)
-            .filter(Material.id == material_id)
-            .first()
-        )
+        material = self.db.get(Material, material_id)
 
         if material is None:
             return None
@@ -32,10 +28,17 @@ class MaterialRiskService:
             .all()
         )
 
+        element_ids = [
+            element.id
+            for element in element_rows
+        ]
+
+        profiles_by_element_id = self._get_latest_profiles(element_ids)
+
         element_risks: list[ElementRiskSummary] = []
 
         for element in element_rows:
-            profile = self._get_latest_profile(element.id)
+            profile = profiles_by_element_id.get(element.id)
 
             if profile is None:
                 continue
@@ -110,3 +113,28 @@ class MaterialRiskService:
             return 0.0
 
         return result.material_risk_score
+
+    def _get_latest_profiles(
+        self,
+        element_ids: list[int],
+    ) -> dict[int, ElementRiskProfile]:
+        if not element_ids:
+            return {}
+
+        profiles = (
+            self.db.query(ElementRiskProfile)
+            .filter(ElementRiskProfile.element_id.in_(element_ids))
+            .order_by(
+                ElementRiskProfile.element_id,
+                ElementRiskProfile.year.desc(),
+            )
+            .all()
+        )
+
+        latest_profiles: dict[int, ElementRiskProfile] = {}
+
+        for profile in profiles:
+            if profile.element_id not in latest_profiles:
+                latest_profiles[profile.element_id] = profile
+
+        return latest_profiles
