@@ -28,6 +28,9 @@ class DiscoveryGraphBuilder:
         self.transition_validator = DiscoveryTransitionValidator()
         self.material_quality_service = MaterialQualityService(db)
         self.edge_intelligence_service = DiscoveryEdgeIntelligenceService()
+        self._family_result_cache: dict[int, dict] = {}
+        self._relationship_cache: dict[tuple[int, int], list[str]] = {}
+        self._quality_cache: dict[int, dict] = {}
 
     def build_graph(
         self,
@@ -318,13 +321,22 @@ class DiscoveryGraphBuilder:
         from_material_id: int,
         to_material_id: int,
     ) -> list[str]:
-        family_result = self.family_service.get_material_families(from_material_id)
+        cache_key = (from_material_id, to_material_id)
+
+        if cache_key in self._relationship_cache:
+            return self._relationship_cache[cache_key]
+
+        family_result = self._get_family_result(from_material_id)
+
+        relationships = []
 
         for candidate in family_result["related_materials"]:
             if candidate["material_id"] == to_material_id:
-                return candidate["relationships"]
+                relationships = candidate["relationships"]
+                break
 
-        return []
+        self._relationship_cache[cache_key] = relationships
+        return relationships
 
     def _get_material_elements_map(self) -> dict[int, list[str]]:
         rows = (
@@ -347,7 +359,7 @@ class DiscoveryGraphBuilder:
         }
 
     def _material_to_node(self, material: Material) -> dict:
-        quality = self.material_quality_service.get_material_quality(material.id)
+        quality = self._get_material_quality(material.id)
 
         return {
             "material_id": material.id,
@@ -358,9 +370,8 @@ class DiscoveryGraphBuilder:
         }
 
     def _candidate_to_node(self, candidate: dict) -> dict:
-        quality = self.material_quality_service.get_material_quality(
-            candidate["material_id"]
-        )
+        quality = self._get_material_quality(candidate["material_id"])
+        
         return {
             "material_id": candidate["material_id"],
             "mp_id": candidate["mp_id"],
@@ -368,3 +379,20 @@ class DiscoveryGraphBuilder:
             "formula": candidate["pretty_formula"] or candidate["formula"],
             **quality,
         }
+
+    def _get_family_result(self, material_id: int) -> dict:
+        if material_id not in self._family_result_cache:
+            self._family_result_cache[material_id] = (
+                self.family_service.get_material_families(material_id)
+            )
+
+        return self._family_result_cache[material_id]
+
+
+    def _get_material_quality(self, material_id: int) -> dict:
+        if material_id not in self._quality_cache:
+            self._quality_cache[material_id] = (
+                self.material_quality_service.get_material_quality(material_id)
+            )
+
+        return self._quality_cache[material_id]
