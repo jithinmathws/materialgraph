@@ -36,72 +36,105 @@ class DiscoveryCandidateService:
         include_scenarios: bool = True,
         include_substitution_paths: bool = True,
     ) -> dict:
-        family_result = self.family_service.get_material_families(material_id)
+        with timed_block(
+            f"DiscoveryCandidateService.total material_id={material_id}"
+        ):
+            with timed_block(
+                f"DiscoveryCandidateService.family_lookup material_id={material_id}"
+            ):
+                family_result = self.family_service.get_material_families(
+                    material_id
+                )
 
-        elements_map = self._get_material_elements_map()
+            if family_result["mp_id"] is None:
+                return self._empty_response(
+                    material_id,
+                    avoid_element,
+                    prefer_element,
+                )
 
-        if family_result["mp_id"] is None:
-            return self._empty_response(material_id, avoid_element, prefer_element)
+            with timed_block(
+                f"DiscoveryCandidateService.elements_map material_id={material_id}"
+            ):
+                elements_map = self._get_material_elements_map()
 
-        candidates_by_id: dict[int, dict] = {}
+            candidates_by_id: dict[int, dict] = {}
 
-        self._add_family_candidates(
-            candidates_by_id=candidates_by_id,
-            family_result=family_result,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
-            elements_map=elements_map,
-            include_substitution_paths=include_substitution_paths,
-        )
+            with timed_block(
+                f"DiscoveryCandidateService.family_candidates material_id={material_id}"
+            ):
+                self._add_family_candidates(
+                    candidates_by_id=candidates_by_id,
+                    family_result=family_result,
+                    avoid_element=avoid_element,
+                    prefer_element=prefer_element,
+                    elements_map=elements_map,
+                    include_substitution_paths=include_substitution_paths,
+                )
 
-        if include_recommendations:
-            self._add_recommendation_candidates(
-                candidates_by_id=candidates_by_id,
-                material_id=material_id,
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
-                limit=limit,
-            )
+            if include_recommendations:
+                with timed_block(
+                    f"DiscoveryCandidateService.recommendations material_id={material_id}"
+                ):
+                    self._add_recommendation_candidates(
+                        candidates_by_id=candidates_by_id,
+                        material_id=material_id,
+                        avoid_element=avoid_element,
+                        prefer_element=prefer_element,
+                        limit=limit,
+                    )
 
-        if include_scenarios:
-            self._add_scenario_candidates(
-                candidates_by_id=candidates_by_id,
-                material_id=material_id,
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
-                limit=limit,
-            )
-        
-        all_candidates = sorted(
-            candidates_by_id.values(),
-            key=lambda item: item["discovery_score"],
-            reverse=True,
-        )
+            if include_scenarios:
+                with timed_block(
+                    f"DiscoveryCandidateService.scenarios material_id={material_id}"
+                ):
+                    self._add_scenario_candidates(
+                        candidates_by_id=candidates_by_id,
+                        material_id=material_id,
+                        avoid_element=avoid_element,
+                        prefer_element=prefer_element,
+                        limit=limit,
+                    )
 
-        candidates = all_candidates[:limit]
+            with timed_block(
+                f"DiscoveryCandidateService.sort material_id={material_id}"
+            ):
+                all_candidates = sorted(
+                    candidates_by_id.values(),
+                    key=lambda item: item["discovery_score"],
+                    reverse=True,
+                )
 
-        discovery_warnings = self.warning_service.build_warnings(
-            candidates=candidates,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
-            limit=limit,
-            total_candidate_count=len(all_candidates),
-        )
+                candidates = all_candidates[:limit]
 
-        for candidate in candidates:
-            candidate.pop("_explanation_parts", None)
+            with timed_block(
+                f"DiscoveryCandidateService.warnings material_id={material_id}"
+            ):
+                discovery_warnings = self.warning_service.build_warnings(
+                    candidates=candidates,
+                    avoid_element=avoid_element,
+                    prefer_element=prefer_element,
+                    limit=limit,
+                    total_candidate_count=len(all_candidates),
+                )
 
-        return {
-            "material_id": family_result["material_id"],
-            "mp_id": family_result["mp_id"],
-            "base_formula": family_result["pretty_formula"] or family_result["formula"],
-            "discovery_goal": {
-                "avoid_element": avoid_element,
-                "prefer_element": prefer_element,
-            },
-            "discovery_warnings": discovery_warnings,
-            "candidates": candidates,
-        }
+            for candidate in candidates:
+                candidate.pop("_explanation_parts", None)
+
+            return {
+                "material_id": family_result["material_id"],
+                "mp_id": family_result["mp_id"],
+                "base_formula": (
+                    family_result["pretty_formula"]
+                    or family_result["formula"]
+                ),
+                "discovery_goal": {
+                    "avoid_element": avoid_element,
+                    "prefer_element": prefer_element,
+                },
+                "discovery_warnings": discovery_warnings,
+                "candidates": candidates,
+            }
 
     def _get_material_elements_map(self) -> dict[int, list[str]]:
         if self._elements_map_cache is not None:
