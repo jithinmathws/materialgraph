@@ -53,10 +53,7 @@ class DiscoveryGraphBuilder:
 
             max_depth = min(max_depth, allowed_depth)
 
-            with timed_block(
-                f"DiscoveryGraphBuilder.base_material start_material_id={start_material_id}"
-            ):
-                base_material = self.db.get(Material, start_material_id)
+            base_material = self.db.get(Material, start_material_id)
 
             if base_material is None:
                 return {
@@ -88,10 +85,7 @@ class DiscoveryGraphBuilder:
                 if depth >= max_depth:
                     continue
 
-                with timed_block(
-                    f"DiscoveryGraphBuilder.source_load material_id={material_id}"
-                ):
-                    source_material = self.db.get(Material, material_id)
+                source_material = self.db.get(Material, material_id)
 
                 if source_material is None:
                     continue
@@ -132,38 +126,28 @@ class DiscoveryGraphBuilder:
                 ):
                     for candidate in candidates:
                         target_id = candidate["material_id"]
-
-                        with timed_block(
-                            f"DiscoveryGraphBuilder.candidate_to_node source={material_id} target={target_id}"
-                        ):
-                            target_node = self._candidate_to_node(candidate)
+                        target_node = self._candidate_to_node(candidate)
 
                         nodes_by_id[target_id] = target_node
 
-                        with timed_block(
-                            f"DiscoveryGraphBuilder.build_transition source={material_id} target={target_id}"
-                        ):
-                            transition = self._build_transition(
-                                from_material=source_node,
-                                to_candidate=target_node,
-                                elements_map=elements_map,
-                                avoid_element=avoid_element,
-                                prefer_element=prefer_element,
-                            )
+                        transition = self._build_transition(
+                            from_material=source_node,
+                            to_candidate=target_node,
+                            elements_map=elements_map,
+                            avoid_element=avoid_element,
+                            prefer_element=prefer_element,
+                        )
 
                         if transition is None:
                             continue
 
-                        with timed_block(
-                            f"DiscoveryGraphBuilder.build_edge source={material_id} target={target_id}"
-                        ):
-                            edge = self._build_edge(
-                                source_material_id=material_id,
-                                target_material_id=target_id,
-                                transition=transition,
-                                candidate=candidate,
-                                hop_depth=depth + 1,
-                            )
+                        edge = self._build_edge(
+                            source_material_id=material_id,
+                            target_material_id=target_id,
+                            transition=transition,
+                            candidate=candidate,
+                            hop_depth=depth + 1,
+                        )
 
                         edge_key = (
                             edge["source_material_id"],
@@ -179,31 +163,28 @@ class DiscoveryGraphBuilder:
                         if target_id not in visited:
                             queue.append((target_id, depth + 1))
 
-            with timed_block(
-                f"DiscoveryGraphBuilder.response_build start_material_id={start_material_id}"
-            ):
-                return {
-                    "nodes": sorted(
-                        nodes_by_id.values(),
-                        key=lambda item: (
-                            0 if item["material_id"] == start_material_id else 1,
-                            item["material_id"],
-                        ),
+            return {
+                "nodes": sorted(
+                    nodes_by_id.values(),
+                    key=lambda item: (
+                        0 if item["material_id"] == start_material_id else 1,
+                        item["material_id"],
                     ),
-                    "edges": sorted(
-                        edges_by_key.values(),
-                        key=lambda item: (
-                            item.get("hop_depth", 999),
-                            item["source_material_id"],
-                            item["target_material_id"],
-                            item["transition_type"],
-                        ),
+                ),
+                "edges": sorted(
+                    edges_by_key.values(),
+                    key=lambda item: (
+                        item.get("hop_depth", 999),
+                        item["source_material_id"],
+                        item["target_material_id"],
+                        item["transition_type"],
                     ),
-                    "adjacency": {
-                        source_id: sorted(target_ids)
-                        for source_id, target_ids in sorted(adjacency.items())
-                    },
-                }
+                ),
+                "adjacency": {
+                    source_id: sorted(target_ids)
+                    for source_id, target_ids in sorted(adjacency.items())
+                },
+            }
 
     def build_adjacency(
         self,
