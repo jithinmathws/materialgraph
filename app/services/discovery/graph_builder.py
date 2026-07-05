@@ -43,7 +43,8 @@ class DiscoveryGraphBuilder:
         analytics_mode: bool = False,
     ) -> dict:
         with timed_block(
-            f"DiscoveryGraphBuilder.total start_material_id={start_material_id}"
+            f"DiscoveryGraphBuilder.total start_material_id={start_material_id}",
+            always_log=True,
         ):
             allowed_depth = (
                 self.MAX_ANALYTICS_DEPTH
