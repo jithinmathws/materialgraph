@@ -30,6 +30,82 @@ class MaterialQualityService:
 
         risk_score = self.risk_service.get_material_risk_score(material_id)
 
+        quality = self._build_quality_response(
+            material=material,
+            criticality_score=criticality_score,
+            risk_score=risk_score,
+        )
+
+        self._quality_cache[material_id] = quality
+        return quality
+
+    def get_material_quality_bulk(
+        self,
+        material_ids: list[int],
+    ) -> dict[int, dict]:
+        unique_ids = list(dict.fromkeys(material_ids))
+
+        if not unique_ids:
+            return {}
+
+        missing_ids = [
+            material_id
+            for material_id in unique_ids
+            if material_id not in self._quality_cache
+        ]
+
+        if missing_ids:
+            materials = (
+                self.db.query(Material)
+                .filter(Material.id.in_(missing_ids))
+                .all()
+            )
+
+            materials_by_id = {
+                material.id: material
+                for material in materials
+            }
+
+            criticality_by_id = (
+                self.criticality_service.get_material_criticality_bulk(
+                    missing_ids
+                )
+            )
+
+            for material_id in missing_ids:
+                material = materials_by_id.get(material_id)
+
+                if material is None:
+                    self._quality_cache[material_id] = self._empty_quality(
+                        material_id
+                    )
+                    continue
+
+                criticality = criticality_by_id.get(material_id, {})
+                criticality_score = criticality.get("criticality_score")
+
+                risk_score = self.risk_service.get_material_risk_score(material_id)
+
+                self._quality_cache[material_id] = self._build_quality_response(
+                    material=material,
+                    criticality_score=criticality_score,
+                    risk_score=risk_score,
+                )
+
+        return {
+            material_id: self._quality_cache[material_id]
+            for material_id in unique_ids
+        }
+
+    def get_material_quality_score(self, material_id: int) -> float:
+        return self.get_material_quality(material_id)["quality_score"]
+
+    def _build_quality_response(
+        self,
+        material: Material,
+        criticality_score: float | None,
+        risk_score: float,
+    ) -> dict:
         stability_score = self._calculate_stability_score(
             is_stable=material.is_stable,
             energy_above_hull=material.energy_above_hull,
@@ -42,7 +118,7 @@ class MaterialQualityService:
             risk_score=risk_score,
         )
 
-        quality = {
+        return {
             "material_id": material.id,
             "stability_score": stability_score,
             "energy_above_hull": material.energy_above_hull,
@@ -50,23 +126,6 @@ class MaterialQualityService:
             "risk_score": risk_score,
             "quality_score": quality_score,
         }
-
-        self._quality_cache[material_id] = quality
-        return quality
-
-    def get_material_quality_bulk(
-        self,
-        material_ids: list[int],
-    ) -> dict[int, dict]:
-        qualities: dict[int, dict] = {}
-
-        for material_id in dict.fromkeys(material_ids):
-            qualities[material_id] = self.get_material_quality(material_id)
-
-        return qualities
-
-    def get_material_quality_score(self, material_id: int) -> float:
-        return self.get_material_quality(material_id)["quality_score"]
 
     def _calculate_stability_score(
         self,

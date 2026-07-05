@@ -39,6 +39,88 @@ class MaterialCriticalityService:
             element_ids=element_ids
         )
 
+        return self._build_criticality_response(
+            material=material,
+            material_element_rows=material_element_rows,
+            risk_profiles_by_element_id=risk_profiles_by_element_id,
+        )
+
+    def get_material_criticality_bulk(
+        self,
+        material_ids: list[int],
+    ) -> dict[int, dict]:
+        unique_ids = list(dict.fromkeys(material_ids))
+
+        if not unique_ids:
+            return {}
+
+        materials = (
+            self.db.query(Material)
+            .filter(Material.id.in_(unique_ids))
+            .all()
+        )
+
+        materials_by_id = {
+            material.id: material
+            for material in materials
+        }
+
+        material_element_rows = (
+            self.db.query(
+                MaterialElement,
+                Element,
+            )
+            .join(
+                Element,
+                MaterialElement.element_id == Element.id,
+            )
+            .filter(MaterialElement.material_id.in_(unique_ids))
+            .all()
+        )
+
+        rows_by_material_id: dict[int, list[tuple]] = {}
+        element_ids: set[int] = set()
+
+        for material_element, element in material_element_rows:
+            rows_by_material_id.setdefault(
+                material_element.material_id,
+                [],
+            ).append((material_element, element))
+
+            element_ids.add(element.id)
+
+        risk_profiles_by_element_id = self._get_latest_risk_profiles(
+            element_ids=list(element_ids)
+        )
+
+        results: dict[int, dict] = {}
+
+        for material_id in unique_ids:
+            material = materials_by_id.get(material_id)
+
+            if material is None:
+                results[material_id] = self._empty_criticality_response(
+                    material_id
+                )
+                continue
+
+            results[material_id] = self._build_criticality_response(
+                material=material,
+                material_element_rows=rows_by_material_id.get(
+                    material_id,
+                    [],
+                ),
+                risk_profiles_by_element_id=risk_profiles_by_element_id,
+            )
+
+        return results
+
+    def _build_criticality_response(
+        self,
+        material: Material,
+        material_element_rows: list[tuple],
+        risk_profiles_by_element_id: dict[int, ElementRiskProfile],
+    ) -> dict:
         element_details = []
         weighted_scores = []
         total_fraction = 0.0
@@ -50,14 +132,18 @@ class MaterialCriticalityService:
                 element_criticality_score = 0.0
                 risk_year = None
             else:
-                element_criticality_score = self._calculate_element_criticality_score(
-                    risk_profile
+                element_criticality_score = (
+                    self._calculate_element_criticality_score(
+                        risk_profile
+                    )
                 )
                 risk_year = risk_profile.year
 
             fraction = material_element.fraction or 0.0
             total_fraction += fraction
-            weighted_scores.append(element_criticality_score * fraction)
+            weighted_scores.append(
+                element_criticality_score * fraction
+            )
 
             element_details.append(
                 {
@@ -67,16 +153,24 @@ class MaterialCriticalityService:
                     "fraction": fraction,
                     "risk_year": risk_year,
                     "abundance_score": (
-                        risk_profile.abundance_score if risk_profile else None
+                        risk_profile.abundance_score
+                        if risk_profile
+                        else None
                     ),
                     "supply_risk_score": (
-                        risk_profile.supply_risk_score if risk_profile else None
+                        risk_profile.supply_risk_score
+                        if risk_profile
+                        else None
                     ),
                     "toxicity_score": (
-                        risk_profile.toxicity_score if risk_profile else None
+                        risk_profile.toxicity_score
+                        if risk_profile
+                        else None
                     ),
                     "recyclability_score": (
-                        risk_profile.recyclability_score if risk_profile else None
+                        risk_profile.recyclability_score
+                        if risk_profile
+                        else None
                     ),
                     "geopolitical_risk_score": (
                         risk_profile.geopolitical_risk_score
