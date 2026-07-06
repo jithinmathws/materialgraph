@@ -103,10 +103,17 @@ class ScientificPathwayOpportunity(BaseModel):
 
 
 class PathwayComparison(BaseModel):
-    highest_scoring_pathway_rank: int | None = None
-    highest_quality_pathway_rank: int | None = None
-    most_direct_pathway_rank: int | None = None
-    lowest_risk_pathway_rank: int | None = None
+    comparison_count: int = 0
+    top_ranked_pathway: dict | None = None
+    comparative_strengths: list[dict] = Field(default_factory=list)
+    comparative_trade_offs: list[dict] = Field(default_factory=list)
+    comparative_research_gaps: list[dict] = Field(default_factory=list)
+    comparative_evidence_readiness: dict = Field(default_factory=dict)
+    comparative_assumptions: list[dict] = Field(default_factory=list)
+    pairwise_comparisons: list[dict] = Field(default_factory=list)
+    comparative_element_highlights: list[dict] = Field(default_factory=list)
+    researcher_decision_required: bool = True
+    decision_boundary: str
 
 
 class ScientificPathwayAnalysisResponse(BaseModel):

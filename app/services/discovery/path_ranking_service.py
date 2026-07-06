@@ -222,20 +222,26 @@ class DiscoveryPathRankingService:
         self,
         materials: list[dict],
     ) -> float:
-        if self.db is None or not materials:
+        if self.material_quality_service is None or not materials:
             return 0.0
 
-        material_scores = []
+        material_ids = [
+            material["material_id"]
+            for material in materials
+            if material.get("material_id") is not None
+        ]
 
-        for material_data in materials:
-            material_id = material_data.get("material_id")
+        if not material_ids:
+            return 0.0
 
-            if material_id is None:
-                continue
+        quality_by_id = self.material_quality_service.get_material_quality_bulk(
+            material_ids
+        )
 
-            score = self._score_single_material_quality(material_id)
-
-            material_scores.append(score)
+        material_scores = [
+            quality.get("quality_score", 0.0)
+            for quality in quality_by_id.values()
+        ]
 
         if not material_scores:
             return 0.0
@@ -244,12 +250,3 @@ class DiscoveryPathRankingService:
             sum(material_scores) / len(material_scores),
             2,
         )
-
-    def _score_single_material_quality(
-        self,
-        material_id: int,
-    ) -> float:
-        if self.material_quality_service is None:
-            return 0.0
-
-        return self.material_quality_service.get_material_quality_score(material_id)

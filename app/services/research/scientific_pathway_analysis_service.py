@@ -7,6 +7,9 @@ from app.services.research.objective_service import ResearchObjectiveService
 from app.services.research.research_evidence_intelligence_service import (
     ResearchEvidenceIntelligenceService,
 )
+from app.services.research.comparative_research_intelligence_service import (
+    ComparativeResearchIntelligenceService,
+)
 
 
 class ScientificPathwayAnalysisService:
@@ -14,6 +17,7 @@ class ScientificPathwayAnalysisService:
         self.objective_service = ResearchObjectiveService(db)
         self.quality_service = MaterialQualityService(db)
         self.evidence_service = ResearchEvidenceIntelligenceService()
+        self.comparative_service = ComparativeResearchIntelligenceService()
         self._quality_cache: dict[int, dict] = {}
 
     def analyze(self, material_id: int, objective) -> dict:
@@ -29,6 +33,8 @@ class ScientificPathwayAnalysisService:
             time.perf_counter() - chain_start,
         )
 
+        self._prefetch_material_quality(result["chains"])
+
         opportunity_start = time.perf_counter()
         opportunities = [
             self.evidence_service.enrich_opportunity(
@@ -42,7 +48,9 @@ class ScientificPathwayAnalysisService:
         )
 
         comparison_start = time.perf_counter()
-        comparison = self._compare_opportunities(opportunities)
+        comparison = self.comparative_service.compare_opportunities(
+            opportunities
+        )
         logger.info(
             "Scientific pathway comparison took {:.3f}s",
             time.perf_counter() - comparison_start,
@@ -330,38 +338,6 @@ class ScientificPathwayAnalysisService:
 
         return material.get("formula") or material.get("pretty_formula") or str(material_id)
 
-    def _compare_opportunities(self, opportunities: list[dict]) -> dict:
-        if not opportunities:
-            return {}
-
-        return {
-            "highest_scoring_pathway_rank": max(
-                opportunities,
-                key=lambda item: item.get("scientific_usefulness_score", 0.0),
-            )["rank"],
-            "highest_quality_pathway_rank": max(
-                opportunities,
-                key=lambda item: item.get("quality_summary", {}).get("average_quality_score", 0.0),
-            )["rank"],
-            "most_direct_pathway_rank": min(
-                opportunities,
-                key=lambda item: item.get("pathway", {}).get("hop_count", 999),
-            )["rank"],
-            "lowest_risk_pathway_rank": min(
-                opportunities,
-                key=lambda item: self._pathway_average_risk(item),
-            )["rank"],
-        }
-
-
-    def _pathway_average_risk(self, opportunity: dict) -> float:
-        quality = opportunity.get("scientific_facts", {}).get("material_quality", [])
-
-        if not quality:
-            return 999.0
-
-        return sum(item.get("risk_score", 999.0) for item in quality) / len(quality)
-
     def _get_material_quality(self, material_id: int) -> dict:
         if material_id not in self._quality_cache:
             self._quality_cache[material_id] = (
@@ -369,3 +345,18 @@ class ScientificPathwayAnalysisService:
             )
 
         return self._quality_cache[material_id]
+
+    def _prefetch_material_quality(self, chains: list[dict]) -> None:
+        material_ids = list(dict.fromkeys(
+            material["material_id"]
+            for chain in chains
+            for material in chain.get("materials", [])
+            if material.get("material_id") is not None
+        ))
+
+        if not material_ids:
+            return
+
+        self._quality_cache.update(
+            self.quality_service.get_material_quality_bulk(material_ids)
+        )

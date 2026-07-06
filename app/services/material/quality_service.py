@@ -72,6 +72,12 @@ class MaterialQualityService:
                 )
             )
 
+            risk_scores_by_id = (
+                self.risk_service.get_material_risk_scores_bulk(
+                    missing_ids
+                )
+            )
+
             for material_id in missing_ids:
                 material = materials_by_id.get(material_id)
 
@@ -83,10 +89,6 @@ class MaterialQualityService:
 
                 criticality = criticality_by_id.get(material_id, {})
                 criticality_score = criticality.get("criticality_score")
-
-                risk_scores_by_id = self.risk_service.get_material_risk_scores_bulk(
-                    missing_ids
-                )
                 risk_score = risk_scores_by_id.get(material_id, 0.0)
 
                 self._quality_cache[material_id] = self._build_quality_response(
