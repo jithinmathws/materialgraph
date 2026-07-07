@@ -10,6 +10,9 @@ from app.services.research.research_evidence_intelligence_service import (
 from app.services.research.comparative_research_intelligence_service import (
     ComparativeResearchIntelligenceService,
 )
+from app.services.research.endpoint_sensitive_research_ranking_service import (
+    EndpointSensitiveResearchRankingService,
+)
 
 
 class ScientificPathwayAnalysisService:
@@ -18,6 +21,7 @@ class ScientificPathwayAnalysisService:
         self.quality_service = MaterialQualityService(db)
         self.evidence_service = ResearchEvidenceIntelligenceService()
         self.comparative_service = ComparativeResearchIntelligenceService()
+        self.endpoint_ranking_service = EndpointSensitiveResearchRankingService()
         self._quality_cache: dict[int, dict] = {}
 
     def analyze(self, material_id: int, objective) -> dict:
@@ -56,6 +60,15 @@ class ScientificPathwayAnalysisService:
             time.perf_counter() - comparison_start,
         )
 
+        endpoint_ranking_start = time.perf_counter()
+        endpoint_sensitive_ranking = (
+            self.endpoint_ranking_service.rank_opportunities(opportunities)
+        )
+        logger.info(
+            "Endpoint-sensitive research ranking took {:.3f}s",
+            time.perf_counter() - endpoint_ranking_start,
+        )
+
         logger.info(
             "Scientific pathway analysis total took {:.3f}s",
             time.perf_counter() - start,
@@ -67,6 +80,7 @@ class ScientificPathwayAnalysisService:
             "objective": objective,
             "pathway_opportunities": opportunities,
             "pathway_comparison": comparison,
+            "endpoint_sensitive_ranking": endpoint_sensitive_ranking,
             "researcher_decision_required": True,
             "decision_boundary": (
                 "MaterialGraph computes, ranks, explains, and contextualizes "

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Any
 
 from app.schemas.discovery import DiscoveryChain, ResearchObjective
 
@@ -121,6 +122,7 @@ class ScientificPathwayAnalysisResponse(BaseModel):
     base_formula: str | None = None
     objective: ResearchObjective
     pathway_opportunities: list[ScientificPathwayOpportunity]
+    endpoint_sensitive_ranking: dict[str, Any] | None = None
     pathway_comparison: PathwayComparison | dict
     researcher_decision_required: bool
     decision_boundary: str
