@@ -45,6 +45,9 @@ class MaterialRiskService:
 
             risk_score = self._calculate_element_risk(profile)
 
+            if risk_score is None:
+                continue
+
             element_risks.append(
                 ElementRiskSummary(
                     symbol=element.symbol,
@@ -60,6 +63,12 @@ class MaterialRiskService:
                 item.risk_score for item in element_risks
             ) / len(element_risks)
         else:
+            # Backward-compatible API behavior.
+            #
+            # The public MaterialRiskRead schema currently exposes a numeric
+            # material_risk_score. Keep this response stable for existing
+            # consumers, but do not use this value as proof of low risk in
+            # quality scoring. Quality scoring uses get_material_risk_signal().
             material_risk_score = 0.0
 
         return MaterialRiskRead(
@@ -70,10 +79,22 @@ class MaterialRiskService:
             element_risks=element_risks,
         )
 
-    def get_material_risk_scores_bulk(
+    def get_material_risk_signal(
+        self,
+        material_id: int,
+    ) -> dict:
+        return self.get_material_risk_signals_bulk([material_id]).get(
+            material_id,
+            self._unknown_risk_signal(
+                material_id=material_id,
+                total_element_count=0,
+            ),
+        )
+
+    def get_material_risk_signals_bulk(
         self,
         material_ids: list[int],
-    ) -> dict[int, float]:
+    ) -> dict[int, dict]:
         unique_ids = list(dict.fromkeys(material_ids))
 
         if not unique_ids:
@@ -104,31 +125,82 @@ class MaterialRiskService:
             list(element_ids)
         )
 
-        risk_scores: dict[int, float] = {}
+        risk_signals: dict[int, dict] = {}
 
         for material_id in unique_ids:
             elements = elements_by_material_id.get(material_id, [])
+            total_element_count = len(elements)
             element_risk_scores = []
+            known_element_symbols = []
+            unknown_element_symbols = []
 
             for element in elements:
                 profile = profiles_by_element_id.get(element.id)
 
                 if profile is None:
+                    unknown_element_symbols.append(element.symbol)
                     continue
 
-                element_risk_scores.append(
-                    self._calculate_element_risk(profile)
-                )
+                risk_score = self._calculate_element_risk(profile)
 
-            if element_risk_scores:
-                risk_scores[material_id] = round(
-                    sum(element_risk_scores) / len(element_risk_scores),
+                if risk_score is None:
+                    unknown_element_symbols.append(element.symbol)
+                    continue
+
+                element_risk_scores.append(risk_score)
+                known_element_symbols.append(element.symbol)
+
+            if not element_risk_scores:
+                risk_signals[material_id] = self._unknown_risk_signal(
+                    material_id=material_id,
+                    total_element_count=total_element_count,
+                    unknown_element_symbols=unknown_element_symbols,
+                )
+                continue
+
+            known_count = len(element_risk_scores)
+            coverage = (
+                round(known_count / total_element_count, 3)
+                if total_element_count
+                else 0.0
+            )
+
+            risk_signals[material_id] = {
+                "material_id": material_id,
+                "risk_score": round(
+                    sum(element_risk_scores) / known_count,
                     3,
-                )
-            else:
-                risk_scores[material_id] = 0.0
+                ),
+                "risk_known": True,
+                "risk_profile_coverage": coverage,
+                "known_risk_element_count": known_count,
+                "total_element_count": total_element_count,
+                "known_risk_elements": sorted(known_element_symbols),
+                "unknown_risk_elements": sorted(unknown_element_symbols),
+                "risk_evidence_complete": coverage == 1.0,
+            }
 
-        return risk_scores
+        return risk_signals
+
+    def get_material_risk_scores_bulk(
+        self,
+        material_ids: list[int],
+    ) -> dict[int, float]:
+        risk_signals = self.get_material_risk_signals_bulk(material_ids)
+
+        # Backward-compatible numeric score API.
+        #
+        # Unknown risk remains 0.0 here only for legacy callers. New ranking and
+        # quality logic should use get_material_risk_signals_bulk() so unknown
+        # risk is not interpreted as low risk.
+        return {
+            material_id: (
+                signal["risk_score"]
+                if signal.get("risk_score") is not None
+                else 0.0
+            )
+            for material_id, signal in risk_signals.items()
+        }
 
     def _get_latest_profile(
         self,
@@ -164,7 +236,7 @@ class MaterialRiskService:
     def _calculate_element_risk(
         self,
         profile: ElementRiskProfile,
-    ) -> float:
+    ) -> float | None:
         values = [
             profile.supply_risk_score,
             profile.geopolitical_risk_score,
@@ -176,7 +248,7 @@ class MaterialRiskService:
         ]
 
         if not available_values:
-            return 0.0
+            return None
 
         return round(
             sum(available_values) / len(available_values),
@@ -187,34 +259,29 @@ class MaterialRiskService:
         self,
         material_id: int,
     ) -> float:
-        result = self.get_material_risk(material_id)
+        signal = self.get_material_risk_signal(material_id)
 
-        if result is None:
-            return 0.0
-
-        return result.material_risk_score
-
-    def _get_latest_profiles(
-        self,
-        element_ids: list[int],
-    ) -> dict[int, ElementRiskProfile]:
-        if not element_ids:
-            return {}
-
-        profiles = (
-            self.db.query(ElementRiskProfile)
-            .filter(ElementRiskProfile.element_id.in_(element_ids))
-            .order_by(
-                ElementRiskProfile.element_id,
-                ElementRiskProfile.year.desc(),
-            )
-            .all()
+        # Backward-compatible numeric score API.
+        return (
+            signal["risk_score"]
+            if signal.get("risk_score") is not None
+            else 0.0
         )
 
-        latest_profiles: dict[int, ElementRiskProfile] = {}
-
-        for profile in profiles:
-            if profile.element_id not in latest_profiles:
-                latest_profiles[profile.element_id] = profile
-
-        return latest_profiles
+    def _unknown_risk_signal(
+        self,
+        material_id: int,
+        total_element_count: int,
+        unknown_element_symbols: list[str] | None = None,
+    ) -> dict:
+        return {
+            "material_id": material_id,
+            "risk_score": None,
+            "risk_known": False,
+            "risk_profile_coverage": 0.0,
+            "known_risk_element_count": 0,
+            "total_element_count": total_element_count,
+            "known_risk_elements": [],
+            "unknown_risk_elements": sorted(unknown_element_symbols or []),
+            "risk_evidence_complete": False,
+        }

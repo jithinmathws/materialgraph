@@ -1,87 +1,59 @@
 from app.services.material.risk_service import MaterialRiskService
 
-
-def test_material_risk_returns_result_for_existing_material(db_session):
+def test_material_risk_signal_returns_unknown_for_missing_material(db_session):
     service = MaterialRiskService(db_session)
 
-    result = service.get_material_risk(6)
+    result = service.get_material_risk_signal(999999)
 
-    assert result is not None
-    assert result.material_id == 6
-    assert result.material_risk_score >= 0
-    assert len(result.element_risks) > 0
+    assert result["risk_score"] is None
+    assert result["risk_known"] is False
+    assert result["risk_profile_coverage"] == 0.0
+    assert result["known_risk_element_count"] == 0
+    assert result["risk_evidence_complete"] is False
 
 
-def test_material_risk_returns_none_for_missing_material(db_session):
+def test_material_risk_signals_bulk_returns_coverage_metadata(db_session):
     service = MaterialRiskService(db_session)
 
-    result = service.get_material_risk(999999)
-
-    assert result is None
-
-
-def test_material_risk_score_returns_zero_for_missing_material(db_session):
-    service = MaterialRiskService(db_session)
-
-    result = service.get_material_risk_score(999999)
-
-    assert result == 0.0
-
-def test_material_risk_score_returns_float(db_session):
-    service = MaterialRiskService(db_session)
-
-    result = service.get_material_risk_score(material_id=5)
-
-    assert isinstance(result, float)
-
-
-def test_material_risk_scores_bulk_returns_scores(db_session):
-    service = MaterialRiskService(db_session)
-
-    result = service.get_material_risk_scores_bulk(
-        material_ids=[5, 6, 7]
-    )
+    result = service.get_material_risk_signals_bulk([5, 6, 7])
 
     assert set(result.keys()) == {5, 6, 7}
-    assert isinstance(result[5], float)
-    assert isinstance(result[6], float)
-    assert isinstance(result[7], float)
+
+    for signal in result.values():
+        assert "risk_score" in signal
+        assert "risk_known" in signal
+        assert "risk_profile_coverage" in signal
+        assert "known_risk_element_count" in signal
+        assert "total_element_count" in signal
+        assert "known_risk_elements" in signal
+        assert "unknown_risk_elements" in signal
+        assert "risk_evidence_complete" in signal
 
 
-def test_material_risk_scores_bulk_matches_single_score(db_session):
-    service = MaterialRiskService(db_session)
+def test_element_risk_with_no_values_is_unknown():
+    class Profile:
+        supply_risk_score = None
+        geopolitical_risk_score = None
+        toxicity_score = None
 
-    single = service.get_material_risk_score(material_id=5)
-    bulk = service.get_material_risk_scores_bulk(
-        material_ids=[5]
+    service = MaterialRiskService.__new__(MaterialRiskService)
+
+    assert service._calculate_element_risk(Profile()) is None
+
+
+def test_unknown_risk_signal_is_explicit():
+    service = MaterialRiskService.__new__(MaterialRiskService)
+
+    signal = service._unknown_risk_signal(
+        material_id=123,
+        total_element_count=2,
+        unknown_element_symbols=["Li", "O"],
     )
 
-    assert bulk[5] == single
-
-
-def test_material_risk_scores_bulk_handles_duplicates(db_session):
-    service = MaterialRiskService(db_session)
-
-    result = service.get_material_risk_scores_bulk(
-        material_ids=[5, 5, 6]
-    )
-
-    assert list(result.keys()) == [5, 6]
-
-
-def test_material_risk_scores_bulk_empty_input_returns_empty_dict(db_session):
-    service = MaterialRiskService(db_session)
-
-    result = service.get_material_risk_scores_bulk([])
-
-    assert result == {}
-
-
-def test_material_risk_scores_bulk_missing_material_returns_zero(db_session):
-    service = MaterialRiskService(db_session)
-
-    result = service.get_material_risk_scores_bulk(
-        material_ids=[999999]
-    )
-
-    assert result[999999] == 0.0
+    assert signal["risk_score"] is None
+    assert signal["risk_known"] is False
+    assert signal["risk_profile_coverage"] == 0.0
+    assert signal["known_risk_element_count"] == 0
+    assert signal["total_element_count"] == 2
+    assert signal["unknown_risk_elements"] == ["Li", "O"]
+    assert signal["risk_evidence_complete"] is False

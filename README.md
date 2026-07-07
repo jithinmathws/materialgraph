@@ -60,7 +60,7 @@ Additional project documentation is available in the `docs/` directory.
 
 ------------------------------------------------------------------------
 
-# Current Capabilities (v1.9.1)
+# Current Capabilities (v1.9.6)
 
 ## Foundation Intelligence
 
@@ -94,6 +94,72 @@ Additional project documentation is available in the `docs/` directory.
 -   Material Quality
 -   Node & Edge Intelligence
 
+## Research Intelligence
+
+-   Scientific Pathway Analysis
+-   Explainable Confidence
+-   Research Opportunity Analysis
+-   Comparative Research Intelligence
+-   Endpoint-Sensitive Research Ranking
+
+## Evidence Intelligence
+
+-   Structured Evidence Summary
+-   Evidence Attribution
+-   Explainable Missing Evidence
+-   Structured Weak Assumptions
+-   Validation Priorities
+-   Evidence Readiness
+
+## Comparative Research Intelligence — v1.9.5
+
+-   Deterministic multi-pathway comparison
+-   Comparative strengths and trade-offs
+-   Comparative research gaps
+-   Comparative evidence readiness
+-   Comparative assumptions
+-   Adjacent pairwise pathway comparisons
+-   Score-dimension difference explanations
+-   Preservation of lower-ranked pathway advantages
+-   Tie-aware pathway comparisons
+-   Endpoint material comparisons
+-   Neutral first-pathway / second-pathway semantics
+-   Backward-compatible comparison aliases
+-   Comparative element opportunity highlights
+-   Introduced-element signals
+-   Removed / avoided-element signals
+-   Preserved-framework element signals
+-   Element highlights grounded in pathway scientific facts
+-   Explicit `requires_validation` boundaries
+-   Researcher autonomy preserved
+
+The comparative layer compares existing deterministic pathway opportunities. It
+does not invent a winner when pathway scores are tied, and it does not replace
+scientific judgment or experimental validation.
+
+## Endpoint-Sensitive Research Ranking — v1.9.6
+
+-   Preserves original `scientific_usefulness_score` values
+-   Groups equal-score pathway opportunities
+-   Reuses existing endpoint-specific quality, stability, energy-above-hull,
+    criticality, risk, and evidence-readiness signals
+-   Differentiates tied pathways only when existing endpoint evidence justifies
+    deterministic ordering
+-   Preserves genuine ties when endpoint-specific evidence is equivalent
+-   Adds no arbitrary tie-breaker
+-   Adds no duplicate scientific usefulness score
+-   Exposes explicit differentiation status and reasons
+-   Keeps endpoint evidence auditable
+-   Marks endpoint conclusions as requiring validation
+-   Preserves researcher decision authority
+
+For the LiFePO4 → Na/phosphate research objective, five scientifically distinct
+endpoint opportunities received the same scientific usefulness score of
+`94.95`. MaterialGraph preserved the tie because the currently available
+endpoint-specific evidence was equivalent across the five endpoints. This is
+intentional: absence of justified differentiation is represented explicitly
+rather than hidden behind an arbitrary ranking rule.
+
 ------------------------------------------------------------------------
 
 # Architecture
@@ -115,6 +181,15 @@ Knowledge Graph Intelligence
         │
         ▼
 Research Intelligence
+        │
+        ▼
+Evidence Intelligence
+        │
+        ▼
+Comparative Research Intelligence
+        │
+        ▼
+Endpoint-Sensitive Research Ranking
         │
         ▼
 Scientific Knowledge Layer (Future)
@@ -195,13 +270,18 @@ Completed:
 -   Ranked Subgraph Exploration
 -   Research Objective Exploration
 
-Current Focus:
+Completed:
 
 -   Scientific Pathway Analysis
 -   Research Opportunity Analysis
+-   Explainable Confidence
+-   Evidence Intelligence
+-   Comparative Research Intelligence
+-   Endpoint-Sensitive Research Ranking
 
 Future:
 
+-   Research Validation Planning
 -   Research Gap Analysis
 -   Hypothesis Exploration
 -   Multi-objective Optimization
