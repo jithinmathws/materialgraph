@@ -1,3 +1,5 @@
+from math import isfinite
+
 from sqlalchemy.orm import Session
 
 from app.models.element import Element
@@ -20,13 +22,18 @@ class MaterialImportService:
             if self._material_exists(candidate.mp_id):
                 continue
 
-            material = self._create_material(candidate)
+            fractions = self._resolve_element_fractions(
+                elements=candidate.elements,
+                composition_fractions=candidate.composition_fractions,
+            )
 
+            material = self._create_material(candidate)
             self.db.flush()
 
             self._link_elements(
                 material_id=material.id,
                 elements=candidate.elements,
+                fractions=fractions,
             )
 
             imported_count += 1
@@ -68,6 +75,7 @@ class MaterialImportService:
         self,
         material_id: int,
         elements: list[str],
+        fractions: dict[str, float],
     ) -> None:
         for symbol in elements:
             element = self._get_or_create_element(symbol)
@@ -76,9 +84,84 @@ class MaterialImportService:
                 MaterialElement(
                     material_id=material_id,
                     element_id=element.id,
-                    fraction=1.0,
+                    fraction=fractions[symbol],
                 )
             )
+
+    def _resolve_element_fractions(
+        self,
+        elements: list[str],
+        composition_fractions: dict[str, float],
+    ) -> dict[str, float]:
+        """
+        Return validated composition fractions for an imported candidate.
+
+        Materials Project candidates should provide normalized fractions
+        through MaterialCandidate.composition_fractions.
+
+        Legacy or manually constructed candidates may not contain structured
+        composition. In that case, preserve the historical importer behavior
+        of storing 1.0 for each element rather than inventing stoichiometry.
+        """
+        unique_elements = list(dict.fromkeys(elements))
+
+        if not unique_elements:
+            return {}
+
+        if not composition_fractions:
+            return {
+                symbol: 1.0
+                for symbol in unique_elements
+            }
+
+        missing_elements = [
+            symbol
+            for symbol in unique_elements
+            if symbol not in composition_fractions
+        ]
+
+        unexpected_elements = [
+            symbol
+            for symbol in composition_fractions
+            if symbol not in unique_elements
+        ]
+
+        if missing_elements or unexpected_elements:
+            raise ValueError(
+                "Material candidate element membership does not match "
+                "composition fractions: "
+                f"missing={missing_elements}, "
+                f"unexpected={unexpected_elements}"
+            )
+
+        validated_fractions: dict[str, float] = {}
+
+        for symbol in unique_elements:
+            fraction = float(composition_fractions[symbol])
+
+            if not isfinite(fraction) or fraction <= 0:
+                raise ValueError(
+                    "Material candidate contains an invalid composition "
+                    f"fraction for element {symbol}: {fraction!r}"
+                )
+
+            validated_fractions[symbol] = fraction
+
+        total_fraction = sum(validated_fractions.values())
+
+        if not isfinite(total_fraction) or total_fraction <= 0:
+            raise ValueError(
+                "Material candidate composition fractions must have "
+                "a positive finite total"
+            )
+
+        # Normalize again at the persistence boundary. The project adapter
+        # already normalizes Materials Project composition, but this prevents
+        # malformed internal callers from storing non-normalized weights.
+        return {
+            symbol: fraction / total_fraction
+            for symbol, fraction in validated_fractions.items()
+        }
 
     def _get_or_create_element(
         self,
