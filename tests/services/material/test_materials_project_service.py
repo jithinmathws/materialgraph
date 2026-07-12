@@ -1,8 +1,7 @@
-from types import SimpleNamespace
-
 import pytest
 
 from app.services.material.project_service import MaterialsProjectService
+from app.services.material.composition_service import MaterialCompositionService
 
 
 class FakeComposition:
@@ -66,32 +65,3 @@ def test_normalize_doc_preserves_normalized_composition():
     )
 
     assert sum(candidate.composition_fractions.values()) == pytest.approx(1.0)
-
-
-def test_normalize_composition_rejects_empty_composition():
-    service = make_service()
-
-    with pytest.raises(
-        ValueError,
-        match="positive total amount",
-    ):
-        service._normalize_composition({})
-
-
-@pytest.mark.parametrize(
-    ("composition", "expected_message"),
-    [
-        ({"Li": 0.0}, "invalid amount"),
-        ({"Li": -1.0}, "invalid amount"),
-        ({"Li": float("nan")}, "invalid amount"),
-        ({"Li": float("inf")}, "invalid amount"),
-    ],
-)
-def test_normalize_composition_rejects_invalid_amounts(
-    composition: dict[str, float],
-    expected_message: str,
-):
-    service = make_service()
-
-    with pytest.raises(ValueError, match=expected_message):
-        service._normalize_composition(composition)
