@@ -142,18 +142,109 @@ ADR-002
 
 # MG-AUD-002
 
-Status
-
-Open
-
 Title
 
 Unknown criticality evidence becomes favorable zero.
 
-Priority
+Severity
 
 High
 
-Dependencies
+Status
 
-MG-AUD-001
+✅ Resolved
+
+Resolution Version
+
+v1.9.8
+
+Affected Components
+
+- MaterialCriticalityService
+- MaterialQualityService
+- DiscoveryPathRankingService
+- ScientificPathwayService
+- RecommendationService
+- SimilarityService
+- Criticality response model
+- Quality scoring pipeline
+
+Root Cause
+
+Unknown criticality evidence could be represented as a favorable numeric
+value during downstream processing instead of remaining unknown.
+
+Scientific Impact
+
+Materials with incomplete criticality evidence could receive an
+artificially favorable quality contribution.
+
+Resolution
+
+✓ Unknown criticality now returns null instead of numeric zero.
+
+✓ Criticality aggregation excludes unknown evidence from weighted
+calculations.
+
+✓ Evidence coverage metadata added.
+
+✓ Unknown elements are explicitly reported.
+
+✓ Quality scoring no longer awards a criticality bonus when evidence is
+unknown.
+
+✓ Single and bulk criticality responses are consistent.
+
+Regression Verification
+
+✓ Criticality service tests
+
+✓ Material quality tests
+
+✓ Similarity tests
+
+✓ Recommendation tests
+
+✓ Path ranking tests
+
+✓ Scientific pathway tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The remediation only affects incomplete or unknown criticality evidence.
+Fully evidenced materials remain unchanged.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Unknown scientific evidence must remain unknown. Missing evidence should
+never be converted into favorable evidence during downstream scoring.
+
+Related Scientific Principles
+
+Principle 11
+
+Related ADR
+
+ADR-002
