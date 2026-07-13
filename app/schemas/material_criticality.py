@@ -15,7 +15,8 @@ class MaterialCriticalityElement(BaseModel):
     recyclability_score: float | None
     geopolitical_risk_score: float | None
 
-    element_criticality_score: float
+    criticality_known: bool
+    element_criticality_score: float | None
 
 
 class MaterialCriticalityResponse(BaseModel):
@@ -27,5 +28,19 @@ class MaterialCriticalityResponse(BaseModel):
     formula: str | None
 
     criticality_score: float | None
+    criticality_known: bool
+
+    criticality_profile_coverage: float
+    criticality_fraction_coverage: float
+
+    known_criticality_element_count: int
+    unknown_criticality_element_count: int
+    total_element_count: int
+
+    known_criticality_fraction: float
+    unknown_criticality_fraction: float
+
+    criticality_evidence_complete: bool
+    unknown_criticality_elements: list[str]
 
     elements: list[MaterialCriticalityElement]

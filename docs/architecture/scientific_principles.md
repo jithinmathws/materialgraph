@@ -151,3 +151,53 @@ MaterialGraph is designed as a scientific platform that evolves incrementally.
 New capabilities should strengthen existing deterministic foundations rather than replace them.
 
 The long-term vision is an explainable scientific exploration platform that combines graph intelligence, research workflows, and scientific knowledge management.
+
+---
+
+# 10. Structured Scientific Data Takes Precedence
+
+Whenever structured scientific data is available, MaterialGraph shall use it as
+the canonical source of truth.
+
+Derived or inferred representations (such as parsing chemical formulas) should
+never override structured scientific measurements.
+
+Scientific calculations should preserve the fidelity of the original data source.
+
+---
+
+# 11. Unknown Evidence Is Not Favorable Evidence
+
+Missing scientific evidence shall never be interpreted as favorable evidence.
+
+MaterialGraph distinguishes between:
+
+- known favorable evidence
+- known unfavorable evidence
+- unknown evidence
+
+Unknown evidence should remain explicit and should not improve rankings,
+scores, confidence, or recommendations.
+
+---
+
+# 12. Scientific Semantics Before Performance
+
+Performance optimizations must preserve scientific semantics.
+
+Caching, indexing, batching, graph expansion limits, or parallel execution
+must not change scientific meaning unless explicitly documented and validated.
+
+Scientific correctness always takes precedence over computational efficiency.
+
+---
+
+# 13. One Canonical Scientific Interpretation
+
+MaterialGraph should maintain a single canonical implementation for each
+scientific concept.
+
+Normalization, scoring, composition handling, and evidence interpretation
+should be implemented once and reused throughout the platform.
+
+Duplicated scientific logic increases the risk of inconsistent reasoning.
