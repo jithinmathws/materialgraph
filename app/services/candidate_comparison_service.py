@@ -70,7 +70,13 @@ class CandidateComparisonService:
     ) -> list[str]:
         reasons = []
 
-        if winner.material_risk_score < loser.material_risk_score:
+        if (
+            winner.risk_known
+            and loser.risk_known
+            and winner.material_risk_score is not None
+            and loser.material_risk_score is not None
+            and winner.material_risk_score < loser.material_risk_score
+        ):
             reasons.append(
                 f"{winner.pretty_formula} has a lower material risk score "
                 f"({winner.material_risk_score} vs {loser.material_risk_score})"

@@ -31,6 +31,17 @@ class CandidateScreeningService:
     ) -> list[CandidateScreeningResult]:
         materials = self.db.query(Material).all()
 
+        material_ids = [
+            material.id
+            for material in materials
+        ]
+
+        risk_signals_by_id = (
+            self.material_risk_service.get_material_risk_signals_bulk(
+                material_ids
+            )
+        )
+
         results = []
 
         scarce_elements = set(request.scarce_elements)
@@ -45,7 +56,8 @@ class CandidateScreeningService:
             if (
                 request.max_energy_above_hull is not None
                 and material.energy_above_hull is not None
-                and material.energy_above_hull > request.max_energy_above_hull
+                and material.energy_above_hull
+                > request.max_energy_above_hull
             ):
                 continue
 
@@ -56,19 +68,36 @@ class CandidateScreeningService:
                 avoid_elements=avoid_elements,
             )
 
-            material_risk_score = self.material_risk_service.get_material_risk_score(
-                material.id
-            )
+            risk_signal = risk_signals_by_id.get(material.id)
 
-            risk_penalty = (
-                material_risk_score * self.weights["risk_penalty_multiplier"]
-            )
+            if risk_signal is None:
+                risk_signal = self._unknown_risk_signal(
+                    material_id=material.id,
+                    element_symbols=element_symbols,
+                )
 
-            score -= risk_penalty
+            material_risk_score = risk_signal.get("risk_score")
+            risk_known = risk_signal.get("risk_known", False)
 
-            reasons.append(
-                f"Material risk score {material_risk_score} applied as penalty {round(risk_penalty, 3)}"
-            )
+            if risk_known and material_risk_score is not None:
+                risk_penalty = (
+                    material_risk_score
+                    * self.weights["risk_penalty_multiplier"]
+                )
+
+                score -= risk_penalty
+
+                reasons.append(
+                    f"Material risk score {material_risk_score} "
+                    f"applied as penalty {round(risk_penalty, 3)}"
+                )
+            else:
+                risk_penalty = 0.0
+
+                reasons.append(
+                    "Material risk evidence unavailable; "
+                    "risk penalty not applied"
+                )
 
             score = max(0.0, min(100.0, score))
 
@@ -80,6 +109,27 @@ class CandidateScreeningService:
                     pretty_formula=material.pretty_formula,
                     score=round(score, 3),
                     material_risk_score=material_risk_score,
+                    risk_known=risk_known,
+                    risk_profile_coverage=risk_signal.get(
+                        "risk_profile_coverage",
+                        0.0,
+                    ),
+                    known_risk_element_count=risk_signal.get(
+                        "known_risk_element_count",
+                        0,
+                    ),
+                    total_element_count=risk_signal.get(
+                        "total_element_count",
+                        len(element_symbols),
+                    ),
+                    risk_evidence_complete=risk_signal.get(
+                        "risk_evidence_complete",
+                        False,
+                    ),
+                    unknown_risk_elements=risk_signal.get(
+                        "unknown_risk_elements",
+                        [],
+                    ),
                     risk_penalty=round(risk_penalty, 3),
                     elements=sorted(element_symbols),
                     contains_scarce_elements=bool(
@@ -92,10 +142,15 @@ class CandidateScreeningService:
                 )
             )
 
-        ranked_results = sorted(results, key=lambda item: item.score, reverse=True)
+        ranked_results = sorted(
+            results,
+            key=lambda item: item.score,
+            reverse=True,
+        )
 
         logger.info(
-            "Screened {} candidate materials with scarce_elements={} avoid_elements={}",
+            "Screened {} candidate materials with scarce_elements={} "
+            "avoid_elements={}",
             len(ranked_results),
             request.scarce_elements,
             request.avoid_elements,
@@ -112,6 +167,23 @@ class CandidateScreeningService:
         )
 
         return {row[0] for row in rows}
+
+    def _unknown_risk_signal(
+        self,
+        material_id: int,
+        element_symbols: set[str],
+    ) -> dict:
+        return {
+            "material_id": material_id,
+            "risk_score": None,
+            "risk_known": False,
+            "risk_profile_coverage": 0.0,
+            "known_risk_element_count": 0,
+            "total_element_count": len(element_symbols),
+            "known_risk_elements": [],
+            "unknown_risk_elements": sorted(element_symbols),
+            "risk_evidence_complete": False,
+        }
 
     def _score_material(
         self,

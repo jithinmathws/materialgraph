@@ -107,3 +107,67 @@ No
 Regression Status
 
 Passed
+
+---
+
+## v1.9.9
+
+Summary
+
+Risk evidence remediation for candidate screening.
+
+Reason
+
+Resolved MG-AUD-003.
+
+Affected Components
+
+Candidate Screening
+
+Candidate Comparison
+
+Material Risk
+
+Changes
+
+Unknown Risk
+
+null remains unknown throughout screening and comparison.
+
+Risk Evidence
+
+Evidence metadata exposed in candidate screening responses.
+
+Performance
+
+Bulk risk loading replaces per-material legacy risk lookups.
+
+Scientific Changes
+
+LiFePO4 Risk
+
+No change (2.833)
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+Only unknown risk evidence handling changed.
+
+Breaking API
+
+No
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed

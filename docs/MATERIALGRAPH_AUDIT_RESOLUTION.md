@@ -248,3 +248,119 @@ Principle 11
 Related ADR
 
 ADR-002
+
+---
+
+# MG-AUD-003
+
+Title
+
+Candidate screening uses legacy unknown-risk-as-zero semantics.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.9
+
+Affected Components
+
+- CandidateScreeningService
+- CandidateComparisonService
+- MaterialRiskService
+- CandidateScreeningResult
+- CandidateComparisonResult
+
+Root Cause
+
+Candidate screening relied on the legacy numeric risk API, allowing unknown
+risk evidence to be represented as a favorable numeric zero during screening
+and comparison.
+
+Scientific Impact
+
+Candidates with incomplete risk evidence could be interpreted as having lower
+risk than fully characterized materials.
+
+Resolution
+
+✓ Candidate screening migrated to evidence-aware bulk risk signals.
+
+✓ Unknown risk remains null instead of numeric zero.
+
+✓ Risk evidence metadata exposed in screening responses.
+
+✓ Candidate comparison now compares risk only when both candidates have known
+risk evidence.
+
+✓ Unknown risk is explicitly reported instead of being interpreted as low risk.
+
+✓ Bulk risk loading replaces per-material legacy risk lookups.
+
+Regression Verification
+
+✓ Candidate screening tests
+
+✓ Candidate comparison tests
+
+✓ Risk service tests
+
+✓ Material quality tests
+
+✓ Full regression suite
+
+✓ Candidate screening endpoint verification
+
+✓ Candidate comparison endpoint verification
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Scientific Changes
+
+LiFePO4 Risk
+
+No change (2.833)
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+Only unknown risk evidence semantics changed. Fully characterized materials
+retain identical scientific scores and rankings.
+
+Performance Improvements
+
+✓ Bulk risk signal loading replaces per-material legacy risk queries.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Scientific uncertainty must be represented explicitly. Unknown evidence should
+never be interpreted as favorable evidence during screening or comparison.
+
+Related Scientific Principles
+
+Principle 11
+
+Related ADR
+
+ADR-002

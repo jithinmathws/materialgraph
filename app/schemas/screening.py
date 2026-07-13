@@ -14,7 +14,15 @@ class CandidateScreeningResult(BaseModel):
     formula: str
     pretty_formula: str
     score: float
-    material_risk_score: float
+
+    material_risk_score: float | None
+    risk_known: bool
+    risk_profile_coverage: float
+    known_risk_element_count: int
+    total_element_count: int
+    risk_evidence_complete: bool
+    unknown_risk_elements: list[str]
+
     risk_penalty: float
     elements: list[str]
     contains_scarce_elements: bool
