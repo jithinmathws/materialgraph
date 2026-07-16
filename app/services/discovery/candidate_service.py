@@ -346,37 +346,59 @@ class DiscoveryCandidateService:
         existing = candidates_by_id.get(material_id)
 
         if existing:
+            existing_score = existing["discovery_score"]
+
+            if existing_score >= adjusted_score:
+                selected_score_breakdown = dict(
+                    existing["score_breakdown"]
+                )
+            else:
+                selected_score_breakdown = {
+                    key: round(value, 2)
+                    for key, value in score_breakdown.items()
+                }
+
             existing["discovery_score"] = round(
-                max(existing["discovery_score"], adjusted_score)
+                max(existing_score, adjusted_score)
                 + SOURCE_DIVERSITY_BONUS,
                 2,
             )
+
             existing["discovery_path"] = sorted(
                 set(existing["discovery_path"]) | normalized_paths
             )
-            existing["score_breakdown"] = self.scoring_service.merge_score_breakdowns(
-                existing["score_breakdown"],
-                score_breakdown,
-            )
+
             existing["score_breakdown"] = (
                 self.scoring_service.apply_source_diversity_bonus(
-                    existing["score_breakdown"]
+                    selected_score_breakdown
                 )
             )
 
-            if existing.get("substitution_path") is None and substitution_path is not None:
+            if (
+                existing.get("substitution_path") is None
+                and substitution_path is not None
+            ):
                 existing["substitution_path"] = substitution_path
 
             existing["_explanation_parts"] = list(
-                dict.fromkeys(existing["_explanation_parts"] + explanation_parts)
+                dict.fromkeys(
+                    existing["_explanation_parts"]
+                    + explanation_parts
+                )
             )
-            existing["explanation"] = self.explanation_service.build_explanation(
-                formula=formula_for_check,
-                paths=existing["discovery_path"],
-                explanation_parts=existing["_explanation_parts"],
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
+
+            existing["explanation"] = (
+                self.explanation_service.build_explanation(
+                    formula=formula_for_check,
+                    paths=existing["discovery_path"],
+                    explanation_parts=existing[
+                        "_explanation_parts"
+                    ],
+                    avoid_element=avoid_element,
+                    prefer_element=prefer_element,
+                )
             )
+
             return
 
         explanation = self.explanation_service.build_explanation(

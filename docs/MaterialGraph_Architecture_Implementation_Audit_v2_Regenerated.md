@@ -44,20 +44,20 @@ public API responses.
 
 ## Highest-Priority Confirmed Findings
 
-### P0 --- Correctness
+### P0 --- Correctness (Resolved)
 
-1.  **MG-AUD-001 --- Materials Project composition weights are discarded
+1.  **MG-AUD-001 - Resolved (v1.9.7) --- Materials Project composition weights are discarded
     on import.**
-2.  **MG-AUD-002 --- Unknown criticality evidence can become favorable
+2.  **MG-AUD-002 - Resolved (v1.9.8) --- Unknown criticality evidence can become favorable
     numeric zero.**
-3.  **MG-AUD-003 --- Candidate screening still interprets unknown risk
+3.  **MG-AUD-003 - Resolved (v1.9.9) --- Candidate screening still interprets unknown risk
     as zero penalty.**
-4.  **MG-AUD-004 --- Raw formula substring membership can corrupt
+4.  **MG-AUD-004 - Resolved (v1.9.10) --- Raw formula substring membership can corrupt
     element-constraint scoring.**
 
 ### P1 --- Cross-Layer Semantics and Explainability
 
-5.  **MG-AUD-005 --- `preserved_framework` represents element overlap,
+5.  **MG-AUD-005 - Resolved (v1.9.11) --- `preserved_framework` represents element overlap,
     not validated structural preservation.**
 6.  **MG-AUD-006 --- Discovery score and merged score breakdown use
     incompatible aggregation semantics.**
@@ -212,11 +212,12 @@ ScenarioPolicyEvaluator
 
 ## MG-AUD-001 --- Materials Project Import Discards Composition Weighting
 
-**Status:** Confirmed\
+**Status:** Resolved\
 **Confidence:** Confirmed\
 **Priority:** P0\
 **Evidence:** Implementation + live development database\
-**Last verified:** 2026-07-11
+**Last verified:** 2026-07-13
+**Resolution version:** v1.9.7
 
 ### Finding
 
@@ -282,9 +283,11 @@ O  = 4/7
 
 ## MG-AUD-002 --- Unknown Criticality Evidence Becomes Favorable Zero
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-13\
 **Confidence:** Confirmed\
-**Priority:** P0
+**Priority:** P0\
+**Resolution version:** v1.9.8
 
 ### Finding
 
@@ -316,9 +319,11 @@ Unknown evidence can look like favorable low criticality.
 
 ## MG-AUD-003 --- Screening Uses Legacy Unknown-Risk-as-Zero Semantics
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-13\
 **Confidence:** Confirmed\
-**Priority:** P0
+**Priority:** P0\
+**Resolution version:** v1.9.9
 
 ### Finding
 
@@ -351,9 +356,11 @@ signals.
 
 ## MG-AUD-004 --- Formula Substring Membership Corrupts Element Constraints
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-16\
 **Confidence:** Confirmed\
-**Priority:** P0
+**Priority:** P0\
+**Resolution version:** v1.9.10
 
 ### Finding
 
@@ -391,9 +398,11 @@ Pass structured element sets into scoring rather than formula strings.
 
 ## MG-AUD-005 --- `preserved_framework` Is Element Overlap, Not Structural Preservation
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-16\
 **Confidence:** Confirmed\
-**Priority:** P1
+**Priority:** P1\
+**Resolution version:** v1.9.11
 
 ### Finding
 
@@ -421,10 +430,48 @@ element overlap
 → public API
 ```
 
-### Recommended Action
+### Resolution
 
-Correct or qualify the canonical source semantics before changing
-downstream fields.
+✓ Introduced canonical `shared_elements` metadata.
+
+✓ Preserved `preserved_framework` as a backward-compatible alias.
+
+✓ Added `preservation_basis = "element_overlap"`.
+
+✓ Added `structural_preservation_validated = false`.
+
+✓ Qualified researcher-facing wording throughout discovery,
+ranking, evidence, comparison, and research layers.
+
+✓ Distinguished deterministic element continuity from validated
+structural preservation while preserving scientific scores and API
+compatibility.
+
+### Regression Verification
+
+✓ Transition validation tests
+
+✓ Substitution path tests
+
+✓ Scientific pathway tests
+
+✓ Research evidence tests
+
+✓ Comparative research tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Scientific Impact
+
+Scientific semantics and evidence provenance improved.
+
+No numerical scientific scores changed.
+
+LiFePO4 Scientific Usefulness
+
+95.65 → 95.65
 
 ------------------------------------------------------------------------
 
@@ -1351,7 +1398,7 @@ Actions:
 
 ## Phase 6 --- Scientific Terminology
 
-1.  Correct canonical framework semantics.
+1.  ✓ Correct canonical framework semantics.
 2.  Qualify family/substitution wording.
 3.  Separate internal deterministic support from external evidence.
 4.  Update public schemas with compatibility planning.
@@ -1634,14 +1681,13 @@ MaterialGraph has a strong deterministic architecture, but several
 upstream data and semantic conventions propagate into ranking, evidence,
 comparison, and public meaning.
 
-The next implementation focus should be:
+The highest-priority correctness remediations
+(MG-AUD-001 through MG-AUD-005) have been completed and verified.
 
-``` text
-fix importer fractions
-→ backfill 28 real materials
-→ rerun criticality
-→ inspect downstream score changes
-```
+The next implementation focus should continue with the remaining
+scientific semantics, evidence, and scoring findings while preserving
+deterministic reasoning, API compatibility, and the verified
+LiFePO4 → Na/phosphate reference workflow.
 
 No new major capability should be added until upstream correctness fixes
 are characterized and verified.
@@ -1699,10 +1745,12 @@ changes scientific semantics or introduces new scoring capabilities.
 Implementation should now focus on the existing confirmed findings in
 roadmap order:
 
-1.  MG-AUD-001 --- Materials Project composition fractions
-2.  MG-AUD-002 --- Evidence-aware criticality semantics
-3.  MG-AUD-003 --- Migrate screening to evidence-aware risk
-4.  MG-AUD-004 --- Structured element membership
+The initial correctness remediation phase has been completed
+(MG-AUD-001 through MG-AUD-005).
+
+Future audit work should continue with the remaining confirmed
+semantic, evidence, ranking, and performance findings in roadmap
+priority order.
 
 After each remediation:
 

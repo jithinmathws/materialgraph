@@ -501,3 +501,133 @@ Principle 11
 Related ADR
 
 ADR-002
+
+---
+
+# MG-AUD-005
+
+Title
+
+Element overlap represented as validated framework preservation.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.11
+
+Affected Components
+
+- DiscoveryTransitionValidator
+- DiscoverySubstitutionPathService
+- DiscoveryChainService
+- DiscoveryPathRankingService
+- ScientificPathwayAnalysisService
+- ResearchEvidenceIntelligenceService
+- ComparativeResearchIntelligenceService
+- ResearchObjectiveExplorationService
+- Discovery response schemas
+- Scientific pathway schemas
+
+Root Cause
+
+Shared chemical element overlap was exposed and described as framework
+preservation even though the deterministic engine does not validate
+crystallographic framework continuity.
+
+Scientific Impact
+
+Researcher-facing explanations could overstate the available scientific
+evidence by implying validated structural preservation rather than
+deterministic element continuity.
+
+Resolution
+
+✓ Introduced canonical shared_elements metadata.
+
+✓ Preserved preserved_framework as a backward-compatible compatibility
+alias.
+
+✓ Added preservation_basis metadata.
+
+✓ Added structural_preservation_validated metadata.
+
+✓ Qualified researcher-facing explanations throughout the discovery and
+research layers.
+
+✓ Distinguished deterministic evidence from experimental validation.
+
+Regression Verification
+
+✓ Transition validation tests
+
+✓ Substitution path tests
+
+✓ Scientific pathway tests
+
+✓ Research evidence tests
+
+✓ Comparative intelligence tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The remediation corrects scientific semantics and evidence provenance
+without modifying deterministic scoring or pathway ranking.
+
+Performance Improvements
+
+✓ Existing transition metadata reused.
+
+✓ No additional database queries introduced.
+
+✓ API compatibility preserved through legacy aliases.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Deterministic compositional evidence and validated structural evidence
+represent different scientific claims.
+
+Research systems should communicate the strongest claim supported by the
+available evidence and explicitly qualify inferred relationships.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002

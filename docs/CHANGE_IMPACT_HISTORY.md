@@ -265,3 +265,106 @@ Reference Workflow
 Verified
 
 LiFePO4 → Na phosphate objective unchanged.
+
+---
+
+## v1.9.11
+
+Summary
+
+Framework preservation semantic qualification.
+
+Reason
+
+Resolved MG-AUD-005.
+
+Affected Components
+
+Discovery Transition Validation
+
+Substitution Path Analysis
+
+Discovery Chains
+
+Scientific Pathway Analysis
+
+Research Evidence Intelligence
+
+Comparative Research Intelligence
+
+Research Objective Exploration
+
+Changes
+
+Scientific Semantics
+
+Element overlap is now represented explicitly as shared-element continuity.
+
+Transition Metadata
+
+Introduced canonical shared_elements metadata while preserving
+preserved_framework as a backward-compatible alias.
+
+Scientific Provenance
+
+Added:
+
+- preservation_basis = "element_overlap"
+- structural_preservation_validated = false
+
+Research Evidence
+
+Research-facing explanations now distinguish deterministic
+shared-element continuity from experimentally validated structural
+preservation.
+
+Scientific Pathway Analysis
+
+Scientific facts now expose explicit preservation provenance and
+qualified terminology.
+
+Comparative Intelligence
+
+Comparative element highlights preserve API compatibility while exposing
+semantic metadata describing the underlying evidence.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+This remediation improves scientific semantics and evidence provenance
+without changing deterministic scoring or pathway ranking.
+
+Performance
+
+No measurable performance impact.
+
+Breaking API
+
+No
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Reference Workflow
+
+Verified
+
+LiFePO4 → Na phosphate objective unchanged.
