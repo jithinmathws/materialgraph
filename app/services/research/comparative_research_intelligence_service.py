@@ -222,7 +222,14 @@ class ComparativeResearchIntelligenceService:
         }
 
     def _humanize(self, value: str) -> str:
-        return value.replace("_", " ").capitalize()
+        labels = {
+            "framework_preservation": "Shared-element continuity",
+        }
+
+        return labels.get(
+            value,
+            value.replace("_", " ").capitalize(),
+        )
 
     def _rank_sort_value(
         self,
@@ -478,7 +485,10 @@ class ComparativeResearchIntelligenceService:
             )
             self._collect_element_roles(
                 element_roles=element_roles,
-                elements=facts.get("preserved_framework", []),
+                elements=(
+                    facts.get("shared_elements")
+                    or facts.get("preserved_framework", [])
+                ),
                 role="preserved_framework",
                 rank=rank,
             )
@@ -529,6 +539,16 @@ class ComparativeResearchIntelligenceService:
         return {
             "element": element,
             "role": role,
+            "role_semantics": (
+                "element_overlap"
+                if role == "preserved_framework"
+                else role
+            ),
+            "structural_preservation_validated": (
+                False
+                if role == "preserved_framework"
+                else None
+            ),
             "appears_in_pathway_ranks": ranks,
             "potential_signal": self._element_potential_signal(
                 element=element,
@@ -564,8 +584,9 @@ class ComparativeResearchIntelligenceService:
 
         if role == "preserved_framework":
             return (
-                f"{element} appears as part of preserved framework chemistry in "
-                f"{len(ranks)} compared pathway(s)."
+                f"{element} appears as a shared element across "
+                f"{len(ranks)} compared pathway(s). "
+                "This indicates element overlap, not validated structural preservation."
             )
 
         return (
@@ -593,8 +614,8 @@ class ComparativeResearchIntelligenceService:
 
         if role == "preserved_framework":
             return (
-                f"Verify whether {element}-containing framework chemistry remains "
-                "stable, functional, and experimentally plausible."
+                f"Verify whether shared {element} membership corresponds to meaningful "
+                "structural or functional continuity."
             )
 
         return (

@@ -276,15 +276,15 @@ class DiscoveryChainService:
             for transition in transitions
         ]
 
-        preserved_frameworks = [
-            set(transition["preserved_framework"])
+        shared_element_sets = [
+            set(transition.get("shared_elements") or transition.get("preserved_framework", []))
             for transition in transitions
-            if transition["preserved_framework"]
+            if transition.get("shared_elements") or transition.get("preserved_framework")
         ]
 
-        common_framework = sorted(
-            set.intersection(*preserved_frameworks)
-            if preserved_frameworks
+        common_shared_elements = sorted(
+            set.intersection(*shared_element_sets)
+            if shared_element_sets
             else set()
         )
 
@@ -293,9 +293,9 @@ class DiscoveryChainService:
             + " → ".join(transition_types)
         )
 
-        if common_framework:
+        if common_shared_elements:
             reason += (
-                f" while preserving {'-'.join(common_framework)} chemistry"
+                f" with {'-'.join(common_shared_elements)} shared-element continuity"
             )
 
         return reason + "."

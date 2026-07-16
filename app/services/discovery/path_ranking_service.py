@@ -67,24 +67,24 @@ class DiscoveryPathRankingService:
         if not transitions:
             return 0.0
 
-        preserved_sets = [
-            set(transition.get("preserved_framework", []))
+        shared_element_sets = [
+            set(transition.get("shared_elements") or transition.get("preserved_framework", []))
             for transition in transitions
-            if transition.get("preserved_framework")
+            if transition.get("shared_elements") or transition.get("preserved_framework")
         ]
 
-        if not preserved_sets:
+        if not shared_element_sets:
             return 0.0
 
-        common_framework = set.intersection(*preserved_sets)
+        common_shared_elements = set.intersection(*shared_element_sets)
 
-        if {"P", "O"}.issubset(common_framework):
+        if {"P", "O"}.issubset(common_shared_elements):
             return self.FRAMEWORK_WEIGHT
 
-        if "O" in common_framework:
+        if "O" in common_shared_elements:
             return round(self.FRAMEWORK_WEIGHT * 0.7, 2)
 
-        if common_framework:
+        if common_shared_elements:
             return round(self.FRAMEWORK_WEIGHT * 0.5, 2)
 
         return 0.0
@@ -173,15 +173,15 @@ class DiscoveryPathRankingService:
         if not transitions:
             return "No discovery path was available for ranking."
 
-        preserved_sets = [
-            set(transition.get("preserved_framework", []))
+        shared_element_sets = [
+            set(transition.get("shared_elements") or transition.get("preserved_framework", []))
             for transition in transitions
-            if transition.get("preserved_framework")
+            if transition.get("shared_elements") or transition.get("preserved_framework")
         ]
 
-        common_framework = sorted(
-            set.intersection(*preserved_sets)
-            if preserved_sets
+        common_shared_elements = sorted(
+            set.intersection(*shared_element_sets)
+            if shared_element_sets
             else set()
         )
 
@@ -202,9 +202,9 @@ class DiscoveryPathRankingService:
         if prefer_element and prefer_element in introduced_elements:
             reasons.append(f"introduces preferred element {prefer_element}")
 
-        if common_framework:
+        if common_shared_elements:
             reasons.append(
-                f"preserves {'-'.join(common_framework)} framework chemistry"
+                f"maintains {'-'.join(common_shared_elements)} shared-element continuity"
             )
 
         if transition_types:

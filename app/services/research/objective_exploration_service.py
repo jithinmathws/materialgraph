@@ -101,7 +101,7 @@ class ResearchObjectiveExplorationService:
                 score -= 25.0 if mode != "exploratory" else 10.0
 
         for transition in transitions:
-            preserved = set(transition.get("preserved_framework", []))
+            preserved = set(transition.get("shared_elements") or transition.get("preserved_framework", []))
             required = set(objective.preserve_elements)
 
             if required and required.issubset(preserved):
@@ -132,10 +132,11 @@ class ResearchObjectiveExplorationService:
             if transition_type:
                 reasons.append(f"Connected through {transition_type} pathway.")
 
-            preserved = transition.get("preserved_framework", [])
-            if preserved:
+            shared_elements = transition.get("shared_elements") or transition.get("preserved_framework", [])
+            if shared_elements:
                 reasons.append(
-                    f"Preserves framework elements: {', '.join(preserved)}."
+                    f"Shares elements across the transition: {', '.join(shared_elements)}. "
+                    "Structural preservation is not validated."
                 )
 
         return list(dict.fromkeys(reasons))
@@ -172,7 +173,7 @@ class ResearchObjectiveExplorationService:
     def _build_explanation(self, mode: str) -> str:
         return (
             "Research Objective Exploration combines existing objective chains, "
-            "scientific transitions, framework preservation, preferred elements, "
+            "scientific transitions, shared-element continuity, preferred elements, "
             "avoid-element warnings, and exploration mode into a ranked research view. "
             f"Current mode: {mode}."
         )

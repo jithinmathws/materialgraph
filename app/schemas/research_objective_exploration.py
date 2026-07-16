@@ -42,7 +42,10 @@ class ConfidenceExplanation(BaseModel):
 
 class ScientificFacts(BaseModel):
     transition_types: list[str]
+    shared_elements: list[str] = Field(default_factory=list)
     preserved_framework: list[str]
+    preservation_basis: str = "element_overlap"
+    structural_preservation_validated: bool = False
     removed_elements: list[str]
     introduced_elements: list[str]
     material_quality: list[dict]

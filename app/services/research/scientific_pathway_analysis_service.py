@@ -107,7 +107,10 @@ class ScientificPathwayAnalysisService:
             "score_breakdown": chain.get("score_breakdown", {}),
             "scientific_facts": {
                 "transition_types": self._transition_types(transitions),
-                "preserved_framework": self._common_preserved_framework(transitions),
+                "shared_elements": self._common_shared_elements(transitions),
+                "preserved_framework": self._common_shared_elements(transitions),
+                "preservation_basis": "element_overlap",
+                "structural_preservation_validated": False,
                 "removed_elements": self._collect_elements(transitions, "removed_elements"),
                 "introduced_elements": self._collect_elements(transitions, "introduced_elements"),
                 "material_quality": quality,
@@ -146,17 +149,17 @@ class ScientificPathwayAnalysisService:
             if transition.get("transition_type")
         })
 
-    def _common_preserved_framework(self, transitions: list[dict]) -> list[str]:
-        preserved_sets = [
+    def _common_shared_elements(self, transitions: list[dict]) -> list[str]:
+        shared_element_sets = [
             set(transition.get("preserved_framework", []))
             for transition in transitions
             if transition.get("preserved_framework")
         ]
 
-        if not preserved_sets:
+        if not shared_element_sets:
             return []
 
-        return sorted(set.intersection(*preserved_sets))
+        return sorted(set.intersection(*shared_element_sets))
 
     def _collect_elements(self, transitions: list[dict], key: str) -> list[str]:
         elements = set()
@@ -172,7 +175,7 @@ class ScientificPathwayAnalysisService:
         breakdown = chain.get("score_breakdown", {})
         removed = self._collect_elements(transitions, "removed_elements")
         introduced = self._collect_elements(transitions, "introduced_elements")
-        preserved = self._common_preserved_framework(transitions)
+        shared_elements = self._common_shared_elements(transitions)
         transition_types = self._transition_types(transitions)
 
         if removed:
@@ -185,9 +188,10 @@ class ScientificPathwayAnalysisService:
                 f"Introduces target or alternative element(s): {', '.join(introduced)}."
             )
 
-        if preserved:
+        if shared_elements:
             strengths.append(
-                f"Preserves shared framework chemistry: {'-'.join(preserved)}."
+                f"Maintains shared-element continuity: {'-'.join(shared_elements)}. "
+                "Structural preservation is not validated."
             )
 
         if "alkali_substitution" in transition_types:
@@ -255,25 +259,44 @@ class ScientificPathwayAnalysisService:
 
         return "low"
 
-    def _confidence(self, score: float, chain: dict, quality_summary: dict) -> dict:
-        reasons = []
+    def _confidence(
+        self,
+        score: float,
+        chain: dict,
+        quality_summary: dict,
+    ) -> dict:
+        reasons: list[str] = []
         breakdown = chain.get("score_breakdown", {})
 
         if breakdown.get("framework_preservation", 0.0) >= 20:
-            reasons.append("Framework preservation score is strong.")
+            reasons.append(
+                "Shared-element continuity contributes strongly under the current "
+                "deterministic model; structural preservation has not been validated."
+            )
 
         if breakdown.get("objective_alignment", 0.0) >= 20:
-            reasons.append("Pathway aligns well with the stated objective.")
+            reasons.append(
+                "The pathway aligns well with the stated research objective."
+            )
 
         if breakdown.get("transition_plausibility", 0.0) >= 15:
-            reasons.append("Transition plausibility is high.")
+            reasons.append(
+                "Transition plausibility is strong under the encoded deterministic rules."
+            )
 
         if quality_summary.get("average_quality_score", 0.0) >= 12:
-            reasons.append("Average material quality is strong.")
+            reasons.append(
+                "Average material quality is strong based on the currently available "
+                "material-property evidence."
+            )
 
         return {
             "level": self._confidence_level(score),
-            "reasons": reasons or ["Confidence is based on the total scientific usefulness score."],
+            "reasons": reasons
+            or [
+                "Confidence reflects the deterministic scientific usefulness score "
+                "and does not represent experimental validation."
+            ],
         }
 
     def _next_investigation(self, score: float) -> str:

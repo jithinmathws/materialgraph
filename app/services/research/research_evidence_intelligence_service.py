@@ -33,10 +33,10 @@ class ResearchEvidenceIntelligenceService:
 
         if score_breakdown.get("framework_preservation", 0.0) >= 20:
             signals.append({
-                "statement": "Framework chemistry is preserved.",
+                "statement": "Shared-element continuity is identified across the pathway.",
                 "source_service": "DiscoveryPathRankingService",
                 "derived_from": "framework_preservation",
-                "confidence": "high",
+                "confidence": "moderate",
             })
 
         if score_breakdown.get("objective_alignment", 0.0) >= 20:
@@ -63,13 +63,14 @@ class ResearchEvidenceIntelligenceService:
                 "confidence": "high",
             })
 
-        preserved = scientific_facts.get("preserved_framework", [])
-        if preserved:
+        shared_elements = scientific_facts.get("shared_elements") or scientific_facts.get("preserved_framework", [])
+        if shared_elements:
             signals.append({
-                "statement": f"Preserved framework chemistry identified: {'-'.join(preserved)}.",
+                "statement": (f"Shared elements identified across transitions: {'-'.join(shared_elements)}. "
+                              "Structural preservation is not validated."),
                 "source_service": "DiscoveryChainService",
-                "derived_from": "preserved_framework",
-                "confidence": "high",
+                "derived_from": "element_overlap",
+                "confidence": "moderate",
             })
 
         removed = scientific_facts.get("removed_elements", [])
@@ -128,10 +129,11 @@ class ResearchEvidenceIntelligenceService:
         scientific_facts = opportunity.get("scientific_facts", {})
         quality_summary = opportunity.get("quality_summary", {})
 
-        if scientific_facts.get("preserved_framework"):
+        if scientific_facts.get("shared_elements") or scientific_facts.get("preserved_framework"):
             weak.append({
-                "assumption": "Framework preservation may indicate related chemical behavior.",
-                "based_on": "preserved_framework transition field",
+                "assumption": ("Shared-element continuity may indicate compositional relatedness, "
+                               "but does not establish structural preservation."),
+                "based_on": "element-overlap transition metadata",
                 "requires_validation": True,
             })
 
@@ -175,8 +177,8 @@ class ResearchEvidenceIntelligenceService:
         if score_breakdown.get("framework_preservation", 0.0) >= 20:
             priorities.append({
                 "priority": priority,
-                "action": "Validate framework preservation.",
-                "reason": "Framework preservation is a major contributor to scientific usefulness.",
+                "action": "Validate whether shared-element continuity corresponds to structural preservation.",
+                "reason": "Element overlap is a major contributor to the current scientific usefulness score.",
             })
             priority += 1
 

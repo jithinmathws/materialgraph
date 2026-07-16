@@ -49,7 +49,8 @@ class DiscoveryTransitionValidator:
             relationships=relationships,
         )
 
-        preserved_framework = sorted(set(from_elements) & set(to_elements))
+        shared_elements = sorted(set(from_elements) & set(to_elements))
+        preserved_framework = shared_elements  # Backward-compatible alias.
         removed_elements = sorted(set(from_elements) - set(to_elements))
         introduced_elements = sorted(set(to_elements) - set(from_elements))
 
@@ -65,7 +66,7 @@ class DiscoveryTransitionValidator:
             to_formula=to_material["formula"],
             transition_type=transition_type,
             family=family,
-            preserved_framework=preserved_framework,
+            shared_elements=shared_elements,
             removed_elements=removed_elements,
             introduced_elements=introduced_elements,
             prefer_element=prefer_element,
@@ -79,7 +80,10 @@ class DiscoveryTransitionValidator:
             "transition_type": transition_type,
             "family": family,
             "reason": reason,
+            "shared_elements": shared_elements,
             "preserved_framework": preserved_framework,
+            "preservation_basis": "element_overlap",
+            "structural_preservation_validated": False,
             "removed_elements": removed_elements,
             "introduced_elements": introduced_elements,
         }
@@ -156,7 +160,7 @@ class DiscoveryTransitionValidator:
         to_formula: str,
         transition_type: str,
         family: str | None,
-        preserved_framework: list[str],
+        shared_elements: list[str],
         removed_elements: list[str],
         introduced_elements: list[str],
         prefer_element: str | None,
@@ -169,10 +173,11 @@ class DiscoveryTransitionValidator:
                 f"{', '.join(introduced_elements)}"
             )
 
-        if preserved_framework:
+        if shared_elements:
             parts.append(
-                f"preserving {'-'.join(preserved_framework)} chemistry"
+                f"sharing {'-'.join(shared_elements)} elements"
             )
+            parts.append("structural preservation is not validated")
 
         if transition_type == "family_expansion" and family:
             parts.append(f"expanding within the {family} material family")

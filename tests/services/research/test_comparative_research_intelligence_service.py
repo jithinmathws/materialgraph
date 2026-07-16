@@ -380,7 +380,10 @@ def test_comparative_element_highlights_include_preserved_framework_elements():
 
     assert fe_highlight["appears_in_pathway_ranks"] == [1]
     assert "Fe" in fe_highlight["potential_signal"]
-    assert "Fe-containing framework chemistry" in fe_highlight["researcher_action"]
+    assert "shared Fe membership" in fe_highlight["researcher_action"]
+    assert "structural or functional continuity" in fe_highlight["researcher_action"]
+    assert fe_highlight["role_semantics"] == "element_overlap"
+    assert fe_highlight["structural_preservation_validated"] is False
     assert fe_highlight["requires_validation"] is True
 
 
