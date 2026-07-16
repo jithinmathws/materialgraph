@@ -1,3 +1,6 @@
+from app.utils.chemical_formula import contains_element
+
+
 class DiscoveryWarningService:
     def build_warnings(
         self,
@@ -45,7 +48,10 @@ class DiscoveryWarningService:
         element: str,
     ) -> bool:
         return any(
-            element in candidate["formula"]
+            contains_element(
+                candidate.get("pretty_formula") or candidate.get("formula"),
+                element,
+            )
             for candidate in candidates
         )
 
@@ -55,6 +61,9 @@ class DiscoveryWarningService:
         element: str,
     ) -> bool:
         return all(
-            element in candidate["formula"]
+            contains_element(
+                candidate.get("pretty_formula") or candidate.get("formula"),
+                element,
+            )
             for candidate in candidates
         )

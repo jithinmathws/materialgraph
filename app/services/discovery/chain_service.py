@@ -10,6 +10,7 @@ from app.models.material_element import MaterialElement
 from app.services.discovery.candidate_service import DiscoveryCandidateService
 from app.services.discovery.transition_validator import DiscoveryTransitionValidator
 from app.services.material.family_service import MaterialFamilyService
+from app.utils.chemical_formula import extract_elements
 
 class DiscoveryChainService:
     DEFAULT_MAX_HOPS = 2
@@ -107,6 +108,7 @@ class DiscoveryChainService:
                 material_id=current_material["material_id"],
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
+                elements_map=elements_map,
             )
             logger.info(
                 "Next candidates for material {} took {:.3f}s count={}",
@@ -169,6 +171,7 @@ class DiscoveryChainService:
         material_id: int,
         avoid_element: str | None,
         prefer_element: str | None,
+        elements_map: dict[int, list[str]],
     ) -> list[dict]:
         cache_key = (material_id, avoid_element, prefer_element)
 
@@ -186,8 +189,18 @@ class DiscoveryChainService:
                 continue
 
             formula = candidate.get("pretty_formula") or candidate.get("formula") or ""
+            candidate_id = candidate["material_id"]
 
-            if prefer_element and prefer_element not in formula:
+            if candidate_id in elements_map:
+                candidate_elements: set[str] | None = set(elements_map[candidate_id])
+            else:
+                parsed_elements = extract_elements(formula)
+                candidate_elements = parsed_elements or None
+
+            if prefer_element and (
+                candidate_elements is None
+                or prefer_element not in candidate_elements
+            ):
                 continue
 
             candidates.append(candidate)

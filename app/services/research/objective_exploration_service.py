@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.services.research.objective_service import ResearchObjectiveService
+from app.utils.chemical_formula import contains_element
 
 
 class ResearchObjectiveExplorationService:
@@ -92,11 +93,11 @@ class ResearchObjectiveExplorationService:
         formula = material.get("formula", "")
 
         for element in objective.prefer_elements:
-            if element in formula:
+            if contains_element(formula, element):
                 score += 15.0
 
         for element in objective.avoid_elements:
-            if element in formula:
+            if contains_element(formula, element):
                 score -= 25.0 if mode != "exploratory" else 10.0
 
         for transition in transitions:
@@ -123,7 +124,7 @@ class ResearchObjectiveExplorationService:
         formula = material.get("formula", "")
 
         for element in objective.prefer_elements:
-            if element in formula:
+            if contains_element(formula, element):
                 reasons.append(f"Candidate contains preferred element {element}.")
 
         for transition in transitions:
@@ -145,7 +146,7 @@ class ResearchObjectiveExplorationService:
         formula = material.get("formula", "")
 
         for element in objective.avoid_elements:
-            if element in formula:
+            if contains_element(formula, element):
                 message = f"Candidate still contains avoided element {element}."
                 if mode == "strict":
                     message += " Strict mode should treat this as a hard rejection."

@@ -171,3 +171,97 @@ No
 Regression Status
 
 Passed
+
+---
+
+## v1.9.10
+
+Summary
+
+Exact element membership remediation.
+
+Reason
+
+Resolved MG-AUD-004.
+
+Affected Components
+
+Discovery Candidate Scoring
+
+Discovery Chain Search
+
+Discovery Warning Generation
+
+Research Objective Exploration
+
+Chemical Formula Membership
+
+Changes
+
+Element Membership
+
+Exact chemical element membership replaces raw formula substring matching.
+
+Candidate Scoring
+
+Preferred and avoided element scoring now uses structured element
+membership instead of string matching.
+
+Discovery Chains
+
+Candidate expansion now uses exact element membership during preferred
+element filtering.
+
+Research Objective Exploration
+
+Scoring, researcher reasons, and warnings now use exact element
+membership.
+
+Warnings
+
+Researcher-facing warnings no longer rely on substring matching.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The Li/Na phosphate reference workflow already used unambiguous element
+symbols. The remediation corrects ambiguous element symbol handling
+(e.g. N vs Na, S vs Si, C vs Ca) without changing valid scientific
+results.
+
+Performance
+
+Structured MaterialElement membership reused where already available.
+
+Formula parsing only used where structured membership is unavailable.
+
+Breaking API
+
+No
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Reference Workflow
+
+Verified
+
+LiFePO4 → Na phosphate objective unchanged.

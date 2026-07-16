@@ -77,25 +77,28 @@ class DiscoveryScoringService:
         score: float,
         score_breakdown: dict[str, float],
         paths: set[str],
-        formula: str,
+        candidate_elements: set[str] | None,
         avoid_element: str | None,
         prefer_element: str | None,
     ) -> tuple[float, dict[str, float], set[str]]:
         score_breakdown = dict(score_breakdown)
 
-        if prefer_element and prefer_element in formula:
+        if candidate_elements is None:
+            return score, score_breakdown, paths
+
+        if prefer_element and prefer_element in candidate_elements:
             score += PREFERRED_ELEMENT_BONUS
             paths.add("preferred_element")
             score_breakdown["preferred_element_bonus"] = PREFERRED_ELEMENT_BONUS
 
-        if avoid_element and avoid_element not in formula:
+        if avoid_element and avoid_element not in candidate_elements:
             score += AVOIDED_ELEMENT_REMOVED_BONUS
             paths.add("avoided_element_removed")
             score_breakdown["avoided_element_removed_bonus"] = (
                 AVOIDED_ELEMENT_REMOVED_BONUS
             )
 
-        if avoid_element and avoid_element in formula:
+        if avoid_element and avoid_element in candidate_elements:
             score -= AVOIDED_ELEMENT_PRESENT_PENALTY
             paths.add("contains_avoided_element")
             score_breakdown["avoided_element_present_penalty"] = (

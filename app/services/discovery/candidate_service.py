@@ -11,6 +11,7 @@ from app.services.material.recommendation_service import MaterialRecommendationS
 from app.services.discovery.warning_service import DiscoveryWarningService
 from app.models.element import Element
 from app.models.material_element import MaterialElement
+from app.utils.chemical_formula import extract_elements
 from app.services.discovery.substitution_path_service import (
     DiscoverySubstitutionPathService,
 )
@@ -82,6 +83,7 @@ class DiscoveryCandidateService:
                         avoid_element=avoid_element,
                         prefer_element=prefer_element,
                         limit=limit,
+                        elements_map=elements_map,
                     )
 
             if include_scenarios:
@@ -94,6 +96,7 @@ class DiscoveryCandidateService:
                         avoid_element=avoid_element,
                         prefer_element=prefer_element,
                         limit=limit,
+                        elements_map=elements_map,
                     )
 
             with timed_block(
@@ -206,6 +209,11 @@ class DiscoveryCandidateService:
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
                 substitution_path=substitution_path,
+                candidate_elements=self._resolve_candidate_elements(
+                    material_id=candidate["material_id"],
+                    formula=candidate_formula,
+                    elements_map=elements_map,
+                ),
             )
 
     def _add_recommendation_candidates(
@@ -215,6 +223,7 @@ class DiscoveryCandidateService:
         limit: int,
         avoid_element: str | None,
         prefer_element: str | None,
+        elements_map: dict[int, list[str]],
     ) -> None:
         recommendation_limit = min(limit * 3, 20)
         recommendation_result = self.recommendation_service.get_recommendations(
@@ -243,6 +252,11 @@ class DiscoveryCandidateService:
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
+                candidate_elements=self._resolve_candidate_elements(
+                    material_id=candidate["material_id"],
+                    formula=candidate["pretty_formula"] or candidate["formula"],
+                    elements_map=elements_map,
+                ),
             )
 
     def _add_scenario_candidates(
@@ -252,6 +266,7 @@ class DiscoveryCandidateService:
         limit: int,
         avoid_element: str | None,
         prefer_element: str | None,
+        elements_map: dict[int, list[str]],
     ) -> None:
         recommendation_limit = min(limit * 3, 20)
         if not avoid_element and not prefer_element:
@@ -291,6 +306,11 @@ class DiscoveryCandidateService:
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
+                candidate_elements=self._resolve_candidate_elements(
+                    material_id=candidate["material_id"],
+                    formula=candidate["pretty_formula"] or candidate["formula"],
+                    elements_map=elements_map,
+                ),
             )
 
     def _upsert_candidate(
@@ -307,6 +327,7 @@ class DiscoveryCandidateService:
         prefer_element: str | None,
         score_breakdown: dict[str, float],
         substitution_path: dict | None = None,
+        candidate_elements: set[str] | None = None,
     ) -> None:
         formula_for_check = pretty_formula or formula
         normalized_paths = set(paths)
@@ -316,7 +337,7 @@ class DiscoveryCandidateService:
                 score=score,
                 score_breakdown=score_breakdown,
                 paths=normalized_paths,
-                formula=formula_for_check,
+                candidate_elements=candidate_elements,
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
             )
@@ -381,6 +402,19 @@ class DiscoveryCandidateService:
             "_explanation_parts": explanation_parts,
             "substitution_path": substitution_path,
         }
+
+
+    def _resolve_candidate_elements(
+        self,
+        material_id: int,
+        formula: str | None,
+        elements_map: dict[int, list[str]],
+    ) -> set[str] | None:
+        if material_id in elements_map:
+            return set(elements_map[material_id])
+
+        parsed_elements = extract_elements(formula)
+        return parsed_elements or None
 
     def _empty_response(
         self,

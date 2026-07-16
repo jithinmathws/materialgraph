@@ -1,7 +1,7 @@
 # MaterialGraph Architecture & Implementation Audit Resolution
 
-Version: 1.0
-Last Updated: 2026-07-13
+Version: 1.1
+Last Updated: 2026-07-16
 
 ---
 
@@ -358,6 +358,143 @@ Scientific uncertainty must be represented explicitly. Unknown evidence should
 never be interpreted as favorable evidence during screening or comparison.
 
 Related Scientific Principles
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
+---
+
+# MG-AUD-004
+
+Title
+
+Formula substring matching used instead of exact chemical element
+membership.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.10
+
+Affected Components
+
+- DiscoveryScoringService
+- DiscoveryCandidateService
+- DiscoveryChainService
+- DiscoveryWarningService
+- ResearchObjectiveExplorationService
+
+Root Cause
+
+Multiple discovery services determined preferred and avoided element
+membership using raw string matching against chemical formulas.
+
+Examples included:
+
+- N matching Na
+- S matching Si
+- C matching Ca
+
+Scientific Impact
+
+Ambiguous chemical element symbols could:
+
+- incorrectly award preferred element bonuses
+- incorrectly remove avoided element penalties
+- admit incorrect discovery chains
+- generate incorrect researcher explanations
+- generate incorrect researcher warnings
+
+Resolution
+
+✓ Discovery candidate scoring now uses structured MaterialElement
+membership.
+
+✓ Discovery chain expansion now uses exact element membership.
+
+✓ Discovery warnings now use canonical chemical element parsing.
+
+✓ Research objective exploration scoring, explanations, and warnings now
+use exact element membership.
+
+✓ Existing chemical_formula utilities reused as the canonical parser
+where structured membership is unavailable.
+
+Regression Verification
+
+✓ Discovery scoring tests
+
+✓ Discovery chain tests
+
+✓ Discovery warning tests
+
+✓ Research objective exploration tests
+
+✓ Chemical formula membership tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The reference workflow already used exact, unambiguous element symbols.
+The remediation affects only ambiguous symbol comparisons while
+preserving valid scientific rankings.
+
+Performance Improvements
+
+✓ Structured MaterialElement membership reused where available.
+
+✓ Existing canonical formula parser reused elsewhere.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Chemical formulas are structured scientific data.
+
+Scientific reasoning must compare exact chemical element symbols rather
+than raw string fragments.
+
+Unknown or ambiguous representations must never influence scientific
+reasoning.
+
+Related Scientific Principles
+
+Principle 10
 
 Principle 11
 
