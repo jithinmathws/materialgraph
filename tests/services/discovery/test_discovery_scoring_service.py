@@ -70,3 +70,30 @@ def test_unknown_membership_is_not_treated_as_favorable_absence():
     assert score == 100.0
     assert breakdown == {}
     assert paths == set()
+
+
+def test_source_diversity_bonus_counts_distinct_sources_only():
+    service = DiscoveryScoringService()
+
+    assert service.calculate_source_diversity_bonus(set()) == 0.0
+    assert service.calculate_source_diversity_bonus({"family"}) == 0.0
+    assert service.calculate_source_diversity_bonus(
+        {"family", "recommendation"}
+    ) == 10.0
+    assert service.calculate_source_diversity_bonus(
+        {"family", "recommendation", "scenario"}
+    ) == 20.0
+
+
+def test_set_source_diversity_bonus_replaces_existing_bonus():
+    service = DiscoveryScoringService()
+
+    breakdown = service.set_source_diversity_bonus(
+        {"family_score": 100.0, "source_diversity_bonus": 10.0},
+        20.0,
+    )
+
+    assert breakdown == {
+        "family_score": 100.0,
+        "source_diversity_bonus": 20.0,
+    }

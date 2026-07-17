@@ -107,6 +107,35 @@ class DiscoveryScoringService:
 
         return score, score_breakdown, paths
 
+    def calculate_source_diversity_bonus(
+        self,
+        source_types: set[str],
+    ) -> float:
+        if len(source_types) <= 1:
+            return 0.0
+
+        return round(
+            (len(source_types) - 1) * SOURCE_DIVERSITY_BONUS,
+            2,
+        )
+
+    def set_source_diversity_bonus(
+        self,
+        score_breakdown: dict[str, float],
+        source_diversity_bonus: float,
+    ) -> dict[str, float]:
+        updated = dict(score_breakdown)
+
+        if source_diversity_bonus > 0:
+            updated["source_diversity_bonus"] = round(
+                source_diversity_bonus,
+                2,
+            )
+        else:
+            updated.pop("source_diversity_bonus", None)
+
+        return updated
+
     def merge_score_breakdowns(
         self,
         existing: dict[str, float],

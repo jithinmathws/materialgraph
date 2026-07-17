@@ -24,6 +24,7 @@ def _upsert(
     score_breakdown: dict[str, float],
     paths: list[str],
     explanation: str,
+    source_type: str = "family",
     substitution_path: dict | None = None,
 ) -> None:
     service._upsert_candidate(
@@ -38,6 +39,7 @@ def _upsert(
         avoid_element=None,
         prefer_element=None,
         score_breakdown=score_breakdown,
+        source_type=source_type,
         substitution_path=substitution_path,
         candidate_elements={"Na", "Fe", "P", "O"},
     )
@@ -91,6 +93,7 @@ def test_existing_aggregate_breakdown_is_retained_when_incoming_score_is_lower()
         score=90.0,
         score_breakdown={"scenario_score": 90.0},
         paths=["scenario_recommendation"],
+        source_type="scenario",
         explanation="Identified through scenario analysis.",
     )
 
@@ -126,6 +129,7 @@ def test_incoming_breakdown_replaces_existing_breakdown_when_incoming_score_wins
         score=90.0,
         score_breakdown={"recommendation_score": 90.0},
         paths=["recommendation_engine"],
+        source_type="recommendation",
         explanation="Identified through recommendation analysis.",
     )
 
@@ -137,15 +141,16 @@ def test_incoming_breakdown_replaces_existing_breakdown_when_incoming_score_wins
         score=115.0,
         score_breakdown={"scenario_score": 115.0},
         paths=["scenario_recommendation"],
+        source_type="scenario",
         explanation="Identified through scenario analysis.",
     )
 
     candidate = candidates_by_id[10]
 
-    assert candidate["discovery_score"] == 125.0
+    assert candidate["discovery_score"] == 135.0
     assert candidate["score_breakdown"] == {
         "scenario_score": 115.0,
-        "source_diversity_bonus": 10.0,
+        "source_diversity_bonus": 20.0,
     }
 
     assert "family_score" not in candidate["score_breakdown"]
@@ -173,6 +178,7 @@ def test_exact_score_tie_retains_existing_breakdown():
         score=90.0,
         score_breakdown={"recommendation_score": 90.0},
         paths=["recommendation_engine"],
+        source_type="recommendation",
         explanation="Identified through recommendation analysis.",
     )
 
@@ -184,6 +190,7 @@ def test_exact_score_tie_retains_existing_breakdown():
         score=110.0,
         score_breakdown={"scenario_score": 110.0},
         paths=["scenario_recommendation"],
+        source_type="scenario",
         explanation="Identified through scenario analysis.",
     )
 
@@ -219,6 +226,7 @@ def test_losing_source_still_contributes_contextual_paths_and_explanations():
         score=90.0,
         score_breakdown={"scenario_score": 90.0},
         paths=["scenario_recommendation"],
+        source_type="scenario",
         explanation="Identified through scenario analysis.",
     )
 
@@ -246,6 +254,7 @@ def test_later_encounter_can_populate_missing_substitution_path():
         score=100.0,
         score_breakdown={"recommendation_score": 100.0},
         paths=["recommendation_engine"],
+        source_type="recommendation",
         explanation="Identified through recommendation analysis.",
         substitution_path=None,
     )
@@ -280,4 +289,77 @@ def test_later_encounter_can_populate_missing_substitution_path():
 
     assert candidate["substitution_path"] == substitution_path
 
+    _assert_score_matches_breakdown(candidate)
+
+def test_repeated_encounter_from_same_source_does_not_add_diversity_bonus():
+    service = _build_service()
+    candidates_by_id: dict[int, dict] = {}
+
+    _upsert(service, candidates_by_id, score=100.0,
+            score_breakdown={"family_score": 100.0},
+            paths=["family_related"], explanation="First family.",
+            source_type="family")
+    _upsert(service, candidates_by_id, score=90.0,
+            score_breakdown={"family_score": 90.0},
+            paths=["shared_chemistry"], explanation="Second family.",
+            source_type="family")
+
+    candidate = candidates_by_id[10]
+    assert candidate["discovery_score"] == 100.0
+    assert candidate["score_breakdown"] == {"family_score": 100.0}
+    assert candidate["_source_types"] == {"family"}
+    _assert_score_matches_breakdown(candidate)
+
+
+def test_distinct_sources_add_bonus_once_per_additional_source():
+    service = _build_service()
+    candidates_by_id: dict[int, dict] = {}
+
+    _upsert(service, candidates_by_id, score=100.0,
+            score_breakdown={"family_score": 100.0},
+            paths=["family_related"], explanation="Family.",
+            source_type="family")
+    _upsert(service, candidates_by_id, score=90.0,
+            score_breakdown={"recommendation_score": 90.0},
+            paths=["recommendation_engine"], explanation="Recommendation.",
+            source_type="recommendation")
+    _upsert(service, candidates_by_id, score=80.0,
+            score_breakdown={"scenario_score": 80.0},
+            paths=["scenario_recommendation"], explanation="Scenario.",
+            source_type="scenario")
+
+    candidate = candidates_by_id[10]
+    assert candidate["discovery_score"] == 120.0
+    assert candidate["score_breakdown"] == {
+        "family_score": 100.0,
+        "source_diversity_bonus": 20.0,
+    }
+    assert candidate["_source_types"] == {"family", "recommendation", "scenario"}
+    _assert_score_matches_breakdown(candidate)
+
+
+def test_repeated_existing_source_does_not_increase_diversity_bonus():
+    service = _build_service()
+    candidates_by_id: dict[int, dict] = {}
+
+    _upsert(service, candidates_by_id, score=100.0,
+            score_breakdown={"family_score": 100.0},
+            paths=["family_related"], explanation="Family.",
+            source_type="family")
+    _upsert(service, candidates_by_id, score=90.0,
+            score_breakdown={"recommendation_score": 90.0},
+            paths=["recommendation_engine"], explanation="Recommendation.",
+            source_type="recommendation")
+    _upsert(service, candidates_by_id, score=85.0,
+            score_breakdown={"recommendation_score": 85.0},
+            paths=["similar_material"], explanation="Recommendation again.",
+            source_type="recommendation")
+
+    candidate = candidates_by_id[10]
+    assert candidate["discovery_score"] == 110.0
+    assert candidate["score_breakdown"] == {
+        "family_score": 100.0,
+        "source_diversity_bonus": 10.0,
+    }
+    assert candidate["_source_types"] == {"family", "recommendation"}
     _assert_score_matches_breakdown(candidate)

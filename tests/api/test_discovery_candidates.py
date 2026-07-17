@@ -204,3 +204,19 @@ def test_discovery_candidates_include_substitution_path_for_alkali_candidates(cl
     assert "P" in substitution_path["preserved_framework"]
     assert "O" in substitution_path["preserved_framework"]
     assert len(substitution_path["reason"]) > 0
+
+def test_discovery_candidates_merged_sources_keep_score_breakdown_consistent(client):
+    response = client.get(
+        "/api/v1/materials/5/discovery/candidates"
+        "?avoid_element=Li&prefer_element=Na&limit=10"
+        "&include_recommendations=true&include_scenarios=true"
+    )
+
+    assert response.status_code == 200
+
+    for candidate in response.json()["candidates"]:
+        assert round(
+            sum(candidate["score_breakdown"].values()),
+            2,
+        ) == candidate["discovery_score"]
+        assert "_source_types" not in candidate

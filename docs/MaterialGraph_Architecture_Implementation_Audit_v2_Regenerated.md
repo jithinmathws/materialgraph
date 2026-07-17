@@ -59,9 +59,9 @@ public API responses.
 
 5.  **MG-AUD-005 - Resolved (v1.9.11) --- `preserved_framework` represents element overlap,
     not validated structural preservation.**
-6.  **MG-AUD-006 --- Discovery score and merged score breakdown use
+6.  **MG-AUD-006 - Resolved (v1.9.12) --- Discovery score and merged score breakdown used
     incompatible aggregation semantics.**
-7.  **MG-AUD-007 --- Repeated candidate encounters can accumulate a
+7.  **MG-AUD-007 - Resolved (v1.9.13) --- Repeated candidate encounters could accumulate a
     mislabeled source-diversity bonus.**
 8.  **MG-AUD-008 --- Partial risk evidence can unlock full low-risk
     bonus eligibility.**
@@ -477,74 +477,150 @@ LiFePO4 Scientific Usefulness
 
 ## MG-AUD-006 --- Discovery Score and Breakdown Arithmetic Diverge
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-17\
 **Confidence:** Confirmed\
-**Priority:** P1
+**Priority:** P1\
+**Resolution version:** v1.9.12
 
 ### Finding
 
-Candidate score merging uses:
+Candidate score merging used:
 
 ``` text
 max(existing_score, incoming_score)
 + source diversity bonus
 ```
 
-Most score-breakdown fields use additive merging.
+while score-breakdown fields were merged additively.
 
 ### Consequence
 
-The final breakdown can materially exceed and fail to decompose
+The final breakdown could materially exceed and fail to decompose
 `discovery_score`.
 
-### Explainability Risk
+### Resolution
 
-The response can present a precise-looking breakdown that does not
-mathematically explain the final score.
+✓ Candidate merging now preserves the score breakdown corresponding to
+the winning score provenance.
 
-### Recommended Action
+✓ Contextual discovery paths and explanations continue to aggregate
+across contributing candidate encounters.
 
-Define one explicit provenance model:
+✓ Substitution paths can still be populated by later candidate
+encounters.
 
--   winning source score
--   contributing source identities
--   one-time diversity bonus
--   contextual facts
--   non-scoring explanation facts
+✓ Discovery score arithmetic is internally consistent:
+
+``` text
+sum(score_breakdown) == discovery_score
+```
+
+✓ Public API compatibility was preserved.
+
+### Regression Verification
+
+✓ Candidate merge characterization tests
+
+✓ Discovery scoring tests
+
+✓ Discovery candidate endpoint tests
+
+✓ Discovery chain tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Scientific Impact
+
+Explainability provenance is now consistent with the reported discovery
+score.
+
+LiFePO4 Scientific Usefulness
+
+95.65 → 95.65
 
 ------------------------------------------------------------------------
 
 ## MG-AUD-007 --- Source Diversity Is Actually Repeated-Encounter Accumulation
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-17\
 **Confidence:** Confirmed\
-**Priority:** P1
+**Priority:** P1\
+**Resolution version:** v1.9.13
 
 ### Finding
 
-The source-diversity bonus increments whenever an existing candidate is
-encountered.
+The source-diversity bonus previously incremented whenever an existing
+candidate was encountered.
 
-No distinct source identity is tracked.
+No distinct source identity was tracked, so repeated encounters could be
+treated as additional source diversity.
 
-### Current Meaning
+### Resolution
 
-Closer to:
+✓ Candidate encounters now carry explicit source types.
+
+✓ Distinct contributing source types are tracked internally during
+candidate merging.
+
+✓ Repeated encounters from the same source type do not increase the
+source-diversity bonus.
+
+✓ Source-diversity accounting is now:
 
 ``` text
-repeated encounter bonus
+1 distinct source  → 0 bonus
+2 distinct sources → 10 bonus
+3 distinct sources → 20 bonus
 ```
 
-than:
+✓ Winning base discovery score provenance is tracked separately from the
+accumulated source-diversity bonus.
 
-``` text
-independent source diversity
-```
+✓ Aggregate scores that already contain a diversity bonus are not reused
+as base scores during subsequent merges.
 
-### Recommended Action
+✓ Contextual discovery paths, explanations, and substitution paths
+continue to aggregate independently from numeric score provenance.
 
-Track source types explicitly and award the bonus once per newly
-observed source type.
+✓ Internal source/base-score provenance fields are removed before public
+API serialization.
+
+✓ Public API compatibility was preserved.
+
+### Regression Verification
+
+✓ Repeated same-source encounter tests
+
+✓ Distinct-source diversity tests
+
+✓ Candidate merge characterization tests
+
+✓ Winning-score provenance tests
+
+✓ Exact-score tie tests
+
+✓ Discovery candidate endpoint verification
+
+✓ Substitution-path endpoint verification
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Scientific Impact
+
+Source diversity now represents distinct discovery evidence channels
+rather than repeated candidate encounters.
+
+Scientific pathway scoring remains unchanged.
+
+LiFePO4 Scientific Usefulness
+
+95.65 → 95.65
 
 ------------------------------------------------------------------------
 
@@ -1391,9 +1467,9 @@ Actions:
 
 ## Phase 5 --- Explainability Provenance
 
-1.  Track candidate source identities.
-2.  Align discovery score with breakdown semantics.
-3.  Separate scoring contributors from contextual reasons.
+1.  ✓ Track candidate source identities.
+2.  ✓ Align discovery score with breakdown semantics.
+3.  ✓ Separate candidate scoring provenance from contextual discovery evidence.
 4.  Make comparison outputs consistently tie-aware.
 
 ## Phase 6 --- Scientific Terminology
@@ -1496,6 +1572,17 @@ change is.
 -   confirmed structured composition for all 28 real records
 -   established safe backfill source
 
+## 2026-07-17 --- Discovery Score and Source Provenance
+
+-   resolved MG-AUD-006 score/breakdown arithmetic divergence
+-   preserved winning score provenance during candidate merging
+-   resolved MG-AUD-007 repeated-encounter source-diversity semantics
+-   introduced distinct discovery source tracking
+-   separated base discovery score provenance from diversity bonuses
+-   verified merged-source candidate arithmetic and substitution paths
+-   full regression suite passed
+-   LiFePO4 → Na/phosphate scientific usefulness remained 95.65
+
 ------------------------------------------------------------------------
 
 # Appendix A --- Reference Response
@@ -1529,11 +1616,14 @@ Observed endpoints:
 -   NaFePO4
 -   Na3Fe(PO4)2
 
-All received `scientific_usefulness_score = 94.95`.
+The original pre-remediation reference response recorded
+`scientific_usefulness_score = 94.95`.
 
-v1.9.5 exposed the tie without inventing a winner. v1.9.6 preserved it
-because available endpoint-sensitive evidence did not justify
-differentiation.
+After MG-AUD-001 corrected stoichiometric composition weighting, the
+verified reference score became `95.65`.
+
+MG-AUD-002 through MG-AUD-007 preserved the verified `95.65` score and
+the equal-evidence tie across the five reference pathways.
 
 ------------------------------------------------------------------------
 
@@ -1681,8 +1771,8 @@ MaterialGraph has a strong deterministic architecture, but several
 upstream data and semantic conventions propagate into ranking, evidence,
 comparison, and public meaning.
 
-The highest-priority correctness remediations
-(MG-AUD-001 through MG-AUD-005) have been completed and verified.
+The completed remediation sequence
+(MG-AUD-001 through MG-AUD-007) has been implemented and verified.
 
 The next implementation focus should continue with the remaining
 scientific semantics, evidence, and scoring findings while preserving
@@ -1745,8 +1835,8 @@ changes scientific semantics or introduces new scoring capabilities.
 Implementation should now focus on the existing confirmed findings in
 roadmap order:
 
-The initial correctness remediation phase has been completed
-(MG-AUD-001 through MG-AUD-005).
+The remediation sequence through explainability provenance has been
+completed (MG-AUD-001 through MG-AUD-007).
 
 Future audit work should continue with the remaining confirmed
 semantic, evidence, ranking, and performance findings in roadmap

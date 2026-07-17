@@ -123,6 +123,9 @@ class DiscoveryCandidateService:
 
             for candidate in candidates:
                 candidate.pop("_explanation_parts", None)
+                candidate.pop("_source_types", None)
+                candidate.pop("_base_discovery_score", None)
+                candidate.pop("_base_score_breakdown", None)
 
             return {
                 "material_id": family_result["material_id"],
@@ -209,6 +212,7 @@ class DiscoveryCandidateService:
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
                 substitution_path=substitution_path,
+                source_type="family",
                 candidate_elements=self._resolve_candidate_elements(
                     material_id=candidate["material_id"],
                     formula=candidate_formula,
@@ -252,6 +256,7 @@ class DiscoveryCandidateService:
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
+                source_type="recommendation",
                 candidate_elements=self._resolve_candidate_elements(
                     material_id=candidate["material_id"],
                     formula=candidate["pretty_formula"] or candidate["formula"],
@@ -306,6 +311,7 @@ class DiscoveryCandidateService:
                 avoid_element=avoid_element,
                 prefer_element=prefer_element,
                 score_breakdown=score_breakdown,
+                source_type="scenario",
                 candidate_elements=self._resolve_candidate_elements(
                     material_id=candidate["material_id"],
                     formula=candidate["pretty_formula"] or candidate["formula"],
@@ -326,6 +332,7 @@ class DiscoveryCandidateService:
         avoid_element: str | None,
         prefer_element: str | None,
         score_breakdown: dict[str, float],
+        source_type: str,
         substitution_path: dict | None = None,
         candidate_elements: set[str] | None = None,
     ) -> None:
@@ -346,32 +353,49 @@ class DiscoveryCandidateService:
         existing = candidates_by_id.get(material_id)
 
         if existing:
-            existing_score = existing["discovery_score"]
+            existing_sources = set(existing["_source_types"])
+            updated_sources = existing_sources | {source_type}
+            updated_diversity_bonus = (
+                self.scoring_service.calculate_source_diversity_bonus(
+                    updated_sources
+                )
+            )
 
-            if existing_score >= adjusted_score:
+            existing_base_score = existing["_base_discovery_score"]
+
+            if existing["discovery_score"] >= adjusted_score:
+                selected_base_score = existing_base_score
                 selected_score_breakdown = dict(
-                    existing["score_breakdown"]
+                    existing["_base_score_breakdown"]
                 )
             else:
+                selected_base_score = adjusted_score
                 selected_score_breakdown = {
                     key: round(value, 2)
                     for key, value in score_breakdown.items()
                 }
 
-            existing["discovery_score"] = round(
-                max(existing_score, adjusted_score)
-                + SOURCE_DIVERSITY_BONUS,
+            existing["_base_discovery_score"] = round(
+                selected_base_score,
                 2,
             )
+            existing["_base_score_breakdown"] = dict(
+                selected_score_breakdown
+            )
+            existing["_source_types"] = updated_sources
 
+            existing["discovery_score"] = round(
+                selected_base_score + updated_diversity_bonus,
+                2,
+            )
+            existing["score_breakdown"] = (
+                self.scoring_service.set_source_diversity_bonus(
+                    selected_score_breakdown,
+                    updated_diversity_bonus,
+                )
+            )
             existing["discovery_path"] = sorted(
                 set(existing["discovery_path"]) | normalized_paths
-            )
-
-            existing["score_breakdown"] = (
-                self.scoring_service.apply_source_diversity_bonus(
-                    selected_score_breakdown
-                )
             )
 
             if (
@@ -422,6 +446,12 @@ class DiscoveryCandidateService:
             "discovery_path": sorted(normalized_paths),
             "explanation": explanation,
             "_explanation_parts": explanation_parts,
+            "_source_types": {source_type},
+            "_base_discovery_score": round(adjusted_score, 2),
+            "_base_score_breakdown": {
+                key: round(value, 2)
+                for key, value in score_breakdown.items()
+            },
             "substitution_path": substitution_path,
         }
 

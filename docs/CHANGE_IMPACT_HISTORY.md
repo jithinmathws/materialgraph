@@ -368,3 +368,198 @@ Reference Workflow
 Verified
 
 LiFePO4 → Na phosphate objective unchanged.
+
+---
+
+## v1.9.12
+
+Summary
+
+Discovery score provenance remediation.
+
+Reason
+
+Resolved MG-AUD-006.
+
+Affected Components
+
+Discovery Candidate Scoring
+
+Discovery Candidate Merging
+
+Discovery Score Explainability
+
+Changes
+
+Score Provenance
+
+Discovery score breakdowns now represent the score provenance that
+produced the final discovery score instead of accumulating competing
+source scores.
+
+Candidate Merging
+
+Candidate merging now preserves the winning score provenance while
+continuing to aggregate contextual discovery evidence such as discovery
+paths, explanations, and substitution paths.
+
+Explainability
+
+Discovery score arithmetic is now internally consistent.
+
+For every candidate:
+
+sum(score_breakdown) == discovery_score
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+This remediation corrects explainability provenance only.
+
+Deterministic scientific scoring and candidate ranking remain unchanged.
+
+Performance
+
+No measurable performance impact.
+
+Breaking API
+
+No
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Reference Workflow
+
+Verified
+
+LiFePO4 → Na phosphate objective unchanged.
+
+---
+
+## v1.9.13
+
+Summary
+
+Discovery source-diversity provenance remediation.
+
+Reason
+
+Resolved MG-AUD-007.
+
+Affected Components
+
+Discovery Candidate Scoring
+
+Discovery Candidate Merging
+
+Discovery Source Diversity
+
+Discovery Score Explainability
+
+Changes
+
+Source Diversity Semantics
+
+Source diversity bonuses are now based on distinct discovery source types
+rather than repeated candidate encounters.
+
+Distinct Source Tracking
+
+Candidate merging tracks unique contributing source types internally.
+
+Repeated encounters from the same source no longer increase the source
+diversity bonus.
+
+Diversity Bonus
+
+The current deterministic bonus is:
+
+- one distinct source: 0
+- two distinct sources: 10
+- three distinct sources: 20
+
+Score Provenance
+
+Base discovery score provenance is tracked separately from the accumulated
+source diversity bonus.
+
+This prevents an existing aggregate discovery score from being reused as a
+base score and receiving the diversity bonus a second time.
+
+Candidate Merging
+
+The winning base score and its score breakdown are preserved while contextual
+discovery paths, explanations, and substitution paths continue to aggregate
+across candidate encounters.
+
+Internal Provenance
+
+Internal source and base-score provenance fields are removed before candidates
+are returned through the public API.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+This remediation corrects discovery source-diversity accounting and score
+provenance without modifying scientific pathway scoring.
+
+The LiFePO4 → Na/phosphate reference workflow remains unchanged.
+
+Performance
+
+No measurable performance impact.
+
+No additional database queries introduced.
+
+Breaking API
+
+No
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Reference Workflow
+
+Verified
+
+LiFePO4 → Na phosphate objective unchanged.
+
+Scientific usefulness remains 95.65.
+

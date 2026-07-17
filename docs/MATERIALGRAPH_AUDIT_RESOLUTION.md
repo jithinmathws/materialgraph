@@ -1,7 +1,7 @@
 # MaterialGraph Architecture & Implementation Audit Resolution
 
 Version: 1.1
-Last Updated: 2026-07-16
+Last Updated: 2026-07-17
 
 ---
 
@@ -631,3 +631,291 @@ Principle 11
 Related ADR
 
 ADR-002
+
+---
+
+# MG-AUD-006
+
+Title
+
+Discovery score breakdown does not represent discovery score provenance.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.12
+
+Affected Components
+
+- DiscoveryCandidateService
+- DiscoveryScoringService
+- Discovery candidate responses
+
+Root Cause
+
+Discovery candidates merged competing score breakdowns additively while
+the final discovery score retained only the highest scoring candidate
+encounter plus source diversity bonuses.
+
+As a result, score_breakdown could report contributions that were not
+part of the final discovery score.
+
+Scientific Impact
+
+Researcher-facing score explanations could misrepresent which discovery
+source actually determined the reported discovery score.
+
+Although numeric scores remained correct, the explainability layer was
+internally inconsistent.
+
+Resolution
+
+✓ Candidate merging now preserves the score breakdown corresponding to
+the winning score provenance.
+
+✓ Discovery paths continue to aggregate contextual evidence from all
+contributing discovery sources.
+
+✓ Explanations continue to aggregate contextual reasoning.
+
+✓ Substitution paths continue to populate when discovered through later
+candidate encounters.
+
+✓ Discovery score arithmetic is now internally consistent.
+
+Regression Verification
+
+✓ Candidate merge characterization tests
+
+✓ Discovery scoring tests
+
+✓ Discovery candidate endpoint tests
+
+✓ Discovery chain tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+This remediation corrects explainability provenance without modifying
+scientific scoring or candidate ranking.
+
+Performance Improvements
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Scientific provenance should explain exactly how a reported score was
+derived.
+
+Contextual discovery evidence and scoring provenance represent different
+types of information and should not be merged into the same arithmetic
+explanation.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
+---
+
+# MG-AUD-007
+
+Title
+
+Discovery source diversity bonus can be inflated by repeated candidate
+encounters and aggregate-score reuse.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.13
+
+Affected Components
+
+- DiscoveryCandidateService
+- DiscoveryScoringService
+- Discovery candidate responses
+- Discovery candidate merge logic
+- Discovery source-diversity scoring
+
+Root Cause
+
+Candidate merging did not maintain explicit provenance for the distinct
+discovery source types contributing to a candidate.
+
+Repeated encounters could therefore influence source-diversity accounting
+without a canonical distinct-source set.
+
+During remediation, aggregate discovery scores that already included a
+source-diversity bonus could also be reused as the effective base score during
+subsequent merges, allowing the diversity contribution to be counted again.
+
+Scientific Impact
+
+Discovery candidates could receive an inflated source-diversity contribution
+that did not correspond to the number of independent discovery source types
+supporting the candidate.
+
+This affected discovery score explainability and ranking confidence signals,
+although it did not alter the separate scientific pathway usefulness score.
+
+Resolution
+
+✓ Source diversity is now calculated from distinct discovery source types.
+
+✓ Repeated encounters from the same source type do not increase the diversity
+bonus.
+
+✓ One distinct source receives no source-diversity bonus.
+
+✓ Two distinct source types receive a 10-point bonus.
+
+✓ Three distinct source types receive a 20-point bonus.
+
+✓ Candidate merging tracks the winning base discovery score separately from
+the accumulated source-diversity bonus.
+
+✓ The winning base score breakdown is preserved independently from contextual
+evidence gathered from other candidate encounters.
+
+✓ Existing aggregate discovery scores are not reused as base scores for
+subsequent diversity calculations.
+
+✓ Discovery paths and explanations continue to aggregate across contributing
+sources.
+
+✓ Substitution paths can still be populated by later candidate encounters.
+
+✓ Internal source-tracking and base-score provenance metadata is removed before
+public API serialization.
+
+✓ Public API compatibility is preserved.
+
+Regression Verification
+
+✓ Candidate merge characterization tests
+
+✓ Repeated same-source encounter tests
+
+✓ Distinct-source diversity tests
+
+✓ Winning-score provenance tests
+
+✓ Exact-score tie tests
+
+✓ Later substitution-path population tests
+
+✓ Discovery candidate endpoint verification
+
+✓ Substitution-path endpoint verification
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The remediation changes discovery source-diversity accounting and candidate
+score provenance only.
+
+Scientific pathway scoring is independent of the candidate source-diversity
+bonus, and the reference pathway score remains unchanged.
+
+Performance Improvements
+
+✓ No additional database queries introduced.
+
+✓ Distinct source tracking is maintained in memory during candidate merging.
+
+✓ No measurable performance impact.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Discovery source diversity should represent independent evidence channels, not
+the number of times a candidate is encountered.
+
+Aggregate scores and base scoring provenance must remain separate so that
+bonuses cannot be counted more than once during incremental candidate merging.
+
+Contextual evidence may accumulate across discovery sources while numeric score
+provenance must remain explicit and internally consistent.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
