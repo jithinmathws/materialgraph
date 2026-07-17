@@ -327,10 +327,8 @@ class DiscoveryGraphAnalyticsService:
             quality_scores.append(node_features["quality_score"])
             degrees.append(subgraph.degree(material_id))
 
-            formula = node_data.get("formula") or ""
-            for element in ["Li", "Na", "Fe", "P", "O", "Mn", "Co", "Ni", "Al"]:
-                if element in formula:
-                    element_counts[element] = element_counts.get(element, 0) + 1
+            for element in node_data.get("elements", []):
+                element_counts[element] = element_counts.get(element, 0) + 1
 
             materials.append(
                 {

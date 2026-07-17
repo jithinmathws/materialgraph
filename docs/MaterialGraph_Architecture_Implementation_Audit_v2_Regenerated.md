@@ -63,12 +63,14 @@ public API responses.
     incompatible aggregation semantics.**
 7.  **MG-AUD-007 - Resolved (v1.9.13) --- Repeated candidate encounters could accumulate a
     mislabeled source-diversity bonus.**
-8.  **MG-AUD-008 --- Partial risk evidence can unlock full low-risk
+8.  **MG-AUD-008 - Resolved (v1.9.14) --- Partial risk evidence can unlock full low-risk
     bonus eligibility.**
 9.  **MG-AUD-009 --- Public multi-element objective semantics exceed
     scalar downstream handling.**
 10. **MG-AUD-010 --- Exact ties are handled inconsistently across
     comparison and ranking layers.**
+11. **MG-AUD-049 - Resolved (v1.9.14) --- Community analytics used raw formula
+    substring matching for element membership.**
 
 ## Current Data Reality
 
@@ -626,22 +628,25 @@ LiFePO4 Scientific Usefulness
 
 ## MG-AUD-008 --- Partial Risk Evidence Can Unlock Full Low-Risk Bonus Eligibility
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-17\
 **Confidence:** Confirmed\
-**Priority:** P1
+**Priority:** P1\
+**Resolution version:** v1.9.14
 
 ### Finding
 
-If at least one material element has calculable risk:
+If at least one material element had calculable risk:
 
 ``` text
 risk_known = True
 ```
 
-Coverage may still be below 1.0.
+Coverage could still be below 1.0.
 
-`MaterialQualityService` uses `risk_known` and `risk_score` for bonus
-eligibility but does not directly require complete coverage.
+Before remediation, `MaterialQualityService` used `risk_known` and
+`risk_score` for low-risk bonus eligibility without requiring complete
+material-element risk coverage.
 
 ### Consequence
 
@@ -649,12 +654,62 @@ eligibility but does not directly require complete coverage.
 partial coverage
 → risk_known = True
 → low known-element average
-→ same low-risk bonus path as complete evidence
+→ same full low-risk bonus path as complete evidence
 ```
 
-### Recommended Action
+This allowed partial evidence to unlock favorable treatment equivalent to
+complete evidence.
 
-Define explicit coverage-aware eligibility semantics.
+### Resolution
+
+✓ Low-risk quality bonus eligibility is now coverage-aware.
+
+✓ Full low-risk bonus eligibility requires complete material-element risk
+evidence.
+
+✓ Partial or unknown risk evidence cannot become favorable evidence.
+
+✓ Existing risk evidence metadata remains available, including coverage,
+known/unknown element counts, completeness, and unknown elements.
+
+✓ Public API compatibility was preserved.
+
+### Characterization Verification
+
+A pre-remediation characterization boundary demonstrated that a material with
+25% risk-profile coverage and a low known risk score could enter the full
+low-risk bonus path.
+
+The remediation changed only bonus eligibility semantics; evidence reporting
+remained explicit.
+
+### Regression Verification
+
+✓ Material quality focused tests
+
+✓ Partial-risk evidence characterization test
+
+✓ Complete-risk evidence behavior
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Scientific Impact
+
+Incomplete evidence no longer receives the same favorable low-risk quality
+treatment as complete evidence.
+
+The reference LiFePO4 workflow has complete risk evidence and therefore remains
+unchanged.
+
+LiFePO4 Scientific Usefulness
+
+95.65 → 95.65
+
+Material Quality Path Contribution
+
+14.65 → 14.65
 
 ------------------------------------------------------------------------
 
@@ -1325,6 +1380,188 @@ global material-element mappings in the same request path.
 
 ------------------------------------------------------------------------
 
+## MG-AUD-049 --- Community Analytics Uses Raw Formula Substring Matching for Element Membership
+
+**Status:** Resolved\
+**Last verified:** 2026-07-17\
+**Confidence:** Confirmed\
+**Priority:** P2\
+**Resolution version:** v1.9.14
+
+### Discovery Context
+
+This finding was discovered while tracing the downstream dependency chain for
+MG-AUD-008.
+
+It belongs to the same general exact-element-membership defect class addressed
+by MG-AUD-004, but occurs in a separate consumer and affects community-summary
+metadata rather than discovery scoring.
+
+### Finding
+
+`DiscoveryGraphAnalyticsService._summarize_community()` determined configured
+element membership by checking raw element-symbol substrings against chemical
+formula text.
+
+Conceptually:
+
+``` text
+element in formula
+```
+
+Chemical formulas are structured scientific data. Raw substring membership is
+not a valid general exact-element-membership test.
+
+The configured symbol set limited obvious collisions in the current dataset,
+but the implementation was structurally unsafe and could misclassify membership
+as the supported element vocabulary expanded.
+
+### Impact
+
+The affected dependency chain was:
+
+``` text
+formula substring membership
+→ element_counts
+→ dominant_elements
+→ researcher-facing community summary
+```
+
+Dependency inspection confirmed that these counts did not feed:
+
+- community membership
+- connected-component detection
+- greedy modularity community detection
+- degree centrality
+- betweenness centrality
+- closeness centrality
+- hub selection
+- density
+- average degree
+- average quality score
+- average edge score
+- community importance score
+
+No numeric graph-ranking or community-scoring defect was confirmed.
+
+### Characterization Verification
+
+Two pre-remediation boundaries confirmed the defect.
+
+1. Discovery graph nodes did not expose canonical `elements` metadata.
+2. A deliberate mismatch between formula text and canonical node membership
+   showed that community analytics trusted formula text instead of structured
+   element membership.
+
+### Resolution
+
+✓ `DiscoveryGraphBuilder` now attaches canonical `elements` metadata to graph
+nodes.
+
+✓ Canonical membership comes from persisted
+`MaterialElement → Element.symbol` relationships.
+
+✓ The existing graph-builder element map is reused.
+
+✓ No additional database query is introduced.
+
+✓ `DiscoveryGraphAnalyticsService` now counts community elements from exact
+`node_data["elements"]` membership.
+
+✓ Raw formula substring matching was removed from community element counting.
+
+✓ `DiscoveryGraphNode` exposes the additive canonical `elements` field.
+
+✓ Existing graph topology and numeric analytics calculations are unchanged.
+
+✓ API compatibility was preserved.
+
+### Regression Verification
+
+✓ Graph-builder canonical-element characterization test
+
+✓ Community canonical-membership characterization test
+
+✓ Existing focused graph-builder tests
+
+✓ Existing focused graph-analytics tests
+
+✓ Greedy modularity community endpoint verification
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Endpoint Verification
+
+Greedy modularity community analytics returned two verified communities.
+
+Community 1, containing materials 5–10, reported:
+
+``` text
+dominant_elements = ["Fe", "O", "P", "Na", "Li"]
+```
+
+This matches exact canonical membership frequencies:
+
+- Fe, O, P in all six materials
+- Na in materials 6–10
+- Li only in material 5
+
+Community 2, containing materials 1–2, reported:
+
+``` text
+dominant_elements = ["Fe", "Li", "O", "P"]
+```
+
+Community numeric outputs remained internally consistent.
+
+Community 1:
+
+- average_quality_score = 14.83
+- average_edge_score = 93.33
+- density = 1
+- average_degree = 5
+- community_importance_score = 78.36
+
+Community 2:
+
+- average_quality_score = 13.95
+- average_edge_score = 90
+- density = 1
+- average_degree = 1
+- community_importance_score = 72.48
+
+### Scientific Impact
+
+Community descriptive element metadata now uses exact canonical membership.
+
+LiFePO4 Criticality
+
+32.0 → 32.0
+
+LiFePO4 Risk
+
+2.833 → 2.833
+
+Scientific Usefulness
+
+95.65 → 95.65
+
+Material Quality Path Contribution
+
+14.65 → 14.65
+
+### Breaking API
+
+No.
+
+The canonical graph-node `elements` field is additive.
+
+### Database Migration
+
+No.
+
+------------------------------------------------------------------------
+
 # 5. Provisional Findings
 
 ## PROV-001 --- Repeated Stability/Energy Weighting
@@ -1455,7 +1692,7 @@ Actions:
 
 1.  Introduce evidence-aware criticality signal semantics.
 2.  Migrate screening from legacy numeric risk.
-3.  Define partial-coverage bonus eligibility.
+3.  ✓ Define and enforce coverage-aware low-risk bonus eligibility.
 4.  Preserve legacy APIs only where necessary.
 
 ## Phase 4 --- Structured Objective Semantics
@@ -1522,17 +1759,15 @@ change is.
 
 1.  What evidence-aware criticality response should replace favorable
     zero without breaking legacy clients?
-2.  What risk/criticality coverage threshold should govern quality
-    bonuses?
-3.  Are repeated stability and energy terms intentional policy?
-4.  What are the final hard/soft semantics for multi-element objectives?
-5.  What constitutes continuous preservation across a path?
-6.  What precision is scientifically meaningful for endpoint comparison?
-7.  What recall is acceptable for bounded recommendation/scenario pools?
-8.  How should internal support and external evidence be represented
+2.  Are repeated stability and energy terms intentional policy?
+3.  What are the final hard/soft semantics for multi-element objectives?
+4.  What constitutes continuous preservation across a path?
+5.  What precision is scientifically meaningful for endpoint comparison?
+6.  What recall is acceptable for bounded recommendation/scenario pools?
+7.  How should internal support and external evidence be represented
     separately?
-9.  Which remaining consumers use legacy numeric risk/criticality APIs?
-10. Should test materials receive parsed composition fractions or remain
+8.  Which remaining consumers use legacy numeric risk/criticality APIs?
+9.  Should test materials receive parsed composition fractions or remain
     lightweight fixtures?
 
 ------------------------------------------------------------------------
@@ -1583,6 +1818,21 @@ change is.
 -   full regression suite passed
 -   LiFePO4 → Na/phosphate scientific usefulness remained 95.65
 
+## 2026-07-17 --- Risk Coverage and Community Element Membership
+
+-   resolved MG-AUD-008 partial-risk-evidence bonus eligibility
+-   made low-risk quality bonus eligibility coverage-aware
+-   preserved complete-evidence LiFePO4 quality behavior
+-   discovered separate raw-formula substring membership in community analytics
+-   tracked the separate issue as MG-AUD-049
+-   added canonical `elements` metadata to discovery graph nodes
+-   replaced community formula substring counting with exact canonical membership
+-   reused the existing graph-builder element map with no additional database query
+-   verified greedy modularity community `dominant_elements`
+-   preserved community numeric analytics
+-   full regression suite passed
+-   LiFePO4 → Na/phosphate scientific usefulness remained 95.65
+
 ------------------------------------------------------------------------
 
 # Appendix A --- Reference Response
@@ -1622,8 +1872,11 @@ The original pre-remediation reference response recorded
 After MG-AUD-001 corrected stoichiometric composition weighting, the
 verified reference score became `95.65`.
 
-MG-AUD-002 through MG-AUD-007 preserved the verified `95.65` score and
+MG-AUD-002 through MG-AUD-008 preserved the verified `95.65` score and
 the equal-evidence tie across the five reference pathways.
+
+MG-AUD-049 also preserved the verified `95.65` score while correcting
+researcher-facing community element metadata.
 
 ------------------------------------------------------------------------
 
@@ -1717,6 +1970,10 @@ Affects:
 -   `candidate_screening_service.py`
 -   `candidate_comparison_service.py`
 -   `scoring_service.py`
+-   `graph_builder.py`
+-   `graph_analytics_service.py`
+-   `graph_algorithms_service.py`
+-   `k_best_path_service.py`
 
 ## Material Intelligence
 
@@ -1771,8 +2028,11 @@ MaterialGraph has a strong deterministic architecture, but several
 upstream data and semantic conventions propagate into ranking, evidence,
 comparison, and public meaning.
 
-The completed remediation sequence
-(MG-AUD-001 through MG-AUD-007) has been implemented and verified.
+The sequential remediation set
+(MG-AUD-001 through MG-AUD-008) has been implemented and verified.
+
+MG-AUD-049, discovered during MG-AUD-008 dependency inspection, has also been
+implemented and verified independently.
 
 The next implementation focus should continue with the remaining
 scientific semantics, evidence, and scoring findings while preserving
@@ -1835,8 +2095,10 @@ changes scientific semantics or introduces new scoring capabilities.
 Implementation should now focus on the existing confirmed findings in
 roadmap order:
 
-The remediation sequence through explainability provenance has been
-completed (MG-AUD-001 through MG-AUD-007).
+The sequential remediation set through MG-AUD-008 has been completed.
+
+MG-AUD-049, discovered during the MG-AUD-008 investigation, has also been
+resolved without implying resolution of MG-AUD-009 through MG-AUD-048.
 
 Future audit work should continue with the remaining confirmed
 semantic, evidence, ranking, and performance findings in roadmap

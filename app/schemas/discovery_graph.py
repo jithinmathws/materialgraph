@@ -13,6 +13,7 @@ class DiscoveryGraphNode(BaseModel):
     mp_id: str | None = None
     pretty_formula: str | None = None
     formula: str
+    elements: list[str] = Field(default_factory=list)
     stability_score: float | None = None
     energy_above_hull: float | None = None
     criticality_score: float | None = None

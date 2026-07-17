@@ -919,3 +919,369 @@ Related ADR
 
 ADR-002
 
+---
+
+# MG-AUD-008
+
+Title
+
+Partial risk evidence can unlock full low-risk bonus eligibility.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.14
+
+Affected Components
+
+- MaterialRiskService
+- MaterialQualityService
+- DiscoveryPathRankingService
+- ScientificPathwayAnalysisService
+- ResearchEvidenceIntelligenceService
+- ComparativeResearchIntelligenceService
+- EndpointSensitiveResearchRankingService
+- DiscoveryKBestPathService
+- DiscoveryGraphAlgorithmsService
+- DiscoveryGraphBuilder
+- DiscoveryGraphAnalyticsService
+
+Root Cause
+
+MaterialRiskService correctly distinguished unknown, partially covered, and completely covered material-element risk evidence. MaterialQualityService, however, used only `risk_known` and `risk_score` when determining favorable risk-quality bonus eligibility.
+
+Consequently, a material with at least one calculable constituent-element risk could receive the same low-risk or medium-risk quality bonus as a fully covered material even when `risk_profile_coverage < 1.0` and `risk_evidence_complete = false`.
+
+Scientific Impact
+
+Partial evidence could be interpreted as established favorable risk evidence. This could inflate material quality and propagate into scientific usefulness, pathway ranking, quality summaries, confidence explanations, evidence readiness, comparative explanations, endpoint-sensitive ranking, K-best ordering, weighted shortest paths, and graph community importance.
+
+Investigation Findings
+
+- ✓ Finding confirmed against v1.9.13.
+- ✓ MaterialRiskService already exposed the evidence metadata needed for a narrow remediation.
+- ✓ Partial coverage correctly produced `risk_known = true`, `risk_profile_coverage < 1.0`, and `risk_evidence_complete = false`.
+- ✓ MaterialQualityService ignored evidence completeness for favorable bonus eligibility.
+- ✓ Scalar and bulk quality paths converge on the same scoring implementation.
+- ✓ No database migration or backfill is required.
+- ✓ Material-element coverage, composition-weighted coverage, and risk-dimension coverage were confirmed as distinct concepts.
+
+Resolution
+
+- ✓ Favorable risk-quality bonuses now require `risk_known = true`, `risk_evidence_complete = true`, and a non-null `risk_score` satisfying the existing threshold.
+- ✓ Partial risk evidence remains visible and retains its observed numeric risk score.
+- ✓ Partial evidence no longer qualifies as favorable evidence for quality scoring.
+- ✓ Existing risk thresholds and quality weights are unchanged.
+- ✓ MaterialRiskService aggregation semantics are unchanged.
+- ✓ Public API compatibility is preserved.
+- ✓ No new database queries were introduced.
+
+Characterization Verification
+
+Before remediation, a case with `risk_score = 1.5`, `risk_known = true`, `risk_profile_coverage = 0.25`, and `risk_evidence_complete = false` received `quality_score = 13.95`, including the favorable low-risk bonus.
+
+After remediation, the same partial-evidence case produces `quality_score = 11.7` and receives no favorable risk-quality bonus. A complete-evidence low-risk case continues to receive the existing bonus.
+
+Regression Verification
+
+- ✓ Material quality characterization and remediation tests
+- ✓ Material risk partial-coverage characterization tests
+- ✓ Scalar and bulk risk-signal parity characterization
+- ✓ Existing partial risk-dimension calculability semantics characterized
+- ✓ LiFePO4 → Na/phosphate reference workflow
+- ✓ Full regression suite
+
+Reference Workflow Verification
+
+Materials 5–10 were checked. All reported `risk_profile_coverage = 1.0`, `known_risk_element_count = 4`, `total_element_count = 4`, `risk_evidence_complete = true`, and no unknown risk elements.
+
+LiFePO4 (material 5) retained `risk_score = 2.833` and `quality_score = 13.95`. Materials 6–10 retained `risk_score = 1.583` and `quality_score = 15.0`.
+
+The reference pathway material-quality contribution remains 14.65.
+
+Scientific Usefulness
+
+95.65 → 95.65
+
+Reason
+
+The reference workflow has complete material-element risk evidence, so its materials remain eligible for the existing favorable risk-quality bonus. The unchanged score is therefore expected.
+
+Downstream Dependency Findings
+
+DiscoveryPathRankingService directly averages material quality into the `material_quality` component of `scientific_usefulness_score`.
+
+ScientificPathwayAnalysisService reuses material quality in researcher-facing quality summaries and confidence explanations.
+
+ResearchEvidenceIntelligenceService can use strong average material quality as a supporting signal, so corrected quality can legitimately alter evidence readiness.
+
+ComparativeResearchIntelligenceService consumes scientific usefulness and material-quality score breakdowns.
+
+EndpointSensitiveResearchRankingService uses endpoint quality in deterministic tie-breaking.
+
+DiscoveryKBestPathService orders K-best paths by scientific usefulness and uses scientific usefulness to break equal-hop K-shortest ties.
+
+DiscoveryGraphAlgorithmsService incorporates target-node quality into weighted shortest-path edge cost.
+
+DiscoveryGraphBuilder propagates material quality and risk evidence metadata into graph nodes.
+
+DiscoveryGraphAnalyticsService uses quality scores in community average quality and community importance calculations.
+
+No downstream implementation changes were required for the narrow remediation; these consumers inherit corrected MaterialQualityService values.
+
+Additional Findings Discovered During Investigation
+
+1. During MG-AUD-008 dependency inspection, DiscoveryGraphAnalyticsService was found to use raw formula substring matching for community-summary element counts. This was tracked independently as MG-AUD-049 and remediated in the same v1.9.14 development cycle using canonical graph-node element membership.
+
+2. Material-element risk coverage and risk-profile dimension coverage are distinct evidence concepts. MG-AUD-008 resolves only the former bonus-eligibility defect.
+
+3. Composition-weighted risk coverage was considered but intentionally not introduced because changing coverage weighting would introduce a new scientific policy rather than a minimal remediation.
+
+Breaking API
+
+No
+
+Database Migration
+
+No
+
+Performance Improvements
+
+- ✓ No additional database queries introduced.
+- ✓ Existing evidence-aware bulk risk and quality paths preserved.
+
+Lessons Learned
+
+Partial scientific evidence may support an observed score without supporting a favorable conclusion about the entire material.
+
+Evidence availability and favorable-score eligibility are separate concepts.
+
+Coverage semantics should be explicit: constituent-element coverage, composition-weighted coverage, and risk-dimension coverage are not interchangeable.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
+
+---
+
+# MG-AUD-049
+
+Title
+
+Community analytics uses raw formula substring matching for element membership.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.14
+
+Discovery Context
+
+This finding was discovered while tracing the full downstream dependency chain for MG-AUD-008.
+
+It is scientifically related to the exact-element-membership defect class resolved by MG-AUD-004, but occurs in a separate consumer and affects community-summary metadata rather than discovery scoring.
+
+Affected Components
+
+- DiscoveryGraphBuilder
+- DiscoveryGraphAnalyticsService
+- DiscoveryGraphNode schema
+- discovery graph node metadata
+- community analytics responses
+- community `dominant_elements`
+
+Root Cause
+
+`DiscoveryGraphAnalyticsService._summarize_community()` determined element membership by checking configured element-symbol strings directly against chemical formula text.
+
+Conceptually:
+
+`element in formula`
+
+Chemical formulas are structured scientific data, so raw substring membership is not a valid general element-membership test.
+
+The current hard-coded symbol set limited obvious collisions, but correctness depended on the configured vocabulary remaining collision-free and could fail as supported elements expanded.
+
+Scientific Impact
+
+Community `dominant_elements` could become incorrect when an element symbol was matched as a substring rather than as an exact chemical element.
+
+The affected field is researcher-facing descriptive analytics metadata.
+
+Dependency analysis confirmed that the substring-derived element counts did not feed:
+
+- community membership
+- connected components
+- greedy modularity detection
+- centrality calculations
+- hub selection
+- average quality
+- average edge score
+- community importance score
+
+Therefore, no numeric graph-ranking or community-scoring defect was confirmed.
+
+Characterization Verification
+
+Two pre-remediation characterization boundaries were established.
+
+1. Graph-builder nodes did not expose canonical `elements`, producing a missing-field failure.
+
+2. A deliberate mismatch between formula text and canonical node membership proved that community analytics trusted formula text instead of structured element metadata.
+
+The analytics characterization returned formula-derived Li membership when canonical node metadata specified Na membership.
+
+Resolution
+
+✓ `DiscoveryGraphBuilder` now attaches canonical `elements` to graph nodes.
+
+✓ Canonical elements are derived from persisted `MaterialElement → Element.symbol` relationships.
+
+✓ The graph builder reuses its existing element map.
+
+✓ No additional database query is introduced.
+
+✓ `DiscoveryGraphAnalyticsService` now counts community elements from `node_data["elements"]`.
+
+✓ Raw formula substring matching was removed from community element counting.
+
+✓ `DiscoveryGraphNode` exposes the additive canonical `elements` field.
+
+✓ Existing graph topology and numeric analytics calculations are unchanged.
+
+✓ API compatibility is preserved.
+
+Regression Verification
+
+✓ Graph-builder canonical-element characterization test
+
+✓ Community canonical-membership characterization test
+
+✓ Existing graph-builder focused tests
+
+✓ Existing graph-analytics focused tests
+
+✓ Greedy modularity community endpoint verification
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Endpoint Verification
+
+Greedy modularity community analytics returned two communities.
+
+Community 1 contained materials 5–10 and reported:
+
+`dominant_elements = ["Fe", "O", "P", "Na", "Li"]`
+
+This matches exact canonical membership frequencies:
+
+- Fe, O, P in all six materials
+- Na in materials 6–10
+- Li only in material 5
+
+Community 2 contained materials 1–2 and reported:
+
+`dominant_elements = ["Fe", "Li", "O", "P"]`
+
+Community numeric outputs remained internally consistent.
+
+Community 1:
+
+- average_quality_score = 14.83
+- average_edge_score = 93.33
+- density = 1
+- average_degree = 5
+- community_importance_score = 78.36
+
+Community 2:
+
+- average_quality_score = 13.95
+- average_edge_score = 90
+- density = 1
+- average_degree = 1
+- community_importance_score = 72.48
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Material Quality Path Contribution
+
+No change (14.65)
+
+Reason
+
+MG-AUD-049 corrects community descriptive element metadata only.
+
+The LiFePO4 → Na/phosphate objective workflow, candidate ranking, transition semantics, shared-element semantics, pathway ranking, and scientific usefulness remain unchanged.
+
+Performance Improvements
+
+✓ Existing graph-builder element map reused.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No.
+
+The canonical graph-node `elements` field is additive.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Chemical element membership must come from structured scientific representations rather than raw formula substrings.
+
+A defect discovered during remediation of another finding should be tracked independently when it has a distinct root-cause location and downstream impact.
+
+Descriptive scientific metadata requires the same correctness discipline as numeric scoring because researchers may use both for interpretation and decision support.
+
+Related Findings
+
+MG-AUD-004 — Exact chemical element membership in discovery reasoning.
+
+MG-AUD-008 — Partial risk evidence and favorable quality bonus eligibility.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002

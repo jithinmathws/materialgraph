@@ -119,6 +119,7 @@ class MaterialQualityService:
     ) -> dict:
         risk_score = risk_signal.get("risk_score")
         risk_known = risk_signal.get("risk_known", False)
+        risk_evidence_complete = risk_signal.get("risk_evidence_complete", False)
 
         stability_score = self._calculate_stability_score(
             is_stable=material.is_stable,
@@ -131,6 +132,7 @@ class MaterialQualityService:
             criticality_score=criticality_score,
             risk_score=risk_score,
             risk_known=risk_known,
+            risk_evidence_complete=risk_evidence_complete,
         )
 
         return {
@@ -175,6 +177,7 @@ class MaterialQualityService:
         criticality_score: float | None,
         risk_score: float | None,
         risk_known: bool,
+        risk_evidence_complete: bool,
     ) -> float:
         score = 0.0
 
@@ -193,6 +196,7 @@ class MaterialQualityService:
             criticality_score=criticality_score,
             risk_score=risk_score,
             risk_known=risk_known,
+            risk_evidence_complete=risk_evidence_complete,
         )
 
         return round(min(score, self.QUALITY_SCORE_MAX), 2)
@@ -202,6 +206,7 @@ class MaterialQualityService:
         criticality_score: float | None,
         risk_score: float | None,
         risk_known: bool,
+        risk_evidence_complete: bool,
     ) -> float:
         score = 0.0
 
@@ -211,7 +216,7 @@ class MaterialQualityService:
             elif criticality_score <= 60:
                 score += self.QUALITY_SCORE_MAX * 0.08
 
-        if risk_known and risk_score is not None:
+        if risk_known and risk_evidence_complete and risk_score is not None:
             if risk_score <= 3:
                 score += self.QUALITY_SCORE_MAX * 0.15
             elif risk_score <= 6:

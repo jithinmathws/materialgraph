@@ -63,3 +63,23 @@ def test_discovery_graph_edges_include_edge_intelligence(db_session):
     assert "edge_score" in edge
     assert isinstance(edge["scientific_plausibility"], float)
     assert isinstance(edge["edge_score"], float)
+
+def test_discovery_graph_nodes_include_canonical_elements(db_session):
+    builder = DiscoveryGraphBuilder(db_session)
+
+    result = builder.build_graph(
+        start_material_id=5,
+        avoid_element="Li",
+        prefer_element="Na",
+        max_depth=1,
+    )
+
+    nodes_by_id = {
+        node["material_id"]: node
+        for node in result["nodes"]
+    }
+
+    assert nodes_by_id[5]["elements"] == ["Fe", "Li", "O", "P"]
+
+    if 6 in nodes_by_id:
+        assert nodes_by_id[6]["elements"] == ["Fe", "Na", "O", "P"]

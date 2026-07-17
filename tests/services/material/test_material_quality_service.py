@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+
+
 def test_material_quality_service_returns_quality_metadata(db_session):
     from app.services.material.quality_service import MaterialQualityService
 
@@ -60,6 +63,7 @@ def test_unknown_risk_does_not_receive_low_risk_quality_bonus():
         criticality_score=31.0,
         risk_score=None,
         risk_known=False,
+        risk_evidence_complete=False,
     )
 
     assert score == 11.7
@@ -77,6 +81,51 @@ def test_known_low_risk_receives_low_risk_quality_bonus():
         criticality_score=31.0,
         risk_score=1.5,
         risk_known=True,
+        risk_evidence_complete=True,
     )
 
     assert score == 13.95
+
+
+def test_partial_low_risk_evidence_does_not_receive_quality_bonus():
+    """Partial risk evidence must not unlock a favorable risk-quality bonus."""
+    from types import SimpleNamespace
+
+    from app.services.material.quality_service import MaterialQualityService
+
+    service = MaterialQualityService.__new__(MaterialQualityService)
+    service.QUALITY_SCORE_MAX = 15.0
+
+    material = SimpleNamespace(
+        id=123,
+        is_stable=True,
+        energy_above_hull=0.0,
+    )
+    risk_signal = {
+        "material_id": 123,
+        "risk_score": 1.5,
+        "risk_known": True,
+        "risk_profile_coverage": 0.25,
+        "known_risk_element_count": 1,
+        "total_element_count": 4,
+        "known_risk_elements": ["Li"],
+        "unknown_risk_elements": ["Fe", "O", "P"],
+        "risk_evidence_complete": False,
+    }
+
+    result = service._build_quality_response(
+        material=material,
+        criticality_score=31.0,
+        risk_signal=risk_signal,
+    )
+
+    assert result["risk_known"] is True
+    assert result["risk_profile_coverage"] == 0.25
+    assert result["known_risk_element_count"] == 1
+    assert result["total_element_count"] == 4
+    assert result["risk_evidence_complete"] is False
+    assert result["unknown_risk_elements"] == ["Fe", "O", "P"]
+
+    # Corrected MG-AUD-008 behavior:
+    # partial evidence does not qualify for a favorable risk bonus.
+    assert result["quality_score"] == 11.7

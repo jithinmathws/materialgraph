@@ -67,7 +67,10 @@ class DiscoveryGraphBuilder:
                 elements_map = self._get_material_elements_map()
 
             nodes_by_id: dict[int, dict] = {
-                base_material.id: self._material_to_node(base_material)
+                base_material.id: self._material_to_node(
+                    base_material,
+                    elements=elements_map.get(base_material.id, []),
+                )
             }
             edges_by_key: dict[tuple[int, int, str], dict] = {}
             adjacency: dict[int, list[int]] = {}
@@ -91,7 +94,10 @@ class DiscoveryGraphBuilder:
                 if source_material is None:
                     continue
 
-                source_node = self._material_to_node(source_material)
+                source_node = self._material_to_node(
+                    source_material,
+                    elements=elements_map.get(source_material.id, []),
+                )
                 nodes_by_id[source_material.id] = source_node
 
                 candidate_limit = (
@@ -127,7 +133,10 @@ class DiscoveryGraphBuilder:
                 ):
                     for candidate in candidates:
                         target_id = candidate["material_id"]
-                        target_node = self._candidate_to_node(candidate)
+                        target_node = self._candidate_to_node(
+                            candidate,
+                            elements=elements_map.get(target_id, []),
+                        )
 
                         nodes_by_id[target_id] = target_node
 
@@ -396,7 +405,11 @@ class DiscoveryGraphBuilder:
             for material_id, symbols in elements_map.items()
         }
 
-    def _material_to_node(self, material: Material) -> dict:
+    def _material_to_node(
+        self,
+        material: Material,
+        elements: list[str],
+    ) -> dict:
         quality = self._get_material_quality(material.id)
 
         return {
@@ -404,10 +417,15 @@ class DiscoveryGraphBuilder:
             "mp_id": material.mp_id,
             "pretty_formula": material.pretty_formula,
             "formula": material.pretty_formula or material.formula,
+            "elements": sorted(set(elements)),
             **quality,
         }
 
-    def _candidate_to_node(self, candidate: dict) -> dict:
+    def _candidate_to_node(
+        self,
+        candidate: dict,
+        elements: list[str],
+    ) -> dict:
         quality = self._get_material_quality(candidate["material_id"])
 
         return {
@@ -415,6 +433,7 @@ class DiscoveryGraphBuilder:
             "mp_id": candidate["mp_id"],
             "pretty_formula": candidate["pretty_formula"],
             "formula": candidate["pretty_formula"] or candidate["formula"],
+            "elements": sorted(set(elements)),
             **quality,
         }
 

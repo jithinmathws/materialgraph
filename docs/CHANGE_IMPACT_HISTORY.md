@@ -563,3 +563,91 @@ LiFePO4 → Na phosphate objective unchanged.
 
 Scientific usefulness remains 95.65.
 
+---
+
+## v1.9.14
+
+Summary
+
+Risk-quality bonus evidence-completeness remediation.
+
+Reason
+
+Resolved MG-AUD-008.
+
+Affected Components
+
+- Material Risk Evidence
+- Material Quality Scoring
+- Discovery Path Ranking
+- Scientific Pathway Analysis
+- Research Evidence Intelligence
+- Comparative Research Intelligence
+- Endpoint-Sensitive Research Ranking
+- K-Best and K-Shortest Path Ranking
+- Weighted Shortest Path
+- Discovery Graph Node Quality
+- Graph Analytics and Community Importance
+
+Changes
+
+Favorable low-risk and medium-risk quality bonuses now require complete material-element risk evidence.
+
+A material with a calculable risk score but incomplete material-element coverage continues to expose the observed risk score and evidence metadata, but partial evidence no longer qualifies for a favorable risk-quality bonus.
+
+Risk aggregation semantics are unchanged. `risk_profile_coverage` continues to represent material-element coverage rather than composition-weighted coverage or risk-profile dimension completeness. Risk-dimension completeness remains a separate audit concern.
+
+Characterization tests confirmed the pre-remediation defect and the corrected behavior. Scalar and bulk risk evidence semantics remain aligned.
+
+Scientific Changes
+
+LiFePO4 Risk
+
+No change (2.833)
+
+LiFePO4 Risk Evidence Coverage
+
+1.0 (4 of 4 constituent elements covered)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Material Quality Path Contribution
+
+No change (14.65)
+
+Reason
+
+The LiFePO4 → Na/phosphate reference materials checked (material IDs 5–10) all have complete material-element risk evidence (`risk_profile_coverage = 1.0`, `risk_evidence_complete = true`, and no unknown risk elements). The reference workflow therefore remains eligible for the existing favorable risk-quality contribution.
+
+Downstream Impact Discovered During Investigation
+
+Corrected material quality can propagate to scientific usefulness, pathway ranking, scientific pathway quality summaries and confidence explanations, research evidence readiness, comparative explanations, endpoint-sensitive tie-breaking, K-best and equal-hop K-shortest ordering, weighted shortest-path costs, discovery graph node quality, and graph community importance.
+
+No downstream scoring weights were changed; these consumers inherit corrected MaterialQualityService values.
+
+Additional Audit Discoveries
+
+- During MG-AUD-008 dependency inspection, raw formula substring matching was discovered in DiscoveryGraphAnalyticsService community-summary element counting. This was tracked independently as MG-AUD-049 and remediated in the same v1.9.14 development cycle.
+- `risk_evidence_complete` represents complete coverage across constituent material elements, not completeness across every risk-profile dimension. Risk-dimension coverage should remain a separate audit finding or refinement.
+- Composition-weighted risk coverage was considered but intentionally not introduced because it would constitute a new scientific policy rather than a minimal remediation.
+
+Performance
+
+No additional database queries introduced.
+
+Breaking API
+
+No
+
+Database Backfill
+
+No
+
+Regression Status
+
+- Focused MaterialQualityService tests passed.
+- Focused MaterialRiskService characterization tests passed.
+- LiFePO4 → Na/phosphate reference workflow verified.
+- Full regression suite passed.

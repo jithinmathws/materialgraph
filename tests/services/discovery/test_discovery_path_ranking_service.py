@@ -102,3 +102,36 @@ def test_rank_path_without_db_has_zero_material_quality():
     )
 
     assert result["score_breakdown"]["material_quality"] == 0.0
+
+def test_path_ranking_does_not_reward_partial_risk_evidence():
+    service = DiscoveryPathRankingService.__new__(
+        DiscoveryPathRankingService
+    )
+
+    class QualityServiceStub:
+        def get_material_quality_bulk(self, material_ids):
+            return {
+                1: {"quality_score": 11.7},
+                2: {"quality_score": 13.95},
+            }
+
+    service.material_quality_service = QualityServiceStub()
+
+    result = service.rank_path(
+        materials=[
+            {"material_id": 1},
+            {"material_id": 2},
+        ],
+        transitions=[
+            {
+                "transition_type": "alkali_substitution",
+                "shared_elements": ["Fe", "P", "O"],
+                "removed_elements": ["Li"],
+                "introduced_elements": ["Na"],
+            }
+        ],
+        avoid_element="Li",
+        prefer_element="Na",
+    )
+
+    assert result["score_breakdown"]["material_quality"] == 12.82
