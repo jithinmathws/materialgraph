@@ -754,11 +754,110 @@ During implementation of MG-AUD-009, an additional explainability opportunity wa
 
 Current objective satisfaction describes deterministic path-wide objective fulfillment.
 
-A future enhancement could additionally distinguish:
+---
 
-- path-wide objective satisfaction
-- endpoint-specific objective satisfaction
+## v1.9.16
 
-This was determined to be outside the scope of MG-AUD-009 because the current implementation correctly resolves the original defect and preserves deterministic scientific semantics.
+Summary
 
-The enhancement has been recorded separately as MG-AUD-050.
+Endpoint-specific research objective evaluation.
+
+Reason
+
+Resolved MG-AUD-050.
+
+Affected Components
+
+- ScientificPathwayAnalysisService
+- ResearchObjectiveExplorationService
+- Scientific pathway response schemas
+
+Changes
+
+Endpoint Objective Evaluation
+
+Scientific pathway responses now distinguish deterministic path-wide objective
+satisfaction from endpoint-specific objective satisfaction.
+
+Endpoint Explainability
+
+Added endpoint-specific objective evaluation including:
+
+- endpoint_matched_avoid_elements
+- endpoint_unmatched_avoid_elements
+- endpoint_matched_prefer_elements
+- endpoint_unmatched_prefer_elements
+- endpoint_avoid_coverage
+- endpoint_prefer_coverage
+- endpoint_overall_coverage
+- endpoint_status
+- endpoint_interpretation
+
+Scientific Semantics
+
+Path-wide objective satisfaction continues to describe deterministic removal
+and introduction events occurring anywhere along the pathway.
+
+Endpoint-specific objective satisfaction evaluates only the final endpoint
+material composition.
+
+Scoring
+
+No deterministic scoring changes.
+
+No objective-alignment changes.
+
+No scientific usefulness changes.
+
+No pathway ranking changes.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+This remediation improves researcher explainability by distinguishing
+path-wide transition evidence from endpoint material composition while
+preserving all deterministic scientific scoring.
+
+Performance
+
+No measurable performance impact.
+
+No additional database queries introduced.
+
+Breaking API
+
+No
+
+Endpoint objective fields are additive.
+
+Existing path-wide objective fields remain unchanged.
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Reference Workflow
+
+Verified
+
+- Path-wide objective satisfaction verified.
+- Endpoint-specific objective satisfaction verified.
+- Characterization tests passed.
+- Full regression suite passed.

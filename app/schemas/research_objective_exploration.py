@@ -104,6 +104,18 @@ class ObjectiveSatisfaction(BaseModel):
     status: str
     interpretation: str
 
+    endpoint_matched_avoid_elements: list[str] = Field(default_factory=list)
+    endpoint_unmatched_avoid_elements: list[str] = Field(default_factory=list)
+    endpoint_matched_prefer_elements: list[str] = Field(default_factory=list)
+    endpoint_unmatched_prefer_elements: list[str] = Field(default_factory=list)
+
+    endpoint_avoid_coverage: float = 0.0
+    endpoint_prefer_coverage: float = 0.0
+    endpoint_overall_coverage: float = 0.0
+
+    endpoint_status: str
+    endpoint_interpretation: str
+
 class ScientificPathwayOpportunity(BaseModel):
     evidence_summary: EvidenceSummary | None = None
     rank: int

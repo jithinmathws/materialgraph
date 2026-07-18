@@ -1,7 +1,7 @@
 # MaterialGraph Architecture & Implementation Audit Resolution
 
-Version: 1.1
-Last Updated: 2026-07-17
+Version: 1.2
+Last Updated: 2026-07-18
 
 ---
 
@@ -1523,6 +1523,199 @@ Related Findings
 MG-AUD-004 — Exact chemical element membership in discovery reasoning.
 
 MG-AUD-008 — Partial risk evidence and favorable quality bonus eligibility.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
+---
+
+# MG-AUD-050
+
+Title
+
+Research objective explainability does not distinguish path-wide and endpoint-specific objective satisfaction.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.16
+
+Affected Components
+
+- ScientificPathwayAnalysisService
+- ResearchObjectiveExplorationService
+- Scientific pathway response schemas
+
+Root Cause
+
+Scientific pathway responses exposed deterministic objective satisfaction
+only from a pathway-wide perspective.
+
+Researchers could determine whether requested avoided or preferred elements
+appeared somewhere along the pathway, but could not independently determine
+whether the final endpoint material itself satisfied the requested research
+objective.
+
+Scientific Impact
+
+Researcher explainability was incomplete.
+
+Path-wide deterministic transition evidence and endpoint material composition
+represent different scientific concepts and should be evaluated separately.
+
+Deterministic scoring remained scientifically correct.
+
+Resolution
+
+✓ Preserved existing path-wide objective satisfaction.
+
+✓ Added endpoint-specific objective evaluation.
+
+✓ Endpoint evaluation now reports:
+
+- endpoint_matched_avoid_elements
+- endpoint_unmatched_avoid_elements
+- endpoint_matched_prefer_elements
+- endpoint_unmatched_prefer_elements
+- endpoint_avoid_coverage
+- endpoint_prefer_coverage
+- endpoint_overall_coverage
+- endpoint_status
+- endpoint_interpretation
+
+✓ Endpoint evaluation uses exact chemical element membership.
+
+✓ Existing deterministic scoring preserved.
+
+✓ Existing pathway ranking preserved.
+
+✓ Public API compatibility preserved.
+
+Characterization Verification
+
+Before remediation
+
+Only path-wide objective satisfaction was available.
+
+Researchers could not distinguish pathway transitions from endpoint material
+composition.
+
+After remediation
+
+Scientific pathway responses independently report:
+
+- deterministic path-wide objective satisfaction
+- endpoint-specific objective satisfaction
+
+Characterization tests confirmed these remain independent concepts.
+
+Regression Verification
+
+✓ Scientific pathway analysis tests
+
+✓ Research objective exploration tests
+
+✓ Endpoint verification
+
+✓ Characterization tests
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Reference Workflow Verification
+
+Objective
+
+avoid:
+
+- Li
+
+prefer:
+
+- Na
+
+Endpoint materials
+
+- Na3Fe3(PO4)4
+- Na9Fe3P8O29
+- NaFeP2O7
+- NaFePO4
+- Na3Fe(PO4)2
+
+All endpoint materials:
+
+- exclude Li
+- contain Na
+
+Path-wide objective satisfaction
+
+Complete.
+
+Endpoint-specific objective satisfaction
+
+Complete.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+95.65
+
+Reason
+
+The remediation introduces endpoint-specific explainability only.
+
+Deterministic scoring, pathway generation, and scientific ranking remain
+unchanged.
+
+Performance Improvements
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No.
+
+Endpoint objective fields are additive.
+
+Existing path-wide fields remain unchanged.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Pathway reasoning and endpoint evaluation answer different scientific
+questions.
+
+Scientific explainability should distinguish transition evidence from
+endpoint material composition while preserving deterministic scoring.
 
 Related Scientific Principles
 

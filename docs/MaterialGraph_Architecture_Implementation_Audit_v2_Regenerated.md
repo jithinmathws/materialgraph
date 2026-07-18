@@ -71,8 +71,8 @@ public API responses.
     ranking layers.**
 11. **MG-AUD-049 - Resolved (v1.9.14) --- Community analytics used raw formula 
     substring matching for element membership.**
-12. **MG-AUD-050 --- Scientific pathway explainability does not distinguish path-wide 
-    and endpoint-specific objective satisfaction.**
+12. **MG-AUD-050 - Resolved (v1.9.16) --- Scientific pathway responses 
+now distinguish path-wide and endpoint-specific objective satisfaction.**
 
 ## Current Data Reality
 
@@ -1657,28 +1657,30 @@ No.
 ------------------------------------------------------------------------
 
 
-## MG-AUD-050 --- Scientific Pathway Explainability Does Not Distinguish Path-Wide and Endpoint-Specific Objective Satisfaction
+## MG-AUD-050 --- Scientific Pathway Responses Did Not Distinguish Path-Wide and Endpoint-Specific Objective Satisfaction
 
-**Status:** Open\
+**Status:** Resolved\
+**Last verified:** 2026-07-18\
 **Confidence:** Confirmed\
-**Priority:** P2
+**Priority:** P2\
+**Resolution version:** v1.9.16
 
 ### Discovery Context
 
 This finding was identified during implementation and verification of
 MG-AUD-009.
 
-MG-AUD-009 correctly propagates multi-element research objectives through
+MG-AUD-009 correctly propagated multi-element research objectives through
 deterministic pathway evaluation.
 
 During endpoint verification it became apparent that researcher-facing
-objective satisfaction currently summarizes deterministic path-wide
-objective fulfillment but does not independently evaluate the final
-endpoint material.
+objective satisfaction summarized deterministic path-wide objective
+fulfillment but did not independently evaluate the final endpoint
+material.
 
 ### Finding
 
-Scientific pathway responses expose:
+Scientific pathway responses exposed:
 
 - requested objective elements
 - matched objective elements
@@ -1686,64 +1688,121 @@ Scientific pathway responses expose:
 - objective coverage
 - completion status
 
-These values correctly describe deterministic path-wide transition
-evidence.
+These correctly described deterministic path-wide transition evidence.
 
-However, they do not distinguish whether the endpoint material itself
-satisfies those objectives.
+However, they did not distinguish whether the final endpoint material
+itself satisfied the requested research objective.
 
 ### Scientific Impact
 
-No scientific scoring defect exists.
+No scientific scoring defect existed.
 
-Deterministic scoring, objective alignment, scientific usefulness,
-transition plausibility, and pathway ranking are already correct.
+Objective alignment, deterministic traversal, scientific usefulness,
+transition plausibility, and pathway ranking were already correct.
 
-The limitation affects researcher explainability only.
+The limitation affected researcher explainability only.
 
-Researchers cannot immediately distinguish:
+Researchers could not immediately distinguish:
 
 - objective satisfied somewhere along the pathway
 - objective satisfied by the final endpoint material
 
-### Proposed Remediation
+### Resolution
 
-Introduce endpoint-specific objective satisfaction metadata while
-preserving the existing path-wide objective satisfaction.
+✓ Existing path-wide objective satisfaction preserved.
 
-Potential additions include:
+✓ Added endpoint-specific objective evaluation.
+
+✓ Added:
 
 - endpoint_matched_avoid_elements
 - endpoint_unmatched_avoid_elements
 - endpoint_matched_prefer_elements
 - endpoint_unmatched_prefer_elements
-- endpoint_objective_status
+- endpoint_avoid_coverage
+- endpoint_prefer_coverage
+- endpoint_overall_coverage
+- endpoint_status
+- endpoint_interpretation
 
-The existing path-wide semantics should remain unchanged.
+✓ Endpoint evaluation uses exact chemical element membership.
 
-### Expected Impact
+✓ Existing deterministic scoring preserved.
 
-Researcher interpretability improves.
+✓ Existing pathway ranking preserved.
 
-No deterministic scoring changes.
+✓ Public API compatibility preserved.
 
-No ranking changes.
+### Regression Verification
 
-No traversal changes.
+✓ Scientific pathway analysis tests
 
-No scientific usefulness changes.
+✓ Research objective exploration tests
+
+✓ Characterization tests
+
+✓ Endpoint verification
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Endpoint Verification
+
+Reference objective:
+
+```text
+avoid: Li
+prefer: Na
+```
+
+Verified endpoint materials:
+
+- Na3Fe3(PO4)4
+- Na9Fe3P8O29
+- NaFeP2O7
+- NaFePO4
+- Na3Fe(PO4)2
+
+All verified endpoints:
+
+- exclude Li
+- contain Na
+
+Path-wide objective satisfaction
+
+Complete.
+
+Endpoint-specific objective satisfaction
+
+Complete.
+
+### Scientific Impact
+
+LiFePO4 Scientific Usefulness
+
+95.65 → 95.65
+
+Reason
+
+The remediation introduces endpoint-specific explainability only.
+
+Deterministic scoring, pathway generation, objective alignment,
+scientific usefulness, and pathway ranking remain unchanged.
 
 ### Performance
 
-Expected to reuse existing endpoint material information.
+✓ No measurable performance impact.
 
-No additional database queries should be required.
+✓ No additional database queries introduced.
 
 ### Breaking API
 
 No.
 
-Implementation should be additive.
+Endpoint-specific objective fields are additive.
+
+Existing path-wide objective fields remain unchanged.
 
 ------------------------------------------------------------------------
 
@@ -1885,7 +1944,7 @@ Actions:
 1. ✓ Replace formula substring membership.
 2. ✓ Define multi-element avoid/prefer semantics.
 3.  Define hard versus soft constraints.
-4.  Implement endpoint-specific objective satisfaction (MG-AUD-050).
+4. ✓ Implement endpoint-specific objective satisfaction (MG-AUD-050).
 5.  Define preservation continuity semantics.
 
 ## Phase 5 --- Explainability Provenance
@@ -1946,7 +2005,7 @@ change is.
 1.  What evidence-aware criticality response should replace favorable
     zero without breaking legacy clients?
 2.  Are repeated stability and energy terms intentional policy?
-3.  What are the final hard/soft semantics for multi-element objectives?
+3.  Should objective constraints remain soft by default, or should      optional hard constraint modes be introduced?
 4.  What constitutes continuous preservation across a path?
 5.  What precision is scientifically meaningful for endpoint comparison?
 6.  What recall is acceptable for bounded recommendation/scenario pools?
@@ -2019,6 +2078,16 @@ change is.
 -   full regression suite passed
 -   LiFePO4 → Na/phosphate scientific usefulness remained 95.65
 
+## 2026-07-18 --- Endpoint Objective Explainability
+
+- resolved MG-AUD-050 endpoint-specific objective evaluation
+- preserved existing path-wide objective satisfaction semantics
+- introduced endpoint-specific objective satisfaction metadata
+- verified exact element membership for endpoint evaluation
+- maintained deterministic scoring and pathway ranking
+- verified LiFePO4 → Na/phosphate reference workflow
+- full regression suite passed
+
 ------------------------------------------------------------------------
 
 # Appendix A --- Reference Response
@@ -2063,6 +2132,13 @@ the equal-evidence tie across the five reference pathways.
 
 MG-AUD-049 also preserved the verified `95.65` score while correcting
 researcher-facing community element metadata.
+
+MG-AUD-050 preserved the verified scientific usefulness score of 95.65
+while introducing endpoint-specific objective satisfaction alongside the
+existing path-wide objective satisfaction.
+
+The reference response now reports both deterministic transition-level
+objective fulfillment and final endpoint-material objective fulfillment.
 
 ------------------------------------------------------------------------
 
@@ -2220,8 +2296,11 @@ The sequential remediation set
 MG-AUD-049, discovered during MG-AUD-008 dependency inspection, has also
 been implemented and verified independently.
 
-MG-AUD-050 has been identified as a follow-on explainability enhancement
-discovered during MG-AUD-009 verification.
+MG-AUD-050 has been implemented and verified.
+
+Scientific pathway responses now distinguish deterministic path-wide
+objective satisfaction from endpoint-specific objective satisfaction
+while preserving existing scoring, ranking, and API compatibility.
 
 The remaining work now focuses primarily on scientific semantics,
 researcher explainability, ranking policies, and production
@@ -2286,7 +2365,7 @@ roadmap order:
 
 The sequential remediation set through MG-AUD-009 has been completed.
 
-MG-AUD-049 and MG-AUD-050 were identified as independent findings during subsequent remediation and verification work.
+MG-AUD-049 and MG-AUD-050 have both been implemented and verified as independent remediations discovered during subsequent audit work.
 
 Future audit work should continue with the remaining confirmed
 semantic, evidence, ranking, and performance findings in roadmap

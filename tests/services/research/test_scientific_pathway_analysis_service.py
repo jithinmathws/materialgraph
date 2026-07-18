@@ -204,6 +204,18 @@ def test_scientific_pathway_analysis_exposes_complete_objective_satisfaction(
             "All requested avoid and prefer element objectives are "
             "represented by path-wide removal and introduction events."
         ),
+        "endpoint_matched_avoid_elements": ["Li"],
+        "endpoint_unmatched_avoid_elements": [],
+        "endpoint_matched_prefer_elements": ["Na"],
+        "endpoint_unmatched_prefer_elements": [],
+        "endpoint_avoid_coverage": 1.0,
+        "endpoint_prefer_coverage": 1.0,
+        "endpoint_overall_coverage": 1.0,
+        "endpoint_status": "complete",
+        "endpoint_interpretation": (
+            "The final endpoint material satisfies all requested avoid "
+            "and prefer element objectives."
+        ),
     }
 
 
@@ -288,3 +300,84 @@ def test_objective_satisfaction_handles_empty_objectives():
     assert result["prefer_coverage"] == 1.0
     assert result["overall_coverage"] == 1.0
     assert result["status"] == "complete"
+
+def test_endpoint_objective_satisfaction_uses_final_composition_only():
+    service = ScientificPathwayAnalysisService.__new__(
+        ScientificPathwayAnalysisService
+    )
+
+    result = service._build_endpoint_objective_satisfaction(
+        avoid_elements=["Li", "Co"],
+        prefer_elements=["Na", "K"],
+        endpoint_elements=["Na", "Fe", "P", "O"],
+    )
+
+    assert result == {
+        "endpoint_matched_avoid_elements": ["Co", "Li"],
+        "endpoint_unmatched_avoid_elements": [],
+        "endpoint_matched_prefer_elements": ["Na"],
+        "endpoint_unmatched_prefer_elements": ["K"],
+        "endpoint_avoid_coverage": 1.0,
+        "endpoint_prefer_coverage": 0.5,
+        "endpoint_overall_coverage": 0.75,
+        "endpoint_status": "partial",
+        "endpoint_interpretation": (
+            "The final endpoint material satisfies some requested avoid "
+            "or prefer element objectives; unmatched endpoint objectives remain."
+        ),
+    }
+
+
+def test_path_and_endpoint_satisfaction_can_differ():
+    service = ScientificPathwayAnalysisService.__new__(
+        ScientificPathwayAnalysisService
+    )
+
+    path = service._build_objective_satisfaction(
+        avoid_elements=["Li"],
+        prefer_elements=["Na"],
+        removed_elements=["Li"],
+        introduced_elements=["Na"],
+    )
+    endpoint = service._build_endpoint_objective_satisfaction(
+        avoid_elements=["Li"],
+        prefer_elements=["Na"],
+        endpoint_elements=["Li", "Na", "Fe", "P", "O"],
+    )
+
+    assert path["status"] == "complete"
+    assert path["matched_avoid_elements"] == ["Li"]
+
+    assert endpoint["endpoint_status"] == "partial"
+    assert endpoint["endpoint_unmatched_avoid_elements"] == ["Li"]
+    assert endpoint["endpoint_matched_prefer_elements"] == ["Na"]
+
+
+def test_endpoint_element_extraction_uses_exact_formula_elements():
+    service = ScientificPathwayAnalysisService.__new__(
+        ScientificPathwayAnalysisService
+    )
+
+    elements = service._endpoint_elements(
+        [{"formula": "NaFePO4", "pretty_formula": "NaFePO4"}]
+    )
+
+    assert elements == ["Fe", "Na", "O", "P"]
+    assert "N" not in elements
+
+
+def test_endpoint_objective_satisfaction_handles_empty_objectives():
+    service = ScientificPathwayAnalysisService.__new__(
+        ScientificPathwayAnalysisService
+    )
+
+    result = service._build_endpoint_objective_satisfaction(
+        avoid_elements=[],
+        prefer_elements=[],
+        endpoint_elements=["Na", "Fe", "P", "O"],
+    )
+
+    assert result["endpoint_avoid_coverage"] == 1.0
+    assert result["endpoint_prefer_coverage"] == 1.0
+    assert result["endpoint_overall_coverage"] == 1.0
+    assert result["endpoint_status"] == "complete"

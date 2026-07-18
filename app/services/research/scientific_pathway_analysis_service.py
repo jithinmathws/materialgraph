@@ -5,6 +5,7 @@ from collections.abc import Collection
 from sqlalchemy.orm import Session
 
 from app.services.material.quality_service import MaterialQualityService
+from app.utils.chemical_formula import extract_elements
 from app.services.research.objective_service import ResearchObjectiveService
 from app.services.research.research_evidence_intelligence_service import (
     ResearchEvidenceIntelligenceService,
@@ -167,6 +168,96 @@ class ScientificPathwayAnalysisService:
             "interpretation": interpretation,
         }
 
+    @staticmethod
+    def _build_endpoint_objective_satisfaction(
+        *,
+        avoid_elements: Collection[str] | None,
+        prefer_elements: Collection[str] | None,
+        endpoint_elements: Collection[str] | None,
+    ) -> dict:
+        requested_avoid = frozenset(avoid_elements or ())
+        requested_prefer = frozenset(prefer_elements or ())
+        endpoint = frozenset(endpoint_elements or ())
+
+        # An avoid objective is satisfied when the endpoint does not contain
+        # the requested avoided element.
+        endpoint_matched_avoid = requested_avoid.difference(endpoint)
+        endpoint_unmatched_avoid = requested_avoid.intersection(endpoint)
+
+        # A prefer objective is satisfied when the endpoint contains the
+        # requested preferred element.
+        endpoint_matched_prefer = requested_prefer.intersection(endpoint)
+        endpoint_unmatched_prefer = requested_prefer.difference(endpoint)
+
+        endpoint_avoid_coverage = (
+            len(endpoint_matched_avoid) / len(requested_avoid)
+            if requested_avoid
+            else 1.0
+        )
+        endpoint_prefer_coverage = (
+            len(endpoint_matched_prefer) / len(requested_prefer)
+            if requested_prefer
+            else 1.0
+        )
+
+        requested_count = len(requested_avoid) + len(requested_prefer)
+        matched_count = (
+            len(endpoint_matched_avoid) + len(endpoint_matched_prefer)
+        )
+        endpoint_overall_coverage = (
+            matched_count / requested_count
+            if requested_count
+            else 1.0
+        )
+
+        if endpoint_overall_coverage == 1.0:
+            endpoint_status = "complete"
+            endpoint_interpretation = (
+                "The final endpoint material satisfies all requested avoid "
+                "and prefer element objectives."
+            )
+        elif matched_count == 0:
+            endpoint_status = "unmatched"
+            endpoint_interpretation = (
+                "The final endpoint material satisfies none of the requested "
+                "avoid or prefer element objectives."
+            )
+        else:
+            endpoint_status = "partial"
+            endpoint_interpretation = (
+                "The final endpoint material satisfies some requested avoid "
+                "or prefer element objectives; unmatched endpoint objectives remain."
+            )
+
+        return {
+            "endpoint_matched_avoid_elements": sorted(endpoint_matched_avoid),
+            "endpoint_unmatched_avoid_elements": sorted(endpoint_unmatched_avoid),
+            "endpoint_matched_prefer_elements": sorted(endpoint_matched_prefer),
+            "endpoint_unmatched_prefer_elements": sorted(endpoint_unmatched_prefer),
+            "endpoint_avoid_coverage": round(endpoint_avoid_coverage, 4),
+            "endpoint_prefer_coverage": round(endpoint_prefer_coverage, 4),
+            "endpoint_overall_coverage": round(endpoint_overall_coverage, 4),
+            "endpoint_status": endpoint_status,
+            "endpoint_interpretation": endpoint_interpretation,
+        }
+
+    @staticmethod
+    def _endpoint_elements(materials: list[dict]) -> list[str]:
+        if not materials:
+            return []
+
+        endpoint = materials[-1]
+
+        structured_elements = endpoint.get("elements")
+        if structured_elements:
+            return sorted(set(structured_elements))
+
+        formula = endpoint.get("formula") or endpoint.get("pretty_formula")
+        if not formula:
+            return []
+
+        return sorted(set(extract_elements(formula)))
+
     def _build_opportunity(
         self,
         rank: int,
@@ -185,6 +276,19 @@ class ScientificPathwayAnalysisService:
         introduced_elements = self._collect_elements(
             transitions,
             "introduced_elements",
+        )
+        endpoint_elements = self._endpoint_elements(materials)
+
+        path_satisfaction = self._build_objective_satisfaction(
+            avoid_elements=getattr(objective, "avoid_elements", None),
+            prefer_elements=getattr(objective, "prefer_elements", None),
+            removed_elements=removed_elements,
+            introduced_elements=introduced_elements,
+        )
+        endpoint_satisfaction = self._build_endpoint_objective_satisfaction(
+            avoid_elements=getattr(objective, "avoid_elements", None),
+            prefer_elements=getattr(objective, "prefer_elements", None),
+            endpoint_elements=endpoint_elements,
         )
 
         return {
@@ -207,12 +311,10 @@ class ScientificPathwayAnalysisService:
                 "introduced_elements": introduced_elements,
                 "material_quality": quality,
             },
-            "objective_satisfaction": self._build_objective_satisfaction(
-                avoid_elements=getattr(objective, "avoid_elements", None),
-                prefer_elements=getattr(objective, "prefer_elements", None),
-                removed_elements=removed_elements,
-                introduced_elements=introduced_elements,
-            ),
+            "objective_satisfaction": {
+                **path_satisfaction,
+                **endpoint_satisfaction,
+            },
             "strengths": self._strengths(chain, transitions),
             "trade_offs": self._tradeoffs(chain, transitions, quality),
             "risks": self._risks(transitions, quality),
