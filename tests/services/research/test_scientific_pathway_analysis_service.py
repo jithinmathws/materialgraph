@@ -50,6 +50,20 @@ def test_scientific_pathway_analysis_returns_opportunities(db_session):
         "moderate",
         "strong",
     }
+    
+    assert "objective_satisfaction" in opportunity
+
+    objective_satisfaction = opportunity["objective_satisfaction"]
+
+    assert "matched_avoid_elements" in objective_satisfaction
+    assert "unmatched_avoid_elements" in objective_satisfaction
+    assert "matched_prefer_elements" in objective_satisfaction
+    assert "unmatched_prefer_elements" in objective_satisfaction
+    assert objective_satisfaction["status"] in {
+        "complete",
+        "partial",
+        "unmatched",
+    }
 
     signal = evidence["supporting_signals"][0]
     assert "statement" in signal
@@ -146,3 +160,131 @@ def test_scientific_pathway_analysis_empty_material_is_safe(db_session):
     assert result["base_formula"] is None
     assert result["pathway_opportunities"] == []
     assert result["researcher_decision_required"] is True
+
+
+def test_scientific_pathway_analysis_exposes_complete_objective_satisfaction(
+    db_session,
+):
+    from app.schemas.discovery import ResearchObjective
+    from app.services.research.scientific_pathway_analysis_service import (
+        ScientificPathwayAnalysisService,
+    )
+
+    service = ScientificPathwayAnalysisService(db_session)
+
+    objective = ResearchObjective(
+        avoid_elements=["Li"],
+        prefer_elements=["Na"],
+        preserve_elements=["Fe", "P", "O"],
+        target_family="phosphate",
+        max_hops=2,
+        limit=5,
+        prefer_lower_criticality=True,
+        require_stable_materials=False,
+    )
+
+    result = service.analyze(material_id=5, objective=objective)
+
+    satisfaction = result["pathway_opportunities"][0][
+        "objective_satisfaction"
+    ]
+
+    assert satisfaction == {
+        "requested_avoid_elements": ["Li"],
+        "matched_avoid_elements": ["Li"],
+        "unmatched_avoid_elements": [],
+        "requested_prefer_elements": ["Na"],
+        "matched_prefer_elements": ["Na"],
+        "unmatched_prefer_elements": [],
+        "avoid_coverage": 1.0,
+        "prefer_coverage": 1.0,
+        "overall_coverage": 1.0,
+        "status": "complete",
+        "interpretation": (
+            "All requested avoid and prefer element objectives are "
+            "represented by path-wide removal and introduction events."
+        ),
+    }
+
+
+def test_scientific_pathway_analysis_exposes_partial_objective_satisfaction(
+    db_session,
+):
+    from app.schemas.discovery import ResearchObjective
+    from app.services.research.scientific_pathway_analysis_service import (
+        ScientificPathwayAnalysisService,
+    )
+
+    service = ScientificPathwayAnalysisService(db_session)
+
+    objective = ResearchObjective(
+        avoid_elements=["Li", "Co"],
+        prefer_elements=["Na", "K"],
+        preserve_elements=["Fe", "P", "O"],
+        target_family="phosphate",
+        max_hops=2,
+        limit=5,
+        prefer_lower_criticality=True,
+        require_stable_materials=False,
+    )
+
+    result = service.analyze(material_id=5, objective=objective)
+
+    opportunity = result["pathway_opportunities"][0]
+    satisfaction = opportunity["objective_satisfaction"]
+
+    assert satisfaction["requested_avoid_elements"] == ["Co", "Li"]
+    assert satisfaction["matched_avoid_elements"] == ["Li"]
+    assert satisfaction["unmatched_avoid_elements"] == ["Co"]
+
+    assert satisfaction["requested_prefer_elements"] == ["K", "Na"]
+    assert satisfaction["matched_prefer_elements"] == ["Na"]
+    assert satisfaction["unmatched_prefer_elements"] == ["K"]
+
+    assert satisfaction["avoid_coverage"] == 0.5
+    assert satisfaction["prefer_coverage"] == 0.5
+    assert satisfaction["overall_coverage"] == 0.5
+    assert satisfaction["status"] == "partial"
+
+    # Explainability must not change ranking.
+    assert opportunity["score_breakdown"]["objective_alignment"] == 12.5
+    assert opportunity["scientific_usefulness_score"] == 83.15
+
+
+def test_objective_satisfaction_is_element_order_independent():
+    service = ScientificPathwayAnalysisService.__new__(
+        ScientificPathwayAnalysisService
+    )
+
+    first = service._build_objective_satisfaction(
+        avoid_elements=["Li", "Co"],
+        prefer_elements=["Na", "K"],
+        removed_elements=["Li"],
+        introduced_elements=["Na"],
+    )
+    second = service._build_objective_satisfaction(
+        avoid_elements=["Co", "Li"],
+        prefer_elements=["K", "Na"],
+        removed_elements=["Li"],
+        introduced_elements=["Na"],
+    )
+
+    assert first == second
+
+
+def test_objective_satisfaction_handles_empty_objectives():
+    service = ScientificPathwayAnalysisService.__new__(
+        ScientificPathwayAnalysisService
+    )
+
+    result = service._build_objective_satisfaction(
+        avoid_elements=[],
+        prefer_elements=[],
+        removed_elements=["Li"],
+        introduced_elements=["Na"],
+    )
+
+    assert result["avoid_coverage"] == 1.0
+    assert result["prefer_coverage"] == 1.0
+    assert result["overall_coverage"] == 1.0
+    assert result["status"] == "complete"

@@ -15,22 +15,10 @@ class ResearchObjectiveService:
         material_id: int,
         objective,
     ) -> dict:
-        avoid_element = (
-            objective.avoid_elements[0]
-            if objective.avoid_elements
-            else None
-        )
-
-        prefer_element = (
-            objective.prefer_elements[0]
-            if objective.prefer_elements
-            else None
-        )
-
         result = self.chain_service.get_discovery_chains(
             material_id=material_id,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
+            avoid_elements=objective.avoid_elements,
+            prefer_elements=objective.prefer_elements,
             max_hops=objective.max_hops,
             limit=objective.limit,
         )
@@ -60,10 +48,16 @@ class ResearchObjectiveService:
         filtered = []
 
         for chain in chains:
-            if not self._preserves_required_elements(chain, objective.preserve_elements):
+            if not self._preserves_required_elements(
+                chain,
+                objective.preserve_elements,
+            ):
                 continue
 
-            if not self._matches_target_family(chain, objective.target_family):
+            if not self._matches_target_family(
+                chain,
+                objective.target_family,
+            ):
                 continue
 
             filtered.append(chain)
@@ -79,11 +73,13 @@ class ResearchObjectiveService:
             return True
 
         required = set(preserve_elements)
-
         all_preserved = set()
 
         for transition in chain["transitions"]:
-            all_preserved.update(transition["preserved_framework"])
+            all_preserved.update(
+                transition.get("shared_elements")
+                or transition.get("preserved_framework", [])
+            )
 
         return required.issubset(all_preserved)
 
@@ -101,7 +97,11 @@ class ResearchObjectiveService:
             required = {"P", "O"}
 
             for transition in chain["transitions"]:
-                if required.issubset(set(transition["preserved_framework"])):
+                shared_elements = (
+                    transition.get("shared_elements")
+                    or transition.get("preserved_framework", [])
+                )
+                if required.issubset(set(shared_elements)):
                     return True
 
         for transition in chain["transitions"]:
@@ -125,26 +125,14 @@ class ResearchObjectiveService:
         chains: list[dict],
         objective,
     ) -> list[dict]:
-        avoid_element = (
-            objective.avoid_elements[0]
-            if objective.avoid_elements
-            else None
-        )
-
-        prefer_element = (
-            objective.prefer_elements[0]
-            if objective.prefer_elements
-            else None
-        )
-
         ranked_chains = []
 
         for chain in chains:
             ranking = self.path_ranking_service.rank_path(
                 materials=chain["materials"],
                 transitions=chain["transitions"],
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
+                avoid_elements=objective.avoid_elements,
+                prefer_elements=objective.prefer_elements,
             )
 
             ranked_chains.append({

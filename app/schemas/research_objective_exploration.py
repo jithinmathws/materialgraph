@@ -88,6 +88,21 @@ class ScientificPathway(BaseModel):
     transitions: list
     chain_reason: str | None = None
 
+class ObjectiveSatisfaction(BaseModel):
+    requested_avoid_elements: list[str] = Field(default_factory=list)
+    matched_avoid_elements: list[str] = Field(default_factory=list)
+    unmatched_avoid_elements: list[str] = Field(default_factory=list)
+
+    requested_prefer_elements: list[str] = Field(default_factory=list)
+    matched_prefer_elements: list[str] = Field(default_factory=list)
+    unmatched_prefer_elements: list[str] = Field(default_factory=list)
+
+    avoid_coverage: float = 0.0
+    prefer_coverage: float = 0.0
+    overall_coverage: float = 0.0
+
+    status: str
+    interpretation: str
 
 class ScientificPathwayOpportunity(BaseModel):
     evidence_summary: EvidenceSummary | None = None
@@ -96,6 +111,7 @@ class ScientificPathwayOpportunity(BaseModel):
     scientific_usefulness_score: float
     score_breakdown: dict[str, float]
     scientific_facts: ScientificFacts
+    objective_satisfaction: ObjectiveSatisfaction
     quality_summary: QualitySummary
     strengths: list[str]
     trade_offs: list[str]

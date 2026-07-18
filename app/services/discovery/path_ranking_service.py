@@ -1,3 +1,5 @@
+from collections.abc import Collection
+
 from sqlalchemy.orm import Session
 
 from app.services.material.quality_service import MaterialQualityService
@@ -24,16 +26,35 @@ class DiscoveryPathRankingService:
         transitions: list[dict],
         avoid_element: str | None = None,
         prefer_element: str | None = None,
+        avoid_elements: Collection[str] | None = None,
+        prefer_elements: Collection[str] | None = None,
     ) -> dict:
-        framework_score = self._score_framework_preservation(transitions)
+        normalized_avoid_elements = self._normalize_elements(
+            element=avoid_element,
+            elements=avoid_elements,
+        )
+        normalized_prefer_elements = self._normalize_elements(
+            element=prefer_element,
+            elements=prefer_elements,
+        )
+
+        framework_score = self._score_framework_preservation(
+            transitions
+        )
         objective_score = self._score_objective_alignment(
             transitions=transitions,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
+            avoid_elements=normalized_avoid_elements,
+            prefer_elements=normalized_prefer_elements,
         )
-        plausibility_score = self._score_transition_plausibility(transitions)
-        efficiency_score = self._score_path_efficiency(transitions)
-        material_quality_score = self._score_material_quality(materials)
+        plausibility_score = (
+            self._score_transition_plausibility(transitions)
+        )
+        efficiency_score = self._score_path_efficiency(
+            transitions
+        )
+        material_quality_score = self._score_material_quality(
+            materials
+        )
 
         total_score = round(
             framework_score
@@ -55,8 +76,8 @@ class DiscoveryPathRankingService:
             },
             "usefulness_reason": self._build_usefulness_reason(
                 transitions=transitions,
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
+                avoid_elements=normalized_avoid_elements,
+                prefer_elements=normalized_prefer_elements,
             ),
         }
 
@@ -68,53 +89,88 @@ class DiscoveryPathRankingService:
             return 0.0
 
         shared_element_sets = [
-            set(transition.get("shared_elements") or transition.get("preserved_framework", []))
+            set(
+                transition.get("shared_elements")
+                or transition.get("preserved_framework", [])
+            )
             for transition in transitions
-            if transition.get("shared_elements") or transition.get("preserved_framework")
+            if (
+                transition.get("shared_elements")
+                or transition.get("preserved_framework")
+            )
         ]
 
         if not shared_element_sets:
             return 0.0
 
-        common_shared_elements = set.intersection(*shared_element_sets)
+        common_shared_elements = set.intersection(
+            *shared_element_sets
+        )
 
         if {"P", "O"}.issubset(common_shared_elements):
             return self.FRAMEWORK_WEIGHT
 
         if "O" in common_shared_elements:
-            return round(self.FRAMEWORK_WEIGHT * 0.7, 2)
+            return round(
+                self.FRAMEWORK_WEIGHT * 0.7,
+                2,
+            )
 
         if common_shared_elements:
-            return round(self.FRAMEWORK_WEIGHT * 0.5, 2)
+            return round(
+                self.FRAMEWORK_WEIGHT * 0.5,
+                2,
+            )
 
         return 0.0
 
     def _score_objective_alignment(
         self,
         transitions: list[dict],
-        avoid_element: str | None,
-        prefer_element: str | None,
+        avoid_elements: frozenset[str],
+        prefer_elements: frozenset[str],
     ) -> float:
         if not transitions:
             return 0.0
-
-        score = 0.0
 
         removed_elements = set()
         introduced_elements = set()
 
         for transition in transitions:
-            removed_elements.update(transition.get("removed_elements", []))
-            introduced_elements.update(transition.get("introduced_elements", []))
+            removed_elements.update(
+                transition.get("removed_elements", [])
+            )
+            introduced_elements.update(
+                transition.get("introduced_elements", [])
+            )
 
-        if avoid_element and avoid_element in removed_elements:
-            score += self.OBJECTIVE_WEIGHT * 0.5
+        if not avoid_elements and not prefer_elements:
+            return round(
+                self.OBJECTIVE_WEIGHT * 0.5,
+                2,
+            )
 
-        if prefer_element and prefer_element in introduced_elements:
-            score += self.OBJECTIVE_WEIGHT * 0.5
+        half_weight = self.OBJECTIVE_WEIGHT * 0.5
+        score = 0.0
 
-        if avoid_element is None and prefer_element is None:
-            score = self.OBJECTIVE_WEIGHT * 0.5
+        if avoid_elements:
+            matched_avoided = (
+                avoid_elements & removed_elements
+            )
+            avoidance_ratio = (
+                len(matched_avoided) / len(avoid_elements)
+            )
+            score += half_weight * avoidance_ratio
+
+        if prefer_elements:
+            matched_preferred = (
+                prefer_elements & introduced_elements
+            )
+            preference_ratio = (
+                len(matched_preferred)
+                / len(prefer_elements)
+            )
+            score += half_weight * preference_ratio
 
         return round(score, 2)
 
@@ -128,21 +184,32 @@ class DiscoveryPathRankingService:
         transition_scores = []
 
         for transition in transitions:
-            transition_type = transition.get("transition_type")
+            transition_type = transition.get(
+                "transition_type"
+            )
             family = transition.get("family")
 
             if transition_type == "alkali_substitution":
                 transition_scores.append(1.0)
-            elif transition_type == "family_expansion" and family:
+            elif (
+                transition_type == "family_expansion"
+                and family
+            ):
                 transition_scores.append(0.85)
             elif transition_type == "framework_preserving":
                 transition_scores.append(0.75)
             else:
                 transition_scores.append(0.5)
 
-        average = sum(transition_scores) / len(transition_scores)
+        average = (
+            sum(transition_scores)
+            / len(transition_scores)
+        )
 
-        return round(self.PLAUSIBILITY_WEIGHT * average, 2)
+        return round(
+            self.PLAUSIBILITY_WEIGHT * average,
+            2,
+        )
 
     def _score_path_efficiency(
         self,
@@ -157,26 +224,43 @@ class DiscoveryPathRankingService:
             return self.EFFICIENCY_WEIGHT
 
         if hop_count == 2:
-            return round(self.EFFICIENCY_WEIGHT * 0.75, 2)
+            return round(
+                self.EFFICIENCY_WEIGHT * 0.75,
+                2,
+            )
 
         if hop_count == 3:
-            return round(self.EFFICIENCY_WEIGHT * 0.5, 2)
+            return round(
+                self.EFFICIENCY_WEIGHT * 0.5,
+                2,
+            )
 
-        return round(self.EFFICIENCY_WEIGHT * 0.25, 2)
+        return round(
+            self.EFFICIENCY_WEIGHT * 0.25,
+            2,
+        )
 
     def _build_usefulness_reason(
         self,
         transitions: list[dict],
-        avoid_element: str | None,
-        prefer_element: str | None,
+        avoid_elements: frozenset[str],
+        prefer_elements: frozenset[str],
     ) -> str:
         if not transitions:
-            return "No discovery path was available for ranking."
+            return (
+                "No discovery path was available for ranking."
+            )
 
         shared_element_sets = [
-            set(transition.get("shared_elements") or transition.get("preserved_framework", []))
+            set(
+                transition.get("shared_elements")
+                or transition.get("preserved_framework", [])
+            )
             for transition in transitions
-            if transition.get("shared_elements") or transition.get("preserved_framework")
+            if (
+                transition.get("shared_elements")
+                or transition.get("preserved_framework")
+            )
         ]
 
         common_shared_elements = sorted(
@@ -190,39 +274,96 @@ class DiscoveryPathRankingService:
         transition_types = []
 
         for transition in transitions:
-            removed_elements.update(transition.get("removed_elements", []))
-            introduced_elements.update(transition.get("introduced_elements", []))
-            transition_types.append(transition.get("transition_type"))
+            removed_elements.update(
+                transition.get("removed_elements", [])
+            )
+            introduced_elements.update(
+                transition.get("introduced_elements", [])
+            )
+            transition_types.append(
+                transition.get("transition_type")
+            )
+
+        matched_avoided = sorted(
+            avoid_elements & removed_elements
+        )
+        unmatched_avoided = sorted(
+            avoid_elements - removed_elements
+        )
+        matched_preferred = sorted(
+            prefer_elements & introduced_elements
+        )
+        unmatched_preferred = sorted(
+            prefer_elements - introduced_elements
+        )
 
         reasons = []
 
-        if avoid_element and avoid_element in removed_elements:
-            reasons.append(f"removes avoided element {avoid_element}")
+        if matched_avoided:
+            reasons.append(
+                "removes requested avoided element(s) "
+                + ", ".join(matched_avoided)
+            )
 
-        if prefer_element and prefer_element in introduced_elements:
-            reasons.append(f"introduces preferred element {prefer_element}")
+        if unmatched_avoided:
+            reasons.append(
+                "does not show removal events for requested "
+                "avoided element(s) "
+                + ", ".join(unmatched_avoided)
+            )
+
+        if matched_preferred:
+            reasons.append(
+                "introduces requested preferred element(s) "
+                + ", ".join(matched_preferred)
+            )
+
+        if unmatched_preferred:
+            reasons.append(
+                "does not show introduction events for requested "
+                "preferred element(s) "
+                + ", ".join(unmatched_preferred)
+            )
 
         if common_shared_elements:
             reasons.append(
-                f"maintains {'-'.join(common_shared_elements)} shared-element continuity"
+                f"maintains {'-'.join(common_shared_elements)} "
+                "shared-element continuity"
             )
 
-        if transition_types:
+        valid_transition_types = [
+            item
+            for item in transition_types
+            if item
+        ]
+
+        if valid_transition_types:
             reasons.append(
                 "uses "
-                + " → ".join(
-                    item for item in transition_types if item
-                )
+                + " → ".join(valid_transition_types)
                 + " transition logic"
             )
 
-        return "This path is scientifically useful because it " + "; ".join(reasons) + "."
+        if not reasons:
+            return (
+                "This path is scientifically useful under the "
+                "available deterministic transition evidence."
+            )
+
+        return (
+            "This path is scientifically useful because it "
+            + "; ".join(reasons)
+            + "."
+        )
 
     def _score_material_quality(
         self,
         materials: list[dict],
     ) -> float:
-        if self.material_quality_service is None or not materials:
+        if (
+            self.material_quality_service is None
+            or not materials
+        ):
             return 0.0
 
         material_ids = [
@@ -234,8 +375,9 @@ class DiscoveryPathRankingService:
         if not material_ids:
             return 0.0
 
-        quality_by_id = self.material_quality_service.get_material_quality_bulk(
-            material_ids
+        quality_by_id = (
+            self.material_quality_service
+            .get_material_quality_bulk(material_ids)
         )
 
         material_scores = [
@@ -250,3 +392,20 @@ class DiscoveryPathRankingService:
             sum(material_scores) / len(material_scores),
             2,
         )
+
+    def _normalize_elements(
+        self,
+        *,
+        element: str | None,
+        elements: Collection[str] | None,
+    ) -> frozenset[str]:
+        normalized = {
+            item
+            for item in (elements or [])
+            if item
+        }
+
+        if element:
+            normalized.add(element)
+
+        return frozenset(normalized)

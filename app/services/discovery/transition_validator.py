@@ -1,3 +1,5 @@
+from collections.abc import Collection
+
 from app.services.discovery.substitution_path_service import (
     DiscoverySubstitutionPathService,
 )
@@ -19,7 +21,9 @@ class DiscoveryTransitionValidator:
     }
 
     def __init__(self):
-        self.substitution_path_service = DiscoverySubstitutionPathService()
+        self.substitution_path_service = (
+            DiscoverySubstitutionPathService()
+        )
 
     def validate_transition(
         self,
@@ -30,14 +34,25 @@ class DiscoveryTransitionValidator:
         relationships: list[str],
         avoid_element: str | None = None,
         prefer_element: str | None = None,
+        avoid_elements: Collection[str] | None = None,
+        prefer_elements: Collection[str] | None = None,
     ) -> dict | None:
+        normalized_avoid_elements = self._normalize_elements(
+            element=avoid_element,
+            elements=avoid_elements,
+        )
+        normalized_prefer_elements = self._normalize_elements(
+            element=prefer_element,
+            elements=prefer_elements,
+        )
+
         if not self._has_valid_relationship(relationships):
             return None
 
-        if self._violates_avoid_element(
+        if self._violates_avoid_elements(
             from_elements=from_elements,
             to_elements=to_elements,
-            avoid_element=avoid_element,
+            avoid_elements=normalized_avoid_elements,
         ):
             return None
 
@@ -49,10 +64,16 @@ class DiscoveryTransitionValidator:
             relationships=relationships,
         )
 
-        shared_elements = sorted(set(from_elements) & set(to_elements))
-        preserved_framework = shared_elements  # Backward-compatible alias.
-        removed_elements = sorted(set(from_elements) - set(to_elements))
-        introduced_elements = sorted(set(to_elements) - set(from_elements))
+        shared_elements = sorted(
+            set(from_elements) & set(to_elements)
+        )
+        preserved_framework = shared_elements
+        removed_elements = sorted(
+            set(from_elements) - set(to_elements)
+        )
+        introduced_elements = sorted(
+            set(to_elements) - set(from_elements)
+        )
 
         transition_type = self._select_transition_type(
             relationships=relationships,
@@ -69,7 +90,7 @@ class DiscoveryTransitionValidator:
             shared_elements=shared_elements,
             removed_elements=removed_elements,
             introduced_elements=introduced_elements,
-            prefer_element=prefer_element,
+            prefer_elements=normalized_prefer_elements,
         )
 
         return {
@@ -88,33 +109,38 @@ class DiscoveryTransitionValidator:
             "introduced_elements": introduced_elements,
         }
 
-    def _has_valid_relationship(self, relationships: list[str]) -> bool:
+    def _has_valid_relationship(
+        self,
+        relationships: list[str],
+    ) -> bool:
         relationship_set = set(relationships)
 
         if not relationship_set & self.VALID_RELATIONSHIPS:
             return False
 
-        return bool(relationship_set & self.STRONG_RELATIONSHIPS)
+        return bool(
+            relationship_set & self.STRONG_RELATIONSHIPS
+        )
 
-    def _violates_avoid_element(
+    def _violates_avoid_elements(
         self,
         from_elements: list[str],
         to_elements: list[str],
-        avoid_element: str | None,
+        avoid_elements: frozenset[str],
     ) -> bool:
-        if avoid_element is None:
+        if not avoid_elements:
             return False
 
         from_set = set(from_elements)
         to_set = set(to_elements)
 
-        if avoid_element in from_set and avoid_element not in to_set:
-            return False
+        newly_introduced_avoided = (
+            avoid_elements
+            & to_set
+            - from_set
+        )
 
-        if avoid_element not in from_set and avoid_element in to_set:
-            return True
-
-        return False
+        return bool(newly_introduced_avoided)
 
     def _infer_family(
         self,
@@ -163,7 +189,7 @@ class DiscoveryTransitionValidator:
         shared_elements: list[str],
         removed_elements: list[str],
         introduced_elements: list[str],
-        prefer_element: str | None,
+        prefer_elements: frozenset[str],
     ) -> str:
         parts = []
 
@@ -177,13 +203,24 @@ class DiscoveryTransitionValidator:
             parts.append(
                 f"sharing {'-'.join(shared_elements)} elements"
             )
-            parts.append("structural preservation is not validated")
+            parts.append(
+                "structural preservation is not validated"
+            )
 
         if transition_type == "family_expansion" and family:
-            parts.append(f"expanding within the {family} material family")
+            parts.append(
+                f"expanding within the {family} material family"
+            )
 
-        if prefer_element and prefer_element in introduced_elements:
-            parts.append(f"introducing preferred element {prefer_element}")
+        introduced_preferred = sorted(
+            set(introduced_elements) & prefer_elements
+        )
+
+        if introduced_preferred:
+            parts.append(
+                "introducing preferred element(s) "
+                + ", ".join(introduced_preferred)
+            )
 
         if not parts:
             return (
@@ -191,4 +228,25 @@ class DiscoveryTransitionValidator:
                 f"through {transition_type}."
             )
 
-        return f"{from_formula} → {to_formula}: " + "; ".join(parts) + "."
+        return (
+            f"{from_formula} → {to_formula}: "
+            + "; ".join(parts)
+            + "."
+        )
+
+    def _normalize_elements(
+        self,
+        *,
+        element: str | None,
+        elements: Collection[str] | None,
+    ) -> frozenset[str]:
+        normalized = {
+            item
+            for item in (elements or [])
+            if item
+        }
+
+        if element:
+            normalized.add(element)
+
+        return frozenset(normalized)

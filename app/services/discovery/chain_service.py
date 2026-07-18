@@ -1,7 +1,8 @@
 import time
-from loguru import logger
 from collections import deque
+from collections.abc import Collection
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.models.element import Element
@@ -11,6 +12,7 @@ from app.services.discovery.candidate_service import DiscoveryCandidateService
 from app.services.discovery.transition_validator import DiscoveryTransitionValidator
 from app.services.material.family_service import MaterialFamilyService
 from app.utils.chemical_formula import extract_elements
+
 
 class DiscoveryChainService:
     DEFAULT_MAX_HOPS = 2
@@ -23,7 +25,10 @@ class DiscoveryChainService:
         self.candidate_service = DiscoveryCandidateService(db)
         self.family_service = MaterialFamilyService(db)
         self.transition_validator = DiscoveryTransitionValidator()
-        self._candidate_cache: dict[tuple[int, str | None, str | None], list[dict]] = {}
+        self._candidate_cache: dict[
+            tuple[int, tuple[str, ...], tuple[str, ...]],
+            list[dict],
+        ] = {}
         self._relationship_cache: dict[tuple[int, int], list[str]] = {}
         self._family_result_cache: dict[int, dict] = {}
 
@@ -34,8 +39,19 @@ class DiscoveryChainService:
         prefer_element: str | None = None,
         max_hops: int = DEFAULT_MAX_HOPS,
         limit: int = DEFAULT_LIMIT,
+        avoid_elements: Collection[str] | None = None,
+        prefer_elements: Collection[str] | None = None,
     ) -> dict:
         max_hops = min(max_hops, self.MAX_ALLOWED_HOPS)
+
+        normalized_avoid_elements = self._normalize_elements(
+            element=avoid_element,
+            elements=avoid_elements,
+        )
+        normalized_prefer_elements = self._normalize_elements(
+            element=prefer_element,
+            elements=prefer_elements,
+        )
 
         base_material = self.db.get(Material, material_id)
 
@@ -52,8 +68,8 @@ class DiscoveryChainService:
         chains = self._build_chains(
             base_material=base_material,
             elements_map=elements_map,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
+            avoid_elements=normalized_avoid_elements,
+            prefer_elements=normalized_prefer_elements,
             max_hops=max_hops,
             limit=limit,
         )
@@ -61,7 +77,10 @@ class DiscoveryChainService:
         return {
             "material_id": base_material.id,
             "mp_id": base_material.mp_id,
-            "base_formula": base_material.pretty_formula or base_material.formula,
+            "base_formula": (
+                base_material.pretty_formula
+                or base_material.formula
+            ),
             "discovery_goal": {
                 "avoid_element": avoid_element,
                 "prefer_element": prefer_element,
@@ -75,8 +94,8 @@ class DiscoveryChainService:
         self,
         base_material: Material,
         elements_map: dict[int, list[str]],
-        avoid_element: str | None,
-        prefer_element: str | None,
+        avoid_elements: frozenset[str],
+        prefer_elements: frozenset[str],
         max_hops: int,
         limit: int,
     ) -> list[dict]:
@@ -84,13 +103,11 @@ class DiscoveryChainService:
 
         base_node = self._material_to_node(base_material)
 
-        queue.append(
-            {
-                "materials": [base_node],
-                "transitions": [],
-                "visited_ids": {base_material.id},
-            }
-        )
+        queue.append({
+            "materials": [base_node],
+            "transitions": [],
+            "visited_ids": {base_material.id},
+        })
 
         completed_chains = []
 
@@ -100,14 +117,16 @@ class DiscoveryChainService:
             current_hops = len(current_chain["transitions"])
 
             if current_hops >= max_hops:
-                completed_chains.append(self._finalize_chain(current_chain))
+                completed_chains.append(
+                    self._finalize_chain(current_chain)
+                )
                 continue
 
             candidate_start = time.perf_counter()
             next_candidates = self._get_next_candidates(
                 material_id=current_material["material_id"],
-                avoid_element=avoid_element,
-                prefer_element=prefer_element,
+                avoid_elements=avoid_elements,
+                prefer_elements=prefer_elements,
                 elements_map=elements_map,
             )
             logger.info(
@@ -128,8 +147,8 @@ class DiscoveryChainService:
                     from_material=current_material,
                     to_candidate=candidate,
                     elements_map=elements_map,
-                    avoid_element=avoid_element,
-                    prefer_element=prefer_element,
+                    avoid_elements=avoid_elements,
+                    prefer_elements=prefer_elements,
                 )
                 logger.info(
                     "Transition {} -> {} took {:.3f}s",
@@ -157,7 +176,9 @@ class DiscoveryChainService:
                 }
 
                 if len(next_chain["transitions"]) == max_hops:
-                    completed_chains.append(self._finalize_chain(next_chain))
+                    completed_chains.append(
+                        self._finalize_chain(next_chain)
+                    )
 
                     if len(completed_chains) >= limit:
                         break
@@ -169,17 +190,31 @@ class DiscoveryChainService:
     def _get_next_candidates(
         self,
         material_id: int,
-        avoid_element: str | None,
-        prefer_element: str | None,
         elements_map: dict[int, list[str]],
+        avoid_element: str | None = None,
+        prefer_element: str | None = None,
+        avoid_elements: Collection[str] | None = None,
+        prefer_elements: Collection[str] | None = None,
     ) -> list[dict]:
-        cache_key = (material_id, avoid_element, prefer_element)
+        normalized_avoid_elements = self._normalize_elements(
+            element=avoid_element,
+            elements=avoid_elements,
+        )
+        normalized_prefer_elements = self._normalize_elements(
+            element=prefer_element,
+            elements=prefer_elements,
+        )
+
+        cache_key = (
+            material_id,
+            tuple(sorted(normalized_avoid_elements)),
+            tuple(sorted(normalized_prefer_elements)),
+        )
 
         if cache_key in self._candidate_cache:
             return self._candidate_cache[cache_key]
 
         family_result = self._get_family_result(material_id)
-
         candidates = []
 
         for candidate in family_result["related_materials"]:
@@ -188,18 +223,26 @@ class DiscoveryChainService:
             if mp_id.startswith("mp-test"):
                 continue
 
-            formula = candidate.get("pretty_formula") or candidate.get("formula") or ""
+            formula = (
+                candidate.get("pretty_formula")
+                or candidate.get("formula")
+                or ""
+            )
             candidate_id = candidate["material_id"]
 
             if candidate_id in elements_map:
-                candidate_elements: set[str] | None = set(elements_map[candidate_id])
+                candidate_elements: set[str] | None = set(
+                    elements_map[candidate_id]
+                )
             else:
                 parsed_elements = extract_elements(formula)
                 candidate_elements = parsed_elements or None
 
-            if prefer_element and (
+            if normalized_prefer_elements and (
                 candidate_elements is None
-                or prefer_element not in candidate_elements
+                or not candidate_elements.intersection(
+                    normalized_prefer_elements
+                )
             ):
                 continue
 
@@ -216,11 +259,17 @@ class DiscoveryChainService:
         from_material: dict,
         to_candidate: dict,
         elements_map: dict[int, list[str]],
-        avoid_element: str | None,
-        prefer_element: str | None,
+        avoid_elements: frozenset[str],
+        prefer_elements: frozenset[str],
     ) -> dict | None:
-        from_elements = elements_map.get(from_material["material_id"], [])
-        to_elements = elements_map.get(to_candidate["material_id"], [])
+        from_elements = elements_map.get(
+            from_material["material_id"],
+            [],
+        )
+        to_elements = elements_map.get(
+            to_candidate["material_id"],
+            [],
+        )
 
         relationships = self._get_relationships_between(
             from_material_id=from_material["material_id"],
@@ -233,8 +282,8 @@ class DiscoveryChainService:
             from_elements=from_elements,
             to_elements=to_elements,
             relationships=relationships,
-            avoid_element=avoid_element,
-            prefer_element=prefer_element,
+            avoid_elements=avoid_elements,
+            prefer_elements=prefer_elements,
         )
 
     def _get_relationships_between(
@@ -248,7 +297,6 @@ class DiscoveryChainService:
             return self._relationship_cache[cache_key]
 
         family_result = self._get_family_result(from_material_id)
-
         relationships = []
 
         for candidate in family_result["related_materials"]:
@@ -264,10 +312,15 @@ class DiscoveryChainService:
             "hop_count": len(chain["transitions"]),
             "materials": chain["materials"],
             "transitions": chain["transitions"],
-            "chain_reason": self._build_chain_reason(chain["transitions"]),
+            "chain_reason": self._build_chain_reason(
+                chain["transitions"]
+            ),
         }
 
-    def _build_chain_reason(self, transitions: list[dict]) -> str:
+    def _build_chain_reason(
+        self,
+        transitions: list[dict],
+    ) -> str:
         if not transitions:
             return "No discovery transition was generated."
 
@@ -277,9 +330,15 @@ class DiscoveryChainService:
         ]
 
         shared_element_sets = [
-            set(transition.get("shared_elements") or transition.get("preserved_framework", []))
+            set(
+                transition.get("shared_elements")
+                or transition.get("preserved_framework", [])
+            )
             for transition in transitions
-            if transition.get("shared_elements") or transition.get("preserved_framework")
+            if (
+                transition.get("shared_elements")
+                or transition.get("preserved_framework")
+            )
         ]
 
         common_shared_elements = sorted(
@@ -295,18 +354,24 @@ class DiscoveryChainService:
 
         if common_shared_elements:
             reason += (
-                f" with {'-'.join(common_shared_elements)} shared-element continuity"
+                f" with {'-'.join(common_shared_elements)} "
+                "shared-element continuity"
             )
 
         return reason + "."
 
-    def _get_material_elements_map(self) -> dict[int, list[str]]:
+    def _get_material_elements_map(
+        self,
+    ) -> dict[int, list[str]]:
         rows = (
             self.db.query(
                 MaterialElement.material_id,
                 Element.symbol,
             )
-            .join(Element, MaterialElement.element_id == Element.id)
+            .join(
+                Element,
+                MaterialElement.element_id == Element.id,
+            )
             .all()
         )
 
@@ -320,7 +385,10 @@ class DiscoveryChainService:
             for material_id, symbols in elements_map.items()
         }
 
-    def _material_to_node(self, material: Material) -> dict:
+    def _material_to_node(
+        self,
+        material: Material,
+    ) -> dict:
         return {
             "material_id": material.id,
             "mp_id": material.mp_id,
@@ -328,12 +396,18 @@ class DiscoveryChainService:
             "formula": material.pretty_formula or material.formula,
         }
 
-    def _candidate_to_node(self, candidate: dict) -> dict:
+    def _candidate_to_node(
+        self,
+        candidate: dict,
+    ) -> dict:
         return {
             "material_id": candidate["material_id"],
             "mp_id": candidate["mp_id"],
             "pretty_formula": candidate["pretty_formula"],
-            "formula": candidate["pretty_formula"] or candidate["formula"],
+            "formula": (
+                candidate["pretty_formula"]
+                or candidate["formula"]
+            ),
         }
 
     def _empty_response(
@@ -357,10 +431,32 @@ class DiscoveryChainService:
             "chains": [],
         }
 
-    def _get_family_result(self, material_id: int) -> dict:
+    def _get_family_result(
+        self,
+        material_id: int,
+    ) -> dict:
         if material_id not in self._family_result_cache:
             self._family_result_cache[material_id] = (
-                self.family_service.get_material_families(material_id)
+                self.family_service.get_material_families(
+                    material_id
+                )
             )
 
         return self._family_result_cache[material_id]
+
+    def _normalize_elements(
+        self,
+        *,
+        element: str | None,
+        elements: Collection[str] | None,
+    ) -> frozenset[str]:
+        normalized = {
+            item
+            for item in (elements or [])
+            if item
+        }
+
+        if element:
+            normalized.add(element)
+
+        return frozenset(normalized)

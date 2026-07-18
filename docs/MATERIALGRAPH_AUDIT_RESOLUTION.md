@@ -1075,6 +1075,254 @@ Related ADR
 
 ADR-002
 
+---
+
+# MG-AUD-009
+
+Title
+
+Research objective evaluation only considers the first avoided and preferred element.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.15
+
+Affected Components
+
+- ResearchObjectiveService
+- DiscoveryPathRankingService
+- ScientificPathwayAnalysisService
+- ResearchObjectiveExplorationService
+- Scientific pathway response schemas
+
+Root Cause
+
+Research objective evaluation assumed a single avoided element and a single
+preferred element.
+
+Although the public research objective schema already accepted lists of
+avoided and preferred elements, downstream deterministic scoring and pathway
+evaluation only considered the first element from each list.
+
+Scientific Impact
+
+Multi-element research objectives could be evaluated incorrectly.
+
+Researchers specifying objectives such as:
+
+- avoid: Li, Co
+- prefer: Na, K
+
+would receive deterministic scoring equivalent to:
+
+- avoid: Li
+- prefer: Na
+
+Additional requested objective elements were ignored during objective-alignment
+evaluation and researcher-facing explanations.
+
+Resolution
+
+✓ Research objective evaluation now propagates complete avoided-element and
+preferred-element collections through deterministic pathway analysis.
+
+✓ Objective-alignment scoring now evaluates every requested avoided and
+preferred element.
+
+✓ Objective alignment is proportional to deterministic pathway evidence.
+
+✓ Scientific pathway responses now expose structured objective satisfaction
+metadata including:
+
+- requested objective elements
+- matched objective elements
+- unmatched objective elements
+- coverage percentages
+- completion status
+
+✓ Existing deterministic traversal behaviour is preserved.
+
+✓ Existing pathway ranking behaviour is preserved.
+
+✓ Existing scientific usefulness weighting is preserved.
+
+✓ Public API compatibility is preserved.
+
+Characterization Verification
+
+Before remediation:
+
+Multi-element objectives behaved identically to equivalent single-element
+objectives because only the first avoided element and first preferred element
+were evaluated.
+
+After remediation:
+
+Single-element objectives remain unchanged.
+
+Multi-element objectives now evaluate every requested avoided and preferred
+element.
+
+Objective-alignment scores scale proportionally according to deterministic
+transition evidence.
+
+Regression Verification
+
+✓ Research objective characterization tests
+
+✓ Discovery path ranking tests
+
+✓ Scientific pathway analysis tests
+
+✓ Objective explainability tests
+
+✓ Single-element endpoint verification
+
+✓ Multi-element endpoint verification
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+Reference Workflow Verification
+
+Single-element objective
+
+avoid:
+
+- Li
+
+prefer:
+
+- Na
+
+Scientific usefulness
+
+95.65
+
+Objective alignment
+
+25.0
+
+Verified unchanged.
+
+Multi-element objective
+
+avoid:
+
+- Li
+- Co
+
+prefer:
+
+- Na
+- K
+
+Scientific usefulness
+
+83.15
+
+Objective alignment
+
+12.5
+
+Verified as expected.
+
+Deterministic transition evidence removes Li and introduces Na while no
+transition removes Co or introduces K.
+
+The resulting proportional objective alignment correctly represents partial
+objective fulfillment.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+Single-element objective
+
+95.65
+
+Multi-element objective
+
+83.15
+
+Reason
+
+The reference single-element workflow remains unchanged.
+
+Multi-element objectives now receive proportional deterministic objective
+alignment based on all requested objective elements rather than only the first
+requested element.
+
+Performance Improvements
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No.
+
+The new `objective_satisfaction` response object is additive.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Research objective schemas and deterministic reasoning must remain
+semantically aligned.
+
+Supporting collections at the API boundary is insufficient if downstream
+scientific reasoning evaluates only a subset of the requested objective.
+
+Researcher explainability should expose not only deterministic scores but also
+how completely each requested scientific objective has been satisfied.
+
+Additional Finding Discovered During Investigation
+
+During implementation and endpoint verification, an additional researcher
+explainability opportunity was identified.
+
+Current objective satisfaction correctly represents deterministic path-wide
+objective fulfillment.
+
+However, researcher responses do not yet distinguish:
+
+- path-wide objective satisfaction
+- endpoint-specific objective satisfaction
+
+This does not affect deterministic scoring or scientific correctness.
+
+The enhancement has been recorded separately as MG-AUD-050.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002
 
 ---
 

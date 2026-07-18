@@ -65,12 +65,14 @@ public API responses.
     mislabeled source-diversity bonus.**
 8.  **MG-AUD-008 - Resolved (v1.9.14) --- Partial risk evidence can unlock full low-risk
     bonus eligibility.**
-9.  **MG-AUD-009 --- Public multi-element objective semantics exceed
-    scalar downstream handling.**
-10. **MG-AUD-010 --- Exact ties are handled inconsistently across
-    comparison and ranking layers.**
-11. **MG-AUD-049 - Resolved (v1.9.14) --- Community analytics used raw formula
+9. **MG-AUD-009 - Resolved (v1.9.15) --- Multi-element research objectives now propagate 
+    through deterministic pathway evaluation and scoring.**
+10. **MG-AUD-010 --- Exact ties are handled inconsistently across comparison and 
+    ranking layers.**
+11. **MG-AUD-049 - Resolved (v1.9.14) --- Community analytics used raw formula 
     substring matching for element membership.**
+12. **MG-AUD-050 --- Scientific pathway explainability does not distinguish path-wide 
+    and endpoint-specific objective satisfaction.**
 
 ## Current Data Reality
 
@@ -713,25 +715,116 @@ Material Quality Path Contribution
 
 ------------------------------------------------------------------------
 
-## MG-AUD-009 --- Multi-Element Objectives Are Reduced Downstream
+## MG-AUD-009 --- Multi-Element Research Objectives Were Reduced to Single-Element Evaluation
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-18\
 **Confidence:** Confirmed\
-**Priority:** P1
+**Priority:** P1\
+**Resolution version:** v1.9.15
 
 ### Finding
 
-The public API accepts lists for avoid/prefer elements, but downstream
-chain/ranking interfaces are scalar.
+The public research objective API accepted collections of avoided and
+preferred elements.
 
-### Impact
+However, downstream deterministic pathway evaluation and objective-alignment
+scoring only considered the first avoided element and the first preferred
+element.
 
-API semantics exceed implementation semantics.
+As a result, multi-element research objectives were effectively reduced to
+single-element evaluation.
 
-### Constraint
+### Scientific Impact
 
-Do not fix by merely looping scalar heuristics. End-to-end list
-semantics must be defined.
+Researchers specifying objectives such as:
+
+```text
+avoid:  Li, Co
+prefer: Na, K
+```
+
+received deterministic scoring equivalent to:
+
+```text
+avoid:  Li
+prefer: Na
+```
+
+Additional requested objective elements were ignored during objective
+evaluation, pathway scoring, and researcher-facing explanations.
+
+### Resolution
+
+✓ Research objective evaluation now propagates complete avoided-element and
+preferred-element collections throughout deterministic pathway analysis.
+
+✓ Objective-alignment scoring now evaluates every requested objective
+element.
+
+✓ Scientific pathway responses expose structured objective satisfaction
+metadata including:
+
+- requested objective elements
+- matched objective elements
+- unmatched objective elements
+- coverage percentages
+- completion status
+
+✓ Existing deterministic traversal behaviour is preserved.
+
+✓ Existing pathway ranking behaviour is preserved.
+
+✓ Existing scientific usefulness weighting is preserved.
+
+✓ Public API compatibility is preserved.
+
+### Regression Verification
+
+✓ Research objective characterization tests
+
+✓ Scientific pathway analysis tests
+
+✓ Discovery path ranking tests
+
+✓ Objective explainability tests
+
+✓ Single-element endpoint verification
+
+✓ Multi-element endpoint verification
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Scientific Impact
+
+Single-element objective
+
+Scientific usefulness
+
+95.65 → 95.65
+
+Multi-element objective
+
+Objective alignment
+
+12.5 (verified proportional deterministic alignment)
+
+Scientific usefulness
+
+83.15 (verified)
+
+### Remaining Work
+
+An additional researcher explainability opportunity was identified during
+verification.
+
+Current objective satisfaction correctly represents deterministic path-wide
+objective fulfillment.
+
+Endpoint-specific objective satisfaction has been recorded separately as
+MG-AUD-050.
 
 ------------------------------------------------------------------------
 
@@ -1560,6 +1653,98 @@ The canonical graph-node `elements` field is additive.
 
 No.
 
+
+------------------------------------------------------------------------
+
+
+## MG-AUD-050 --- Scientific Pathway Explainability Does Not Distinguish Path-Wide and Endpoint-Specific Objective Satisfaction
+
+**Status:** Open\
+**Confidence:** Confirmed\
+**Priority:** P2
+
+### Discovery Context
+
+This finding was identified during implementation and verification of
+MG-AUD-009.
+
+MG-AUD-009 correctly propagates multi-element research objectives through
+deterministic pathway evaluation.
+
+During endpoint verification it became apparent that researcher-facing
+objective satisfaction currently summarizes deterministic path-wide
+objective fulfillment but does not independently evaluate the final
+endpoint material.
+
+### Finding
+
+Scientific pathway responses expose:
+
+- requested objective elements
+- matched objective elements
+- unmatched objective elements
+- objective coverage
+- completion status
+
+These values correctly describe deterministic path-wide transition
+evidence.
+
+However, they do not distinguish whether the endpoint material itself
+satisfies those objectives.
+
+### Scientific Impact
+
+No scientific scoring defect exists.
+
+Deterministic scoring, objective alignment, scientific usefulness,
+transition plausibility, and pathway ranking are already correct.
+
+The limitation affects researcher explainability only.
+
+Researchers cannot immediately distinguish:
+
+- objective satisfied somewhere along the pathway
+- objective satisfied by the final endpoint material
+
+### Proposed Remediation
+
+Introduce endpoint-specific objective satisfaction metadata while
+preserving the existing path-wide objective satisfaction.
+
+Potential additions include:
+
+- endpoint_matched_avoid_elements
+- endpoint_unmatched_avoid_elements
+- endpoint_matched_prefer_elements
+- endpoint_unmatched_prefer_elements
+- endpoint_objective_status
+
+The existing path-wide semantics should remain unchanged.
+
+### Expected Impact
+
+Researcher interpretability improves.
+
+No deterministic scoring changes.
+
+No ranking changes.
+
+No traversal changes.
+
+No scientific usefulness changes.
+
+### Performance
+
+Expected to reuse existing endpoint material information.
+
+No additional database queries should be required.
+
+### Breaking API
+
+No.
+
+Implementation should be additive.
+
 ------------------------------------------------------------------------
 
 # 5. Provisional Findings
@@ -1697,10 +1882,11 @@ Actions:
 
 ## Phase 4 --- Structured Objective Semantics
 
-1.  Replace formula substring membership.
-2.  Define multi-element avoid/prefer semantics.
+1. ✓ Replace formula substring membership.
+2. ✓ Define multi-element avoid/prefer semantics.
 3.  Define hard versus soft constraints.
-4.  Define endpoint satisfaction and preservation continuity.
+4.  Implement endpoint-specific objective satisfaction (MG-AUD-050).
+5.  Define preservation continuity semantics.
 
 ## Phase 5 --- Explainability Provenance
 
@@ -2029,14 +2215,17 @@ upstream data and semantic conventions propagate into ranking, evidence,
 comparison, and public meaning.
 
 The sequential remediation set
-(MG-AUD-001 through MG-AUD-008) has been implemented and verified.
+(MG-AUD-001 through MG-AUD-009) has been implemented and verified.
 
-MG-AUD-049, discovered during MG-AUD-008 dependency inspection, has also been
-implemented and verified independently.
+MG-AUD-049, discovered during MG-AUD-008 dependency inspection, has also
+been implemented and verified independently.
 
-The next implementation focus should continue with the remaining
-scientific semantics, evidence, and scoring findings while preserving
-deterministic reasoning, API compatibility, and the verified
+MG-AUD-050 has been identified as a follow-on explainability enhancement
+discovered during MG-AUD-009 verification.
+
+The remaining work now focuses primarily on scientific semantics,
+researcher explainability, ranking policies, and production
+performance while preserving deterministic reasoning and the verified
 LiFePO4 → Na/phosphate reference workflow.
 
 No new major capability should be added until upstream correctness fixes
@@ -2095,10 +2284,9 @@ changes scientific semantics or introduces new scoring capabilities.
 Implementation should now focus on the existing confirmed findings in
 roadmap order:
 
-The sequential remediation set through MG-AUD-008 has been completed.
+The sequential remediation set through MG-AUD-009 has been completed.
 
-MG-AUD-049, discovered during the MG-AUD-008 investigation, has also been
-resolved without implying resolution of MG-AUD-009 through MG-AUD-048.
+MG-AUD-049 and MG-AUD-050 were identified as independent findings during subsequent remediation and verification work.
 
 Future audit work should continue with the remaining confirmed
 semantic, evidence, ranking, and performance findings in roadmap

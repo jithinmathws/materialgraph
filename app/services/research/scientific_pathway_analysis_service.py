@@ -1,5 +1,7 @@
 import time
 from loguru import logger
+
+from collections.abc import Collection
 from sqlalchemy.orm import Session
 
 from app.services.material.quality_service import MaterialQualityService
@@ -42,7 +44,11 @@ class ScientificPathwayAnalysisService:
         opportunity_start = time.perf_counter()
         opportunities = [
             self.evidence_service.enrich_opportunity(
-                self._build_opportunity(index + 1, chain)
+                self._build_opportunity(
+                    rank=index + 1,
+                    chain=chain,
+                    objective=objective,
+                )
             )
             for index, chain in enumerate(result["chains"])
         ]
@@ -89,11 +95,97 @@ class ScientificPathwayAnalysisService:
             ),
         }
 
-    def _build_opportunity(self, rank: int, chain: dict) -> dict:
+    @staticmethod
+    def _build_objective_satisfaction(
+        *,
+        avoid_elements: Collection[str] | None,
+        prefer_elements: Collection[str] | None,
+        removed_elements: Collection[str] | None,
+        introduced_elements: Collection[str] | None,
+    ) -> dict:
+        requested_avoid = frozenset(avoid_elements or ())
+        requested_prefer = frozenset(prefer_elements or ())
+        removed = frozenset(removed_elements or ())
+        introduced = frozenset(introduced_elements or ())
+
+        matched_avoid = requested_avoid.intersection(removed)
+        unmatched_avoid = requested_avoid.difference(matched_avoid)
+
+        matched_prefer = requested_prefer.intersection(introduced)
+        unmatched_prefer = requested_prefer.difference(matched_prefer)
+
+        avoid_coverage = (
+            len(matched_avoid) / len(requested_avoid)
+            if requested_avoid
+            else 1.0
+        )
+        prefer_coverage = (
+            len(matched_prefer) / len(requested_prefer)
+            if requested_prefer
+            else 1.0
+        )
+
+        requested_count = len(requested_avoid) + len(requested_prefer)
+        matched_count = len(matched_avoid) + len(matched_prefer)
+
+        overall_coverage = (
+            matched_count / requested_count
+            if requested_count
+            else 1.0
+        )
+
+        if overall_coverage == 1.0:
+            status = "complete"
+            interpretation = (
+                "All requested avoid and prefer element objectives are "
+                "represented by path-wide removal and introduction events."
+            )
+        elif matched_count == 0:
+            status = "unmatched"
+            interpretation = (
+                "None of the requested avoid or prefer element objectives "
+                "are represented by path-wide removal or introduction events."
+            )
+        else:
+            status = "partial"
+            interpretation = (
+                "Some requested avoid or prefer element objectives are "
+                "represented by path-wide events; unmatched objectives remain."
+            )
+
+        return {
+            "requested_avoid_elements": sorted(requested_avoid),
+            "matched_avoid_elements": sorted(matched_avoid),
+            "unmatched_avoid_elements": sorted(unmatched_avoid),
+            "requested_prefer_elements": sorted(requested_prefer),
+            "matched_prefer_elements": sorted(matched_prefer),
+            "unmatched_prefer_elements": sorted(unmatched_prefer),
+            "avoid_coverage": round(avoid_coverage, 4),
+            "prefer_coverage": round(prefer_coverage, 4),
+            "overall_coverage": round(overall_coverage, 4),
+            "status": status,
+            "interpretation": interpretation,
+        }
+
+    def _build_opportunity(
+        self,
+        rank: int,
+        chain: dict,
+        objective,
+    ) -> dict:
         materials = chain.get("materials", [])
         transitions = chain.get("transitions", [])
         quality = self._material_quality(materials)
         quality_summary = self._quality_summary(materials, quality)
+
+        removed_elements = self._collect_elements(
+            transitions,
+            "removed_elements",
+        )
+        introduced_elements = self._collect_elements(
+            transitions,
+            "introduced_elements",
+        )
 
         return {
             "rank": rank,
@@ -111,10 +203,16 @@ class ScientificPathwayAnalysisService:
                 "preserved_framework": self._common_shared_elements(transitions),
                 "preservation_basis": "element_overlap",
                 "structural_preservation_validated": False,
-                "removed_elements": self._collect_elements(transitions, "removed_elements"),
-                "introduced_elements": self._collect_elements(transitions, "introduced_elements"),
+                "removed_elements": removed_elements,
+                "introduced_elements": introduced_elements,
                 "material_quality": quality,
             },
+            "objective_satisfaction": self._build_objective_satisfaction(
+                avoid_elements=getattr(objective, "avoid_elements", None),
+                prefer_elements=getattr(objective, "prefer_elements", None),
+                removed_elements=removed_elements,
+                introduced_elements=introduced_elements,
+            ),
             "strengths": self._strengths(chain, transitions),
             "trade_offs": self._tradeoffs(chain, transitions, quality),
             "risks": self._risks(transitions, quality),
@@ -356,7 +454,6 @@ class ScientificPathwayAnalysisService:
             ),
         }
 
-
     def _quality_label(self, score: float) -> str:
         if score >= 12:
             return "strong"
@@ -365,7 +462,6 @@ class ScientificPathwayAnalysisService:
         if score > 0:
             return "weak"
         return "unknown"
-
 
     def _material_label(self, material_by_id: dict[int, dict], material_id: int) -> str:
         material = material_by_id.get(material_id)

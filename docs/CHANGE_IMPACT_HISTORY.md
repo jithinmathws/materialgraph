@@ -651,3 +651,114 @@ Regression Status
 - Focused MaterialRiskService characterization tests passed.
 - LiFePO4 → Na/phosphate reference workflow verified.
 - Full regression suite passed.
+
+---
+
+## v1.9.15
+
+Summary
+
+Multi-element research objective remediation.
+
+Reason
+
+Resolved MG-AUD-009.
+
+Affected Components
+
+- ResearchObjectiveService
+- DiscoveryPathRankingService
+- ScientificPathwayAnalysisService
+- ResearchObjectiveExplorationService
+- Scientific pathway response schemas
+
+Changes
+
+Multi-element Objective Support
+
+Research objectives now support multiple avoided and preferred elements throughout deterministic discovery, pathway ranking, and scientific pathway analysis.
+
+Objective Alignment
+
+Objective-alignment scoring now evaluates every requested avoided and preferred element instead of considering only the first element from each objective list.
+
+Scientific Explainability
+
+Scientific pathway responses now expose structured objective satisfaction metadata including:
+
+- requested objective elements
+- matched objective elements
+- unmatched objective elements
+- objective coverage percentages
+- overall completion status
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+Single-element objective
+
+95.65
+
+Multi-element objective (Li, Co → Na, K)
+
+83.15
+
+Reason
+
+Single-element behaviour is preserved.
+
+Multi-element objectives now receive proportional objective-alignment scoring based on the deterministic transition evidence available across the complete pathway.
+
+Performance
+
+No measurable performance impact.
+
+No additional database queries introduced.
+
+Breaking API
+
+No
+
+The new `objective_satisfaction` response object is additive.
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Reference Workflow
+
+Verified
+
+- Single-element objective unchanged.
+- Multi-element objective propagation verified.
+- Multi-element objective scoring verified.
+- Objective explainability verified.
+- Full regression suite passed.
+
+Additional Audit Discovery
+
+During implementation of MG-AUD-009, an additional explainability opportunity was identified.
+
+Current objective satisfaction describes deterministic path-wide objective fulfillment.
+
+A future enhancement could additionally distinguish:
+
+- path-wide objective satisfaction
+- endpoint-specific objective satisfaction
+
+This was determined to be outside the scope of MG-AUD-009 because the current implementation correctly resolves the original defect and preserves deterministic scientific semantics.
+
+The enhancement has been recorded separately as MG-AUD-050.
