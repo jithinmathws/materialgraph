@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -20,11 +22,18 @@ class CandidateComparisonResult(BaseModel):
     material_a_score: float
     material_b_score: float
 
-    material_a_risk_score: float
-    material_b_risk_score: float
+    material_a_risk_score: float | None = None
+    material_b_risk_score: float | None = None
 
-    winner_material_id: int
-    winner_formula: str
+    comparison_type: Literal["winner", "tie"]
+
+    # Backward-compatible singular winner fields.
+    # These are None when both candidates have equal scores.
+    winner_material_id: int | None = None
+    winner_formula: str | None = None
+
+    tied_material_ids: list[int] = Field(default_factory=list)
+    tied_formulas: list[str] = Field(default_factory=list)
 
     score_difference: float
     reasons: list[str]

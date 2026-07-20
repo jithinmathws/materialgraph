@@ -263,6 +263,59 @@ def test_scientific_pathway_analysis_exposes_partial_objective_satisfaction(
     assert opportunity["scientific_usefulness_score"] == 83.15
 
 
+def test_scientific_pathway_analysis_assigns_unique_pathway_identity(
+    db_session,
+):
+    from app.schemas.discovery import ResearchObjective
+
+    service = ScientificPathwayAnalysisService(db_session)
+
+    objective = ResearchObjective(
+        avoid_elements=["Li"],
+        prefer_elements=["Na"],
+        preserve_elements=["Fe", "P", "O"],
+        target_family="phosphate",
+        max_hops=2,
+        limit=5,
+    )
+
+    result = service.analyze(
+        material_id=5,
+        objective=objective,
+    )
+
+    opportunities = result["pathway_opportunities"]
+
+    assert opportunities
+
+    pathway_ids = []
+    positions = []
+
+    for expected_position, opportunity in enumerate(
+        opportunities,
+        start=1,
+    ):
+        assert opportunity["position"] == expected_position
+
+        material_ids = [
+            material["material_id"]
+            for material in opportunity["pathway"]["materials"]
+        ]
+
+        expected_pathway_id = (
+            "pathway:"
+            + "-".join(str(item) for item in material_ids)
+        )
+
+        assert opportunity["pathway_id"] == expected_pathway_id
+
+        pathway_ids.append(opportunity["pathway_id"])
+        positions.append(opportunity["position"])
+
+    assert len(pathway_ids) == len(set(pathway_ids))
+    assert len(positions) == len(set(positions))
+    
+
 def test_objective_satisfaction_is_element_order_independent():
     service = ScientificPathwayAnalysisService.__new__(
         ScientificPathwayAnalysisService

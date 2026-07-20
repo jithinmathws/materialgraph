@@ -861,3 +861,81 @@ Verified
 - Endpoint-specific objective satisfaction verified.
 - Characterization tests passed.
 - Full regression suite passed.
+
+---
+
+## v1.9.17
+
+Summary
+
+Stable pathway identity and tie-aware comparative research remediation.
+
+Reason
+
+Resolved MG-AUD-051.
+
+Affected Components
+
+- ScientificPathwayAnalysisService
+- ComparativeResearchIntelligenceService
+- ResearchObjectiveExplorationService
+- Scientific pathway response schemas
+- Comparative research response schemas
+
+Changes
+
+Stable Pathway Identity
+
+Every scientific pathway now exposes:
+
+- pathway_id
+- position
+- rank
+
+Ranking Semantics
+
+Competition ranking is preserved while pathway identity is separated from ranking.
+
+Comparative Intelligence
+
+Comparative summaries, pairwise comparisons, and researcher-facing outputs now reference stable pathway identities.
+
+Element Highlights
+
+Comparative element aggregation tracks unique pathway_ids rather than ranks, preserving tied pathways independently.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+Architectural and explainability improvement only. Deterministic scoring, ranking, and scientific results remain unchanged.
+
+Performance
+
+No measurable performance impact.
+
+Breaking API
+
+No
+
+New identity fields are additive.
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Any
+from typing import Any, Literal
 
 from app.schemas.discovery import DiscoveryChain, ResearchObjective
 
@@ -118,6 +118,8 @@ class ObjectiveSatisfaction(BaseModel):
 
 class ScientificPathwayOpportunity(BaseModel):
     evidence_summary: EvidenceSummary | None = None
+    pathway_id: str
+    position: int
     rank: int
     pathway: ScientificPathway
     scientific_usefulness_score: float
@@ -134,16 +136,47 @@ class ScientificPathwayOpportunity(BaseModel):
     researcher_decision_required: bool
 
 
+class EndpointMaterialReference(BaseModel):
+    material_id: int | None = None
+    formula: str | None = None
+    pretty_formula: str | None = None
+    mp_id: str | None = None
+
+
+class TopRankedPathway(BaseModel):
+    pathway_id: str
+    position: int
+    rank: int | None = None
+    endpoint_material: EndpointMaterialReference | None = None
+    scientific_usefulness_score: float
+    why_it_ranks_highest: list[str]
+
 class PathwayComparison(BaseModel):
     comparison_count: int = 0
-    top_ranked_pathway: dict | None = None
+
+    top_ranking_status: Literal[
+        "unique",
+        "tie",
+        "unavailable",
+    ] = "unavailable"
+
+    top_score: float | None = None
+
+    top_ranked_pathway: TopRankedPathway | None = None
+
+    top_ranked_pathways: list[TopRankedPathway] = Field(
+        default_factory=list
+    )
+
     comparative_strengths: list[dict] = Field(default_factory=list)
     comparative_trade_offs: list[dict] = Field(default_factory=list)
     comparative_research_gaps: list[dict] = Field(default_factory=list)
     comparative_evidence_readiness: dict = Field(default_factory=dict)
     comparative_assumptions: list[dict] = Field(default_factory=list)
+
     pairwise_comparisons: list[dict] = Field(default_factory=list)
     comparative_element_highlights: list[dict] = Field(default_factory=list)
+
     researcher_decision_required: bool = True
     decision_boundary: str
 

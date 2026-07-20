@@ -67,8 +67,7 @@ public API responses.
     bonus eligibility.**
 9. **MG-AUD-009 - Resolved (v1.9.15) --- Multi-element research objectives now propagate 
     through deterministic pathway evaluation and scoring.**
-10. **MG-AUD-010 --- Exact ties are handled inconsistently across comparison and 
-    ranking layers.**
+10. **MG-AUD-010 - Resolved (v1.9.17) --- Stable pathway identity and tie-aware comparative research. **
 11. **MG-AUD-049 - Resolved (v1.9.14) --- Community analytics used raw formula 
     substring matching for element membership.**
 12. **MG-AUD-050 - Resolved (v1.9.16) --- Scientific pathway responses 
@@ -828,27 +827,114 @@ MG-AUD-050.
 
 ------------------------------------------------------------------------
 
-## MG-AUD-010 --- Tie Handling Is Inconsistent
+## MG-AUD-010 — Stable Pathway Identity and Tie-Aware Comparative Research
 
-**Status:** Confirmed\
+**Status:** Resolved\
+**Last verified:** 2026-07-20\
 **Confidence:** Confirmed\
-**Priority:** P1
+**Priority:** P1\
+**Resolution version:** v1.9.17
 
-### Findings
+### Discovery Context
 
--   research comparative layers can preserve equal-score ties
--   `CandidateComparisonService` selects material A on exact equality
-    using `>=`
--   some top-ranked and highest-readiness summaries select one
-    representative from a tie
--   several sorts lack a final deterministic non-scientific key
+This finding emerged during implementation of endpoint-sensitive research
+ranking and comparative research intelligence.
 
-### Rule
+Exact scientific ties were intentionally preserved. However, downstream
+comparison services frequently relied on `rank` as both a scientific
+ranking and a unique pathway identifier.
 
-Stable ordering and scientific winning are different concepts.
+### Finding
 
-A deterministic key may stabilize output, but should not imply
-scientific superiority.
+Three different concepts had become conflated:
+
+- pathway identity
+- deterministic ordering
+- scientific ranking
+
+For example:
+
+```text
+rank = 1
+rank = 1
+rank = 1
+```
+
+represents three equally ranked pathways, but rank alone cannot uniquely
+identify them.
+
+This ambiguity propagated into comparative summaries, research gaps,
+assumptions, pairwise comparisons, and element aggregation.
+
+### Scientific Impact
+
+No deterministic scientific scoring defect existed.
+
+Scientific usefulness, pathway ranking, objective alignment, and endpoint
+evaluation remained correct.
+
+The limitation affected researcher explainability, deterministic API
+contracts, and future extensibility.
+
+### Resolution
+
+✓ Introduced canonical `pathway_id` for stable pathway identity.
+
+✓ Introduced deterministic `position` separate from scientific rank.
+
+✓ Preserved `rank` as the scientific ranking that may legitimately
+contain ties.
+
+✓ Comparative strengths, trade-offs, research gaps, assumptions,
+pairwise comparisons, and evidence summaries now propagate pathway
+identity.
+
+✓ Comparative element aggregation now groups pathways using
+`pathway_id` rather than scientific rank.
+
+✓ Public API compatibility preserved.
+
+### Regression Verification
+
+✓ Comparative research intelligence tests
+
+✓ Pairwise comparison tests
+
+✓ Comparative element highlight tests
+
+✓ Tie-handling characterization tests
+
+✓ API endpoint verification
+
+✓ Full regression suite
+
+✓ LiFePO4 → Na/phosphate reference workflow
+
+### Scientific Impact
+
+Scientific usefulness
+
+95.65 → 95.65
+
+Reason
+
+The remediation improves deterministic identity semantics and
+researcher-facing explainability without modifying pathway generation,
+scientific scoring, or ranking.
+
+### Performance
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+### Breaking API
+
+No.
+
+`pathway_id` and `position` are additive fields.
+
+Existing `rank` semantics are preserved.
 
 ------------------------------------------------------------------------
 
@@ -1952,7 +2038,7 @@ Actions:
 1.  ✓ Track candidate source identities.
 2.  ✓ Align discovery score with breakdown semantics.
 3.  ✓ Separate candidate scoring provenance from contextual discovery evidence.
-4.  Make comparison outputs consistently tie-aware.
+4.  ✓ Implement stable pathway identity and tie-aware comparative outputs (MG-AUD-010).
 
 ## Phase 6 --- Scientific Terminology
 
@@ -2087,6 +2173,19 @@ change is.
 - maintained deterministic scoring and pathway ranking
 - verified LiFePO4 → Na/phosphate reference workflow
 - full regression suite passed
+
+## 2026-07-20 — Stable Pathway Identity
+
+- resolved MG-AUD-010 stable pathway identity
+- introduced canonical pathway_id
+- separated pathway identity from scientific ranking
+- introduced deterministic position ordering
+- preserved equal scientific ties
+- propagated pathway identity throughout comparative research
+- updated pairwise comparison semantics
+- updated comparative element aggregation
+- full regression suite passed
+- LiFePO4 → Na/phosphate scientific usefulness remained 95.65
 
 ------------------------------------------------------------------------
 
@@ -2291,7 +2390,7 @@ upstream data and semantic conventions propagate into ranking, evidence,
 comparison, and public meaning.
 
 The sequential remediation set
-(MG-AUD-001 through MG-AUD-009) has been implemented and verified.
+(MG-AUD-001 through MG-AUD-010) has been implemented and verified.
 
 MG-AUD-049, discovered during MG-AUD-008 dependency inspection, has also
 been implemented and verified independently.
@@ -2303,9 +2402,13 @@ objective satisfaction from endpoint-specific objective satisfaction
 while preserving existing scoring, ranking, and API compatibility.
 
 The remaining work now focuses primarily on scientific semantics,
-researcher explainability, ranking policies, and production
-performance while preserving deterministic reasoning and the verified
-LiFePO4 → Na/phosphate reference workflow.
+researcher explainability, ranking policy refinement, and production
+performance.
+
+Stable pathway identity, deterministic ordering, and scientific ranking
+are now explicitly separated throughout the research intelligence layer,
+providing a robust foundation for future researcher annotations,
+citations, saved pathways, and AI-assisted research workflows.
 
 No new major capability should be added until upstream correctness fixes
 are characterized and verified.

@@ -9,8 +9,19 @@ def _opportunity(
     quality_score: float = 12.0,
     evidence_readiness: str = "moderate",
     hop_count: int = 1,
+    position: int | None = None,
+    pathway_id: str | None = None,
 ):
+
+    resolved_position = position if position is not None else rank
+    resolved_pathway_id = (
+        pathway_id
+        or f"pathway:test-{resolved_position}"
+    )
+
     return {
+        "pathway_id": resolved_pathway_id,
+        "position": resolved_position,
         "rank": rank,
         "pathway": {
             "hop_count": hop_count,
@@ -95,7 +106,11 @@ def test_compare_opportunities_returns_empty_comparison():
     result = service.compare_opportunities([])
 
     assert result["comparison_count"] == 0
+    assert result["top_ranking_status"] == "unavailable"
+    assert result["top_score"] is None
     assert result["top_ranked_pathway"] is None
+    assert result["top_ranked_pathways"] == []
+
     assert result["comparative_strengths"] == []
     assert result["comparative_trade_offs"] == []
     assert result["comparative_research_gaps"] == []
@@ -110,15 +125,155 @@ def test_compare_opportunities_identifies_top_ranked_pathway():
 
     result = service.compare_opportunities(
         [
+            _opportunity(rank=2, score=82.5),
+            _opportunity(rank=1, score=91.0),
+        ]
+    )
+
+    assert result["comparison_count"] == 2
+    assert result["top_ranking_status"] == "unique"
+    assert result["top_score"] == 91.0
+    assert result["top_ranked_pathway"]["rank"] == 1
+    assert result["top_ranked_pathway"]["position"] == 1
+    assert result["top_ranked_pathway"]["pathway_id"] == "pathway:test-1"
+    assert (
+        result["top_ranked_pathway"][
+            "scientific_usefulness_score"
+        ]
+        == 91.0
+    )
+    assert result["top_ranked_pathway"]["why_it_ranks_highest"]
+    assert len(result["top_ranked_pathways"]) == 1
+
+
+def test_compare_opportunities_identifies_tied_top_pathways():
+    service = ComparativeResearchIntelligenceService()
+
+    result = service.compare_opportunities(
+        [
+            _opportunity(
+                rank=1,
+                position=1,
+                pathway_id="pathway:5-6-7",
+                score=95.65,
+            ),
+            _opportunity(
+                rank=1,
+                position=2,
+                pathway_id="pathway:5-6-8",
+                score=95.65,
+            ),
+            _opportunity(
+                rank=1,
+                position=3,
+                pathway_id="pathway:5-6-9",
+                score=95.65,
+            ),
+        ]
+    )
+
+    assert result["comparison_count"] == 3
+    assert result["top_ranking_status"] == "tie"
+    assert result["top_score"] == 95.65
+    assert result["top_ranked_pathway"] is None
+
+    top_pathways = result["top_ranked_pathways"]
+
+    assert len(top_pathways) == 3
+    assert all(
+        pathway["rank"] == 1
+        for pathway in top_pathways
+    )
+    assert all(
+        pathway["scientific_usefulness_score"] == 95.65
+        for pathway in top_pathways
+    )
+
+    assert [pathway["position"] for pathway in top_pathways] == [1, 2, 3]
+    assert {
+        pathway["pathway_id"]
+        for pathway in top_pathways
+    } == {
+        "pathway:5-6-7",
+        "pathway:5-6-8",
+        "pathway:5-6-9",
+    }
+
+
+def test_compare_opportunities_identifies_unique_top_pathway():
+    service = ComparativeResearchIntelligenceService()
+
+    result = service.compare_opportunities(
+        [
+            _opportunity(rank=1, score=96.0),
+            _opportunity(rank=2, score=95.65),
+            _opportunity(rank=3, score=90.0),
+        ]
+    )
+
+    assert result["comparison_count"] == 3
+    assert result["top_ranking_status"] == "unique"
+    assert result["top_score"] == 96.0
+
+    assert result["top_ranked_pathway"] is not None
+    assert result["top_ranked_pathway"]["rank"] == 1
+    assert (
+        result["top_ranked_pathway"][
+            "scientific_usefulness_score"
+        ]
+        == 96.0
+    )
+
+    assert len(result["top_ranked_pathways"]) == 1
+    assert (
+        result["top_ranked_pathways"][0][
+            "scientific_usefulness_score"
+        ]
+        == 96.0
+    )
+
+
+def test_top_tie_group_includes_only_highest_scoring_pathways():
+    service = ComparativeResearchIntelligenceService()
+
+    result = service.compare_opportunities(
+        [
+            _opportunity(rank=1, score=95.65),
+            _opportunity(rank=1, score=95.65),
+            _opportunity(rank=3, score=92.0),
+            _opportunity(rank=4, score=90.0),
+        ]
+    )
+
+    assert result["top_ranking_status"] == "tie"
+    assert result["top_score"] == 95.65
+
+    top_pathways = result["top_ranked_pathways"]
+
+    assert len(top_pathways) == 2
+    assert {
+        pathway["scientific_usefulness_score"]
+        for pathway in top_pathways
+    } == {95.65}
+
+
+def test_top_pathway_selection_uses_score_not_supplied_rank():
+    service = ComparativeResearchIntelligenceService()
+
+    result = service.compare_opportunities(
+        [
             _opportunity(rank=1, score=82.5),
             _opportunity(rank=2, score=91.0),
         ]
     )
 
-    assert result["comparison_count"] == 2
-    assert result["top_ranked_pathway"]["rank"] == 2
-    assert result["top_ranked_pathway"]["scientific_usefulness_score"] == 91.0
-    assert result["top_ranked_pathway"]["why_it_ranks_highest"]
+    assert result["top_score"] == 91.0
+    assert (
+        result["top_ranked_pathway"][
+            "scientific_usefulness_score"
+        ]
+        == 91.0
+    )
 
 
 def test_compare_opportunities_preserves_strengths_tradeoffs_and_risks():
@@ -131,9 +286,13 @@ def test_compare_opportunities_preserves_strengths_tradeoffs_and_risks():
     )
 
     assert result["comparative_strengths"][0]["rank"] == 1
+    assert result["comparative_strengths"][0]["position"] == 1
+    assert result["comparative_strengths"][0]["pathway_id"] == "pathway:test-1"
     assert result["comparative_strengths"][0]["strengths"]
 
     assert result["comparative_trade_offs"][0]["rank"] == 1
+    assert result["comparative_trade_offs"][0]["position"] == 1
+    assert result["comparative_trade_offs"][0]["pathway_id"] == "pathway:test-1"
     assert result["comparative_trade_offs"][0]["trade_offs"]
     assert result["comparative_trade_offs"][0]["risks"]
 
@@ -151,9 +310,13 @@ def test_compare_opportunities_preserves_research_gaps_and_assumptions():
     assumptions = result["comparative_assumptions"][0]
 
     assert gaps["rank"] == 1
+    assert gaps["position"] == 1
+    assert gaps["pathway_id"] == "pathway:test-1"
     assert gaps["missing_evidence"]
 
     assert assumptions["rank"] == 1
+    assert assumptions["position"] == 1
+    assert assumptions["pathway_id"] == "pathway:test-1"
     assert assumptions["pathway_assumptions"]
     assert assumptions["weak_assumptions"]
 
@@ -172,6 +335,8 @@ def test_compare_opportunities_identifies_highest_evidence_readiness():
     evidence = result["comparative_evidence_readiness"]
 
     assert evidence["highest_readiness_pathway_rank"] == 2
+    assert evidence["highest_readiness_pathway_position"] == 2
+    assert evidence["highest_readiness_pathway_id"] == "pathway:test-2"
     assert evidence["highest_readiness"] == "strong"
     assert len(evidence["pathways"]) == 3
 
@@ -220,6 +385,10 @@ def test_compare_opportunities_returns_pairwise_comparisons():
     pairwise = result["pairwise_comparisons"]
 
     assert len(pairwise) == 2
+    assert pairwise[0]["first_pathway_id"] == "pathway:test-1"
+    assert pairwise[0]["second_pathway_id"] == "pathway:test-2"
+    assert pairwise[0]["first_pathway_position"] == 1
+    assert pairwise[0]["second_pathway_position"] == 2
     assert pairwise[0]["higher_ranked_pathway_rank"] == 1
     assert pairwise[0]["lower_ranked_pathway_rank"] == 2
     assert pairwise[1]["higher_ranked_pathway_rank"] == 2
@@ -355,6 +524,8 @@ def test_comparative_element_highlights_include_introduced_elements():
         and item["role"] == "introduced_element"
     )
 
+    assert na_highlight["pathway_ids"] == ["pathway:test-1"]
+    assert na_highlight["pathway_count"] == 1
     assert na_highlight["appears_in_pathway_ranks"] == [1]
     assert "Na" in na_highlight["potential_signal"]
     assert "introducing Na" in na_highlight["researcher_action"]
@@ -378,6 +549,8 @@ def test_comparative_element_highlights_include_preserved_framework_elements():
         and item["role"] == "preserved_framework"
     )
 
+    assert fe_highlight["pathway_ids"] == ["pathway:test-1"]
+    assert fe_highlight["pathway_count"] == 1
     assert fe_highlight["appears_in_pathway_ranks"] == [1]
     assert "Fe" in fe_highlight["potential_signal"]
     assert "shared Fe membership" in fe_highlight["researcher_action"]
@@ -404,6 +577,8 @@ def test_comparative_element_highlights_include_removed_elements():
         and item["role"] == "removed_element"
     )
 
+    assert li_highlight["pathway_ids"] == ["pathway:test-1"]
+    assert li_highlight["pathway_count"] == 1
     assert li_highlight["appears_in_pathway_ranks"] == [1]
     assert "Li" in li_highlight["potential_signal"]
     assert "removing or avoiding Li" in li_highlight["researcher_action"]
@@ -430,6 +605,11 @@ def test_comparative_element_highlights_group_repeated_elements_across_pathways(
         and item["role"] == "introduced_element"
     )
 
+    assert na_highlight["pathway_ids"] == [
+        "pathway:test-1",
+        "pathway:test-2",
+    ]
+    assert na_highlight["pathway_count"] == 2
     assert na_highlight["appears_in_pathway_ranks"] == [1, 2]
 
 
@@ -514,3 +694,103 @@ def test_pairwise_comparison_includes_neutral_rank_aliases():
     assert pair["second_pathway_rank"] == 2
     assert pair["higher_ranked_pathway_rank"] == 1
     assert pair["lower_ranked_pathway_rank"] == 2
+
+
+def test_tied_top_pathways_have_unique_identity():
+    service = ComparativeResearchIntelligenceService()
+
+    result = service.compare_opportunities(
+        [
+            _opportunity(
+                rank=1,
+                position=1,
+                pathway_id="pathway:5-6-7",
+                score=95.65,
+            ),
+            _opportunity(
+                rank=1,
+                position=2,
+                pathway_id="pathway:5-6-8",
+                score=95.65,
+            ),
+        ]
+    )
+
+    top_pathways = result["top_ranked_pathways"]
+
+    assert [item["rank"] for item in top_pathways] == [1, 1]
+    assert [item["position"] for item in top_pathways] == [1, 2]
+    assert {
+        item["pathway_id"]
+        for item in top_pathways
+    } == {
+        "pathway:5-6-7",
+        "pathway:5-6-8",
+    }
+
+
+def test_element_highlight_counts_distinct_tied_pathways():
+    service = ComparativeResearchIntelligenceService()
+
+    first = _opportunity(
+        rank=1,
+        position=1,
+        pathway_id="pathway:5-6-7",
+        score=95.65,
+    )
+    second = _opportunity(
+        rank=1,
+        position=2,
+        pathway_id="pathway:5-6-8",
+        score=95.65,
+    )
+
+    first["scientific_facts"]["introduced_elements"] = ["Na"]
+    second["scientific_facts"]["introduced_elements"] = ["Na"]
+
+    result = service.compare_opportunities([first, second])
+
+    na_highlight = next(
+        item
+        for item in result["comparative_element_highlights"]
+        if item["element"] == "Na"
+        and item["role"] == "introduced_element"
+    )
+
+    assert na_highlight["pathway_ids"] == [
+        "pathway:5-6-7",
+        "pathway:5-6-8",
+    ]
+    assert na_highlight["pathway_count"] == 2
+    assert na_highlight["appears_in_pathway_ranks"] == [1]
+    assert "2 compared pathway(s)" in na_highlight["potential_signal"]
+
+
+def test_pairwise_comparison_exposes_pathway_identity_and_position():
+    service = ComparativeResearchIntelligenceService()
+
+    result = service.compare_opportunities(
+        [
+            _opportunity(
+                rank=1,
+                position=1,
+                pathway_id="pathway:5-6-7",
+                score=95.0,
+            ),
+            _opportunity(
+                rank=2,
+                position=2,
+                pathway_id="pathway:5-6-8",
+                score=88.0,
+            ),
+        ]
+    )
+
+    pair = result["pairwise_comparisons"][0]
+
+    assert pair["first_pathway_id"] == "pathway:5-6-7"
+    assert pair["second_pathway_id"] == "pathway:5-6-8"
+    assert pair["first_pathway_position"] == 1
+    assert pair["second_pathway_position"] == 2
+    assert pair["first_pathway_rank"] == 1
+    assert pair["second_pathway_rank"] == 2

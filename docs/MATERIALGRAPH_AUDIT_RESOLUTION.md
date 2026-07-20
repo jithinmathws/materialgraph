@@ -1726,3 +1726,103 @@ Principle 11
 Related ADR
 
 ADR-002
+
+---
+
+# MG-AUD-051
+
+Title
+
+Comparative research outputs used ranking as pathway identity.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.17
+
+Affected Components
+
+- ScientificPathwayAnalysisService
+- ComparativeResearchIntelligenceService
+- ResearchObjectiveExplorationService
+- Scientific pathway schemas
+- Comparative research schemas
+
+Root Cause
+
+Competition rank was used as both ordering and identity. Tied pathways therefore became ambiguous in comparative analyses.
+
+Scientific Impact
+
+Researchers could not uniquely reference tied pathways, and comparative aggregation could collapse distinct pathways sharing the same rank.
+
+Resolution
+
+✓ Added stable pathway_id.
+
+✓ Added deterministic position.
+
+✓ Preserved competition ranking semantics.
+
+✓ Comparative summaries, pairwise comparisons, and element highlights now use pathway identity.
+
+✓ Element aggregation tracks pathway_ids rather than ranks.
+
+Regression Verification
+
+✓ Scientific pathway tests
+
+✓ Comparative intelligence tests
+
+✓ Research route tests
+
+✓ Full regression suite
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+Identity and explainability remediation only.
+
+Breaking API
+
+No
+
+Identity fields are additive.
+
+Database Migration
+
+No
+
+Lessons Learned
+
+Ordering, ranking, and identity represent different concepts and should remain independent in scientific systems.
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002

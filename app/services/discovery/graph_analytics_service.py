@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.services.discovery.graph_builder import DiscoveryGraphBuilder
 
+
 class DiscoveryGraphAnalyticsService:
     DEFAULT_MAX_DEPTH = 1
 

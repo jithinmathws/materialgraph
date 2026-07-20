@@ -43,16 +43,39 @@ class ScientificPathwayAnalysisService:
         self._prefetch_material_quality(result["chains"])
 
         opportunity_start = time.perf_counter()
-        opportunities = [
-            self.evidence_service.enrich_opportunity(
-                self._build_opportunity(
-                    rank=index + 1,
-                    chain=chain,
-                    objective=objective,
+        opportunities = []
+
+        previous_score: float | None = None
+        current_rank = 0
+
+        for position, chain in enumerate(
+            result["chains"],
+            start=1,
+        ):
+            score = round(
+                chain.get(
+                    "scientific_usefulness_score",
+                    0.0,
+                ),
+                2,
+            )
+
+            if previous_score is None or score != previous_score:
+                current_rank = position
+                previous_score = score
+
+            opportunity = self._build_opportunity(
+                position=position,
+                rank=current_rank,
+                chain=chain,
+                objective=objective,
+            )
+
+            opportunities.append(
+                self.evidence_service.enrich_opportunity(
+                    opportunity
                 )
             )
-            for index, chain in enumerate(result["chains"])
-        ]
         logger.info(
             "Scientific pathway opportunity building took {:.3f}s",
             time.perf_counter() - opportunity_start,
@@ -95,6 +118,7 @@ class ScientificPathwayAnalysisService:
                 "scientific selection, validation, and experimental decisions."
             ),
         }
+    
 
     @staticmethod
     def _build_objective_satisfaction(
@@ -260,12 +284,14 @@ class ScientificPathwayAnalysisService:
 
     def _build_opportunity(
         self,
+        position: int,
         rank: int,
         chain: dict,
         objective,
     ) -> dict:
         materials = chain.get("materials", [])
         transitions = chain.get("transitions", [])
+        pathway_id = self._build_pathway_id(materials)
         quality = self._material_quality(materials)
         quality_summary = self._quality_summary(materials, quality)
 
@@ -292,6 +318,8 @@ class ScientificPathwayAnalysisService:
         )
 
         return {
+            "pathway_id": pathway_id,
+            "position": position,
             "rank": rank,
             "pathway": {
                 "hop_count": chain.get("hop_count"),
@@ -330,6 +358,26 @@ class ScientificPathwayAnalysisService:
             "researcher_decision_required": True,
             "quality_summary": quality_summary,
         }
+
+
+    @staticmethod
+    def _build_pathway_id(materials: list[dict]) -> str:
+        material_ids = [
+            material.get("material_id")
+            for material in materials
+            if material.get("material_id") is not None
+        ]
+
+        if not material_ids:
+            raise ValueError(
+                "Cannot build pathway_id without pathway material IDs."
+            )
+
+        return "pathway:" + "-".join(
+            str(material_id)
+            for material_id in material_ids
+        )
+
 
     def _material_quality(self, materials: list[dict]) -> list[dict]:
         qualities = []

@@ -12,11 +12,11 @@ class ComparativeResearchIntelligenceService:
         if not opportunities:
             return self._empty_comparison()
 
+        top_ranking = self._top_ranking_summary(opportunities)
+
         return {
             "comparison_count": len(opportunities),
-            "top_ranked_pathway": self._top_ranked_pathway(
-                opportunities
-            ),
+            **top_ranking,
             "comparative_strengths": self._comparative_strengths(
                 opportunities
             ),
@@ -43,25 +43,61 @@ class ComparativeResearchIntelligenceService:
             "comparative_element_highlights": self._comparative_element_highlights(opportunities),
         }
 
-    def _top_ranked_pathway(
+    def _top_ranking_summary(
         self,
         opportunities: list[dict],
     ) -> dict:
-        top = max(
-            opportunities,
-            key=lambda item: item.get(
+        top_score = max(
+            opportunity.get(
                 "scientific_usefulness_score",
                 0.0,
-            ),
+            )
+            for opportunity in opportunities
         )
 
+        top_group = [
+            opportunity
+            for opportunity in opportunities
+            if opportunity.get(
+                "scientific_usefulness_score",
+                0.0,
+            )
+            == top_score
+        ]
+
+        summarized_pathways = [
+            self._summarize_top_pathway(opportunity)
+            for opportunity in top_group
+        ]
+
+        if len(top_group) == 1:
+            return {
+                "top_ranking_status": "unique",
+                "top_score": top_score,
+                "top_ranked_pathway": summarized_pathways[0],
+                "top_ranked_pathways": summarized_pathways,
+            }
+
         return {
-            "rank": top.get("rank"),
-            "scientific_usefulness_score": top.get(
+            "top_ranking_status": "tie",
+            "top_score": top_score,
+            "top_ranked_pathway": None,
+            "top_ranked_pathways": summarized_pathways,
+        }
+
+    def _summarize_top_pathway(
+        self,
+        opportunity: dict,
+    ) -> dict:
+        return {
+            **self._pathway_reference(opportunity),
+            "scientific_usefulness_score": opportunity.get(
                 "scientific_usefulness_score",
                 0.0,
             ),
-            "why_it_ranks_highest": self._top_pathway_reasons(top),
+            "why_it_ranks_highest": self._top_pathway_reasons(
+                opportunity
+            ),
         }
 
     def _top_pathway_reasons(
@@ -93,7 +129,7 @@ class ComparativeResearchIntelligenceService:
     ) -> list[dict]:
         return [
             {
-                "rank": opportunity.get("rank"),
+                **self._pathway_reference(opportunity),
                 "strengths": list(
                     opportunity.get("strengths", [])
                 ),
@@ -107,7 +143,7 @@ class ComparativeResearchIntelligenceService:
     ) -> list[dict]:
         return [
             {
-                "rank": opportunity.get("rank"),
+                **self._pathway_reference(opportunity),
                 "trade_offs": list(
                     opportunity.get("trade_offs", [])
                 ),
@@ -124,7 +160,7 @@ class ComparativeResearchIntelligenceService:
     ) -> list[dict]:
         return [
             {
-                "rank": opportunity.get("rank"),
+                **self._pathway_reference(opportunity),
                 "missing_evidence": list(
                     opportunity.get(
                         "evidence_summary",
@@ -144,7 +180,7 @@ class ComparativeResearchIntelligenceService:
     ) -> dict:
         readiness_by_pathway = [
             {
-                "rank": opportunity.get("rank"),
+                **self._pathway_reference(opportunity),
                 "evidence_readiness": opportunity.get(
                     "evidence_summary",
                     {},
@@ -169,10 +205,10 @@ class ComparativeResearchIntelligenceService:
 
         return {
             "pathways": readiness_by_pathway,
+            "highest_readiness_pathway_id": highest.get("pathway_id"),
+            "highest_readiness_pathway_position": highest.get("position"),
             "highest_readiness_pathway_rank": highest.get("rank"),
-            "highest_readiness": highest.get(
-                "evidence_readiness"
-            ),
+            "highest_readiness": highest.get("evidence_readiness"),
         }
 
     def _comparative_assumptions(
@@ -181,7 +217,7 @@ class ComparativeResearchIntelligenceService:
     ) -> list[dict]:
         return [
             {
-                "rank": opportunity.get("rank"),
+                **self._pathway_reference(opportunity),
                 "pathway_assumptions": list(
                     opportunity.get("assumptions", [])
                 ),
@@ -201,7 +237,10 @@ class ComparativeResearchIntelligenceService:
     def _empty_comparison(self) -> dict:
         return {
             "comparison_count": 0,
+            "top_ranking_status": "unavailable",
+            "top_score": None,
             "top_ranked_pathway": None,
+            "top_ranked_pathways": [],
             "comparative_strengths": [],
             "comparative_trade_offs": [],
             "comparative_research_gaps": [],
@@ -270,6 +309,10 @@ class ComparativeResearchIntelligenceService:
         score_difference = round(higher_score - lower_score, 2)
 
         return {
+            "first_pathway_id": higher.get("pathway_id"),
+            "second_pathway_id": lower.get("pathway_id"),
+            "first_pathway_position": higher.get("position"),
+            "second_pathway_position": lower.get("position"),
             "first_pathway_rank": higher.get("rank"),
             "second_pathway_rank": lower.get("rank"),
 
@@ -379,6 +422,19 @@ class ComparativeResearchIntelligenceService:
             "mp_id": endpoint.get("mp_id"),
         }
 
+    
+    def _pathway_reference(
+        self,
+        opportunity: dict,
+    ) -> dict:
+        return {
+            "pathway_id": opportunity.get("pathway_id"),
+            "position": opportunity.get("position"),
+            "rank": opportunity.get("rank"),
+            "endpoint_material": self._endpoint_material(opportunity),
+        }
+
+
     def _higher_ranked_reasons(
         self,
         higher: dict,
@@ -465,9 +521,13 @@ class ComparativeResearchIntelligenceService:
         self,
         opportunities: list[dict],
     ) -> list[dict]:
-        element_roles: dict[tuple[str, str], set[int]] = {}
+        element_roles: dict[
+            tuple[str, str],
+            dict[str, set],
+        ] = {}
 
         for opportunity in opportunities:
+            pathway_id = opportunity.get("pathway_id")
             rank = opportunity.get("rank")
             facts = opportunity.get("scientific_facts", {})
 
@@ -475,12 +535,14 @@ class ComparativeResearchIntelligenceService:
                 element_roles=element_roles,
                 elements=facts.get("introduced_elements", []),
                 role="introduced_element",
+                pathway_id=pathway_id,
                 rank=rank,
             )
             self._collect_element_roles(
                 element_roles=element_roles,
                 elements=facts.get("removed_elements", []),
                 role="removed_element",
+                pathway_id=pathway_id,
                 rank=rank,
             )
             self._collect_element_roles(
@@ -490,6 +552,7 @@ class ComparativeResearchIntelligenceService:
                     or facts.get("preserved_framework", [])
                 ),
                 role="preserved_framework",
+                pathway_id=pathway_id,
                 rank=rank,
             )
 
@@ -497,14 +560,15 @@ class ComparativeResearchIntelligenceService:
             self._build_element_highlight(
                 element=element,
                 role=role,
-                ranks=sorted(ranks),
+                pathway_ids=sorted(entry["pathway_ids"]),
+                ranks=sorted(entry["ranks"]),
             )
-            for (element, role), ranks in element_roles.items()
+            for (element, role), entry in element_roles.items()
         ]
 
         highlights.sort(
             key=lambda item: (
-                -len(item["appears_in_pathway_ranks"]),
+                -item["pathway_count"],
                 item["element"],
                 item["role"],
             )
@@ -516,17 +580,33 @@ class ComparativeResearchIntelligenceService:
     def _collect_element_roles(
         self,
         *,
-        element_roles: dict[tuple[str, str], set[int]],
+        element_roles: dict[
+            tuple[str, str],
+            dict[str, set],
+        ],
         elements: list[str],
         role: str,
+        pathway_id: str | None,
         rank: int | None,
     ) -> None:
-        if rank is None:
+        if pathway_id is None:
             return
 
         for element in elements:
             key = (element, role)
-            element_roles.setdefault(key, set()).add(rank)
+
+            entry = element_roles.setdefault(
+                key,
+                {
+                    "pathway_ids": set(),
+                    "ranks": set(),
+                },
+            )
+
+            entry["pathway_ids"].add(pathway_id)
+
+            if rank is not None:
+                entry["ranks"].add(rank)
 
 
     def _build_element_highlight(
@@ -534,8 +614,11 @@ class ComparativeResearchIntelligenceService:
         *,
         element: str,
         role: str,
+        pathway_ids: list[str],
         ranks: list[int],
     ) -> dict:
+        pathway_count = len(pathway_ids)
+
         return {
             "element": element,
             "role": role,
@@ -549,11 +632,13 @@ class ComparativeResearchIntelligenceService:
                 if role == "preserved_framework"
                 else None
             ),
+            "pathway_ids": pathway_ids,
+            "pathway_count": pathway_count,
             "appears_in_pathway_ranks": ranks,
             "potential_signal": self._element_potential_signal(
                 element=element,
                 role=role,
-                ranks=ranks,
+                pathway_count=pathway_count,
             ),
             "researcher_action": self._element_researcher_action(
                 element=element,
@@ -568,29 +653,31 @@ class ComparativeResearchIntelligenceService:
         *,
         element: str,
         role: str,
-        ranks: list[int],
+        pathway_count: int,
     ) -> str:
         if role == "introduced_element":
             return (
                 f"{element} appears as an introduced element in "
-                f"{len(ranks)} compared pathway(s)."
+                f"{pathway_count} compared pathway(s)."
             )
 
         if role == "removed_element":
             return (
                 f"{element} appears as a removed or avoided element in "
-                f"{len(ranks)} compared pathway(s)."
+                f"{pathway_count} compared pathway(s)."
             )
 
         if role == "preserved_framework":
             return (
                 f"{element} appears as a shared element across "
-                f"{len(ranks)} compared pathway(s). "
-                "This indicates element overlap, not validated structural preservation."
+                f"{pathway_count} compared pathway(s). "
+                "This indicates element overlap, not validated "
+                "structural preservation."
             )
 
         return (
-            f"{element} appears in {len(ranks)} compared pathway(s)."
+            f"{element} appears in "
+            f"{pathway_count} compared pathway(s)."
         )
 
 
