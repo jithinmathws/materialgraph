@@ -353,6 +353,33 @@ Regression Verification
 
 ✓ Full `pytest -v` regression suite
 
+Production Endpoint Verification
+
+✓ `GET /api/v1/materials/5/similar`
+
+✓ `GET /api/v1/materials/5/recommendations`
+
+✓ `GET /api/v1/materials/5/recommendations/scenario`
+
+✓ `GET /api/v1/materials/5/discovery/candidates` with
+`include_recommendations=true`
+
+✓ `GET /api/v1/materials/5/discovery/candidates` with
+`include_recommendations=true&include_scenarios=true`
+
+Production responses used `LOWER_CRITICALITY` consistently and exposed no
+legacy `LOWER_RISK`, `HIGHER_RISK`, or `SAME_RISK` comparison values.
+
+Discovery candidates sourced from the recommendation engine retained the
+`lower_criticality` reasoning path and received
+`lower_criticality_bonus: 30.0`. With scenario aggregation enabled, merged
+source provenance and the expected source-diversity contribution were also
+present.
+
+The default discovery-candidate request intentionally excludes recommendation
+and scenario sources for performance. Its lack of criticality evidence is
+therefore expected and does not indicate a failure of this remediation.
+
 Scientific Changes
 
 LiFePO4 Criticality
@@ -409,6 +436,284 @@ Principle 11
 Related ADR
 
 ADR-002
+
+---
+
+# MG-AUD-052
+
+Title
+
+Scenario explanation labels beneficial score contributions as penalties.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+Post-v1.9.18 remediation (release tag pending)
+
+Affected Components
+
+- Scenario recommendation scoring
+- Scenario explanation generation
+- Discovery candidate explanation aggregation
+
+Root Cause
+
+`ScenarioPolicyEvaluator` calculated `scenario_delta` correctly as the
+difference between the scenario and recommendation scores. However, final
+explanation assembly separately calculated `recommendation_score - score` and
+always labelled the result as a penalty. Beneficial contributions could
+therefore be described as negative penalties even when their numeric delta was
+positive.
+
+Observed Behavior Before Remediation
+
+Production endpoint verification for v1.9.18 exposed explanations such as:
+
+- `contains preferred element Na, bonus 10.0; final scenario penalty -10.0`
+- a positive scenario score delta accompanied by wording that describes the
+  contribution as a negative penalty
+
+Scientific Impact
+
+The numeric score and ranking were correct, but the researcher-facing
+explanation can communicate the opposite direction of the applied
+contribution. This weakens deterministic explainability and may cause API
+consumers to misinterpret whether a scenario improved or penalized a
+candidate.
+
+Resolution
+
+✓ Established the canonical invariant:
+
+```text
+scenario_delta = scenario_score - recommendation_score
+```
+
+✓ Made final explanation wording direction-aware:
+
+- positive delta → `final scenario bonus <delta>`
+- negative delta → `final scenario penalty <absolute delta>`
+- zero delta → `no final scenario adjustment`
+
+✓ Preserved all scenario weights, numeric scores, and ranking behavior.
+
+✓ Confirmed that discovery candidate explanations propagate the corrected
+scenario reason when scenario aggregation is enabled.
+
+Regression Verification
+
+✓ Preferred-element bonus produces a positive delta and bonus wording.
+
+✓ Avoided-element penalty produces a negative delta and penalty wording.
+
+✓ Combined bonus and penalty reports the direction of the net adjustment.
+
+✓ Zero adjustment produces neutral wording.
+
+✓ `scenario_delta` equals rounded `scenario_score - recommendation_score`.
+
+✓ Scenario recommendation API assertions validate wording against delta sign.
+
+✓ Full regression suite passed.
+
+Production Endpoint Verification
+
+✓ `GET /api/v1/materials/5/recommendations/scenario` with `element=Li`,
+`avoid_element=Li`, and `prefer_element=Na`
+
+✓ `GET /api/v1/materials/5/discovery/candidates` with
+`include_recommendations=true&include_scenarios=true`
+
+Production responses confirmed the corrected positive case:
+
+```text
+scenario_delta: 10.0
+contains preferred element Na, bonus 10.0; final scenario bonus 10.0
+```
+
+Production responses also confirmed the corrected negative case:
+
+```text
+scenario_delta: -20.0
+contains avoided element Li, penalty 20.0; final scenario penalty 20.0
+```
+
+The discovery response propagated the repaired explanation wording. The former
+contradiction `final scenario penalty -10.0` was not present.
+
+Scientific Changes
+
+None.
+
+The remediation changes explanation semantics only. Recommendation scores,
+scenario scores, discovery scores, score weights, candidate ordering, and
+ranking policy remain unchanged.
+
+Performance Improvements
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No.
+
+Response structure and numeric values remain unchanged. Human-readable
+`scenario_reason` text is corrected.
+
+---
+
+# MG-AUD-053
+
+Title
+
+Discovery candidate source merging compares incompatible score stages and
+exact ties lack an explicit deterministic ordering rule.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+Post-v1.9.18 remediation (release tag pending)
+
+Affected Components
+
+- DiscoveryCandidateService candidate-source merge logic
+- Discovery candidate result ordering
+- Candidate-service regression tests
+
+Root Cause
+
+The source merge compared an incoming base score with the existing candidate's
+displayed `discovery_score`. The displayed value could already include a
+source-diversity bonus, so the two values represented different scoring stages.
+A weaker existing base could therefore prevent a stronger incoming base from
+becoming the winning score provenance.
+
+Additionally, result sorting used only `discovery_score`. Although Python's
+sort is stable, the order of equal-scoring candidates depended on upstream
+insertion order rather than an explicit public deterministic rule.
+
+Investigation Finding
+
+The observed family-only `125.0` ties are valid. Candidates with identical
+recognized family relations and identical objective evidence should receive
+equal scores. This finding does not justify changing scientific weights or
+inventing differentiation unsupported by available evidence.
+
+Scientific Impact
+
+The merge defect could preserve the wrong source breakdown and understate the
+strongest base evidence for a candidate. The ordering issue could make exact
+ties less reproducible across changes in upstream encounter order. Neither
+issue requires a change to scientific scoring policy.
+
+Resolution
+
+✓ Compare `adjusted_score` with the stored `_base_discovery_score`, not with a
+displayed score that includes source diversity.
+
+✓ Reapply the source-diversity bonus only after selecting the winning base
+score and updating participating source identities.
+
+✓ Sort by descending `discovery_score` and then ascending `material_id`.
+
+✓ Preserve the existing breakdown for genuine equal-base-score encounters.
+
+✓ Preserve valid equal-evidence family-only ties.
+
+Regression Verification
+
+✓ A stronger incoming base score wins when an existing displayed total is
+equal only because of its diversity bonus.
+
+✓ A `105.0` incoming base replaces an existing `100.0` base even when the
+existing displayed total is `110.0`.
+
+✓ A genuine equal-base-score tie retains the existing winning breakdown.
+
+✓ The displayed score equals the winning base plus the current diversity
+bonus.
+
+✓ Every candidate score equals the sum of its score breakdown.
+
+✓ Focused tests and the full regression suite passed.
+
+Production Endpoint Verification
+
+✓ Enhanced discovery request with recommendation and scenario aggregation.
+
+✓ Default family-only discovery request.
+
+Production responses confirmed:
+
+- scores remain ordered from highest to lowest
+- enhanced candidates reconcile exactly with their score breakdowns
+- candidates observed through family, recommendation, and scenario sources
+  receive `source_diversity_bonus: 20.0`
+- valid `125.0` equal-evidence ties remain
+- tied `125.0` candidates use ascending material IDs `6, 7, 8, 9, 10`
+- tied `-10.0` candidates use ascending material IDs `1, 2, 3, 4`
+
+Scientific Changes
+
+None.
+
+Family scoring weights, objective bonuses and penalties, and scientific
+ranking policy remain unchanged. `material_id` is used only as a deterministic
+non-scientific tie-breaker after exact score equality.
+
+Performance Improvements
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+No.
+
+Response structure and score values are unchanged. The order of exact ties is
+now explicitly deterministic.
+
+Database Backfill Required
+
+No.
+
+Resolution Summary
+
+MG-AUD-053 is fully remediated, regression-tested, and production-verified.
+The release tag for this post-v1.9.18 change has not yet been recorded.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Researcher-facing explanations must derive direction labels from the same
+canonical delta exposed by the API. A numeric sign and its natural-language
+description should never be calculated independently.
+
+Relationship to MG-AUD-036
+
+This is an independent explanation defect discovered during production
+verification. It does not invalidate the completed criticality-direction
+remediation.
 
 ---
 

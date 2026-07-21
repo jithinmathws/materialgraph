@@ -104,8 +104,10 @@ class DiscoveryCandidateService:
             ):
                 all_candidates = sorted(
                     candidates_by_id.values(),
-                    key=lambda item: item["discovery_score"],
-                    reverse=True,
+                    key=lambda item: (
+                        -item["discovery_score"],
+                        item["material_id"],
+                    ),
                 )
 
                 candidates = all_candidates[:limit]
@@ -363,7 +365,7 @@ class DiscoveryCandidateService:
 
             existing_base_score = existing["_base_discovery_score"]
 
-            if existing["discovery_score"] >= adjusted_score:
+            if existing_base_score >= adjusted_score:
                 selected_base_score = existing_base_score
                 selected_score_breakdown = dict(
                     existing["_base_score_breakdown"]

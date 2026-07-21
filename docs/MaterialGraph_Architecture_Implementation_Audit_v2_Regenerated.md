@@ -74,6 +74,12 @@ public API responses.
 now distinguish path-wide and endpoint-specific objective satisfaction.**
 13. **MG-AUD-036 - Resolved (v1.9.18) --- Criticality-direction response
 values now use criticality terminology while preserving scoring behavior.**
+14. **MG-AUD-052 - Resolved --- Scenario adjustment explanations now use
+    direction-aware bonus, penalty, and neutral wording consistent with
+    `scenario_delta`.**
+15. **MG-AUD-053 - Resolved --- Discovery source merging now selects the
+    strongest base score before applying diversity, and exact score ties use
+    ascending `material_id` as a deterministic non-scientific tie-breaker.**
 
 ## Current Data Reality
 
@@ -93,8 +99,10 @@ Correct fractions are recoverable for all 28 real imported materials.
 
 ## Immediate Engineering Recommendation
 
-Correct upstream composition weighting and missing-evidence semantics
-before expanding research intelligence.
+Continue the remaining researcher-explainability, contract, ranking, and
+performance work in roadmap order. Family-only discovery ties have now been
+characterized as valid equal-evidence outcomes; future ranking changes should
+require additional scientific evidence rather than arbitrary differentiation.
 
 ------------------------------------------------------------------------
 
@@ -1411,6 +1419,31 @@ The focused tests and full `pytest -v` suite passed. No criticality score,
 delta, similarity score, recommendation score, discovery weight, ranking,
 or human-readable reason semantics changed.
 
+Production verification completed on 2026-07-21 against the LiFePO4
+reference workflow:
+
+-   `GET /api/v1/materials/5/similar` --- passed
+-   `GET /api/v1/materials/5/recommendations` --- passed
+-   `GET /api/v1/materials/5/recommendations/scenario` --- passed
+-   `GET /api/v1/materials/5/discovery/candidates` with
+    `include_recommendations=true` --- passed
+-   the same discovery request with `include_scenarios=true` --- passed
+
+The inspected responses used `LOWER_CRITICALITY` consistently and exposed
+no legacy `LOWER_RISK`, `HIGHER_RISK`, or `SAME_RISK` values. Discovery
+candidates generated through the recommendation source retained:
+
+-   `lower_criticality` in `discovery_path`
+-   `lower_criticality_bonus: 30.0` in `score_breakdown`
+-   unchanged arithmetic, ordering, and human-readable lower-criticality
+    reasoning
+
+The direct discovery route intentionally defaults
+`include_recommendations=false` and `include_scenarios=false` for response
+speed. A family-only response therefore contains no criticality-direction
+evidence; this is expected query-flag behavior and not a failure of this
+remediation.
+
 ### Compatibility Note
 
 The field name and response structure are unchanged, but the three known
@@ -1943,6 +1976,233 @@ Existing path-wide objective fields remain unchanged.
 
 ------------------------------------------------------------------------
 
+## MG-AUD-052 --- Scenario Explanation Sign and Label Can Contradict the Score Contribution
+
+**Status:** Resolved\
+**Last verified:** 2026-07-21\
+**Confidence:** Confirmed\
+**Priority:** P1
+
+### Discovery Context
+
+This finding was identified during production endpoint verification of
+MG-AUD-036. It is independent of the completed criticality-direction
+terminology remediation.
+
+### Finding
+
+Scenario recommendation explanations can label a beneficial adjustment as
+a penalty and can render the final value with the opposite sign from its
+effect on the score.
+
+Observed examples include:
+
+```text
+contains preferred element Na, bonus 10.0; final scenario penalty -10.0
+```
+
+and responses where `scenario_score` is greater than
+`recommendation_score` while the explanation still reports a negative
+"final scenario penalty."
+
+For an avoided-element candidate, the wording can instead report:
+
+```text
+contains avoided element Li, penalty 20.0; final scenario penalty 20.0
+```
+
+The individual preferred/avoided-element clauses are understandable, but
+the shared final label and sign convention do not reliably communicate
+whether the scenario stage increased or decreased the candidate score.
+
+### Impact
+
+-   Numeric scenario scoring and ordering appear internally consistent in
+    the inspected responses.
+-   Researcher-facing explanations can misstate the direction of the score
+    adjustment.
+-   API consumers cannot safely interpret the final prose as a faithful
+    description of `scenario_delta` without inspecting the numeric fields.
+
+### Affected Layers
+
+-   scenario-policy scoring/reason construction
+-   scenario recommendation API responses
+-   discovery candidate explanations when scenario candidates are enabled
+
+### Recommended Action
+
+1.  Define one explicit sign convention for `scenario_delta`.
+2.  Use a neutral label such as `scenario adjustment` when the value may be
+    positive or negative, or select `bonus`/`penalty` from the actual effect.
+3.  Generate the final explanation from the same signed contribution used
+    to calculate `scenario_score`.
+4.  Add focused tests for preferred-only, avoided-only, combined, and
+    zero-adjustment cases.
+5.  Re-verify both the scenario recommendation endpoint and discovery with
+    `include_scenarios=true`.
+
+### Resolution Boundary
+
+Do not change scenario weights or ranking policy as part of the wording
+fix unless a separate arithmetic defect is demonstrated. First align the
+explanation with the existing numeric behavior.
+
+### Implemented Resolution
+
+`ScenarioPolicyEvaluator` now derives the final explanation from the same
+signed value returned as `scenario_delta`, using this canonical convention:
+
+-   positive `scenario_delta` → `final scenario bonus`
+-   negative `scenario_delta` → `final scenario penalty` with an absolute
+    displayed magnitude
+-   zero `scenario_delta` → `no final scenario adjustment`
+
+The implementation computes:
+
+```text
+scenario_delta = round(scenario_score - recommendation_score, 2)
+```
+
+Scenario weights, candidate ordering, recommendation scores, discovery
+scores, and ranking policy were not changed.
+
+### Test Verification
+
+Focused scenario-policy tests passed for:
+
+-   preferred-element bonus
+-   avoided-element penalty
+-   combined bonus and penalty with a net signed result
+-   zero adjustment
+-   the invariant between `scenario_score`, `recommendation_score`, and
+    `scenario_delta`
+
+The API-focused tests and full regression suite also passed.
+
+### Production Verification
+
+Production verification passed on 2026-07-21 for:
+
+```text
+/api/v1/materials/5/recommendations/scenario
+/api/v1/materials/5/discovery/candidates?include_recommendations=true&include_scenarios=true
+```
+
+Preferred-element candidates such as `NaFePO4` now report:
+
+```text
+recommendation_score: 131.28
+scenario_score:       141.28
+scenario_delta:        10.0
+scenario_reason: contains preferred element Na, bonus 10.0; final scenario bonus 10.0
+```
+
+The avoided-element candidate `LiFe(PO3)4` now reports:
+
+```text
+recommendation_score: 147.0
+scenario_score:       127.0
+scenario_delta:       -20.0
+scenario_reason: contains avoided element Li, penalty 20.0; final scenario penalty 20.0
+```
+
+The discovery response propagates the corrected wording when scenario
+candidates are enabled. The previously contradictory phrase
+`final scenario penalty -10.0` no longer appears.
+
+### Closure
+
+MG-AUD-052 is fully remediated and production-verified. Numeric scoring and
+ranking behavior remain unchanged; only explanation semantics were corrected.
+
+------------------------------------------------------------------------
+
+## MG-AUD-053 --- Discovery Base-Score Selection and Deterministic Tie Ordering
+
+**Status:** Resolved\
+**Last verified:** 2026-07-21\
+**Confidence:** Confirmed\
+**Priority:** P1
+
+### Finding
+
+Discovery candidate source merging compared an incoming base score with the
+existing displayed `discovery_score`, which could already contain a
+source-diversity bonus. The comparison therefore mixed two score stages and
+could retain a weaker existing base score.
+
+Exact score ties were also sorted only by `discovery_score`, leaving their
+final order dependent on upstream insertion order rather than an explicit
+deterministic response rule.
+
+### Investigation Result
+
+The observed family-only `125.0` ties are scientifically valid under the
+current evidence model. Candidates sharing the same recognized relationships
+and objective matches should remain tied. The defect concerned provenance
+selection and reproducibility, not insufficient weight differentiation.
+
+### Impact
+
+-   A stronger incoming source could fail to become the candidate's winning
+    base score and score-breakdown provenance.
+-   Exact ties could lack reproducible ordering if source encounter order
+    changed.
+-   Artificially changing weights to split valid ties would claim scientific
+    differentiation unsupported by the available evidence.
+
+### Implemented Resolution
+
+Candidate merging now compares the incoming adjusted base score with
+`_base_discovery_score`. The diversity bonus is applied after selecting the
+winning base and aggregating distinct source identities.
+
+Final results now sort by:
+
+```text
+discovery_score descending
+material_id ascending for exact ties
+```
+
+Genuine equal-base-score encounters retain the existing winning breakdown.
+No family weights, objective bonuses, penalties, or scientific ranking rules
+were changed.
+
+### Test Verification
+
+Focused tests verify:
+
+-   a stronger incoming base wins even when the existing displayed score is
+    equal because of diversity
+-   an incoming `105.0` base replaces an existing `100.0` base whose displayed
+    score is `110.0`
+-   genuine equal-base ties retain the existing breakdown
+-   displayed scores reconcile with the winning base and diversity bonus
+-   every score equals its score-breakdown sum
+
+The focused test suite and full regression suite passed.
+
+### Production Verification
+
+Production verification passed on 2026-07-21 for enhanced and family-only
+discovery-candidate requests.
+
+The enhanced response remained correctly sorted, all score totals reconciled,
+and three-source candidates received `source_diversity_bonus: 20.0`.
+
+The family-only response preserved valid `125.0` ties and ordered them by
+ascending material IDs `6, 7, 8, 9, 10`. The tied `-10.0` group likewise used
+ascending IDs `1, 2, 3, 4`.
+
+### Closure
+
+MG-AUD-053 is fully remediated and production-verified. Strongest-base source
+selection and deterministic response ordering are corrected without changing
+scientific scoring weights or inventing unsupported candidate distinctions.
+
+------------------------------------------------------------------------
+
 # 5. Provisional Findings
 
 ## PROV-001 --- Repeated Stability/Energy Weighting
@@ -2098,14 +2358,19 @@ Actions:
 3.  Separate internal deterministic support from external evidence.
 4.  ✓ Constrain criticality-direction schemas and replace risk-labelled
     values with canonical criticality terminology (MG-AUD-036).
-5.  Continue public-schema compatibility planning for remaining findings.
+5.  ✓ Align scenario adjustment signs and bonus/penalty explanations
+    (MG-AUD-052).
+6.  ✓ Select candidate provenance using comparable base scores and make exact
+    tie ordering deterministic (MG-AUD-053).
+7.  Continue public-schema compatibility planning for remaining findings.
 
 ## Phase 7 --- Search and Performance
 
 1.  Benchmark family global scans.
 2.  Replace screening N+1 patterns.
 3.  Evaluate bounded-search recall.
-4.  Add stable non-scientific tie-breakers where needed.
+4.  ✓ Add a stable non-scientific tie-breaker for discovery candidates
+    (MG-AUD-053); assess other endpoints as needed.
 5.  Retain production safety limits.
 
 ## Phase 8 --- Contract Strengthening
@@ -2464,11 +2729,21 @@ been implemented and verified independently.
 
 MG-AUD-050 has been implemented and verified.
 
-MG-AUD-036 has been implemented and verified. Similarity,
+MG-AUD-036 has been implemented and verified in production. Similarity,
 recommendation, and discovery responses now use constrained canonical
 criticality-direction values while preserving all numeric scoring and
 ranking behavior. The exact response-value compatibility change is
 documented explicitly.
+
+MG-AUD-052 has been implemented and verified in production. Scenario
+explanations now derive their direction from `scenario_delta`: positive
+adjustments are bonuses, negative adjustments are penalties, and zero is
+neutral. Scenario weights, numeric scores, and ranking behavior are unchanged.
+
+MG-AUD-053 has been implemented and verified in production. Candidate-source
+merging now compares base scores at the same scoring stage, and exact discovery
+score ties use ascending `material_id`. Valid equal-evidence ties and all
+scientific scoring weights remain unchanged.
 
 Scientific pathway responses now distinguish deterministic path-wide
 objective satisfaction from endpoint-specific objective satisfaction
@@ -2543,9 +2818,22 @@ The sequential remediation set through MG-AUD-009 has been completed.
 
 MG-AUD-049 and MG-AUD-050 have both been implemented and verified as independent remediations discovered during subsequent audit work.
 
-MG-AUD-036 has been implemented and verified. Its public response values
-now use constrained criticality terminology; the response structure and
-numeric scoring behavior remain unchanged.
+MG-AUD-036 has been implemented and verified through focused tests, the
+full regression suite, and production endpoint checks. Its public response
+values now use constrained criticality terminology; the response structure
+and numeric scoring behavior remain unchanged.
+
+MG-AUD-052 has been implemented and verified through focused tests, the full
+regression suite, and production checks of both the scenario recommendation
+and discovery-candidate endpoints. Its wording and sign now agree with the
+numeric score contribution without changing scenario weights or ranking
+policy.
+
+MG-AUD-053 has been implemented and verified through focused tests, the full
+regression suite, and enhanced and family-only discovery production checks.
+The strongest source base is now selected before diversity is applied, while
+exact ties are deterministically ordered by ascending `material_id`. Valid
+equal-evidence family ties remain unchanged.
 
 Future audit work should continue with the remaining confirmed
 semantic, evidence, ranking, and performance findings in roadmap

@@ -1039,3 +1039,258 @@ Verification
 - Recommendation score and explanation tests passed.
 - Discovery lower-criticality bonus regression tests passed.
 - Full `pytest -v` suite passed.
+
+Production Verification
+
+Verified against the deployed v1.9.18 APIs:
+
+- `GET /api/v1/materials/5/similar`
+- `GET /api/v1/materials/5/recommendations`
+- `GET /api/v1/materials/5/recommendations/scenario`
+- `GET /api/v1/materials/5/discovery/candidates` with recommendation source
+  enabled
+- `GET /api/v1/materials/5/discovery/candidates` with recommendation and
+  scenario sources enabled
+
+All inspected criticality comparisons used canonical values. Discovery
+recommendation candidates retained `lower_criticality` and received the
+30-point `lower_criticality_bonus`. No legacy risk-direction values were
+observed.
+
+The discovery route defaults `include_recommendations` and
+`include_scenarios` to `false` for performance. Family-only responses therefore
+do not contain recommendation-derived criticality evidence by design.
+
+Additional Audit Discovery
+
+MG-AUD-052 was opened after production responses exposed scenario explanations
+whose wording does not agree with the sign or direction of the numeric
+contribution. Examples include a preferred-element bonus followed by `final
+scenario penalty -10.0`, and positive score deltas described as penalties.
+
+This follow-up concerns explanation semantics only and does not reopen
+MG-AUD-036.
+
+---
+
+## Unreleased (post-v1.9.18)
+
+Summary
+
+Scenario adjustment explanation consistency remediation.
+
+Reason
+
+Resolved MG-AUD-052.
+
+Affected Components
+
+- ScenarioPolicyEvaluator
+- Scenario recommendation explanation generation
+- Discovery candidate explanation aggregation
+- Scenario policy and scenario recommendation API tests
+
+Changes
+
+Direction-Aware Final Adjustment
+
+The final scenario explanation now derives its label from `scenario_delta`:
+
+- positive delta → `final scenario bonus`
+- negative delta → `final scenario penalty` using the absolute magnitude
+- zero delta → `no final scenario adjustment`
+
+Score-Delta Invariant
+
+Scenario evaluation now exposes and verifies the canonical relationship:
+
+```text
+scenario_delta = scenario_score - recommendation_score
+```
+
+Explanation Consistency
+
+Preferred-element contributions now produce consistent positive wording, for
+example:
+
+```text
+contains preferred element Na, bonus 10.0; final scenario bonus 10.0
+```
+
+Avoided-element contributions now produce consistent negative wording, for
+example:
+
+```text
+contains avoided element Li, penalty 20.0; final scenario penalty 20.0
+```
+
+The contradictory wording `final scenario penalty -10.0` is no longer
+produced.
+
+Scientific Changes
+
+None.
+
+Scenario weights, recommendation scores, scenario scores, discovery scores,
+candidate ordering, and ranking policy are unchanged. The remediation corrects
+researcher-facing explanation semantics only.
+
+Performance
+
+No measurable performance impact.
+
+No additional database queries introduced.
+
+Breaking API
+
+No.
+
+Response fields and numeric values are unchanged. Only human-readable
+`scenario_reason` wording is corrected.
+
+Database Backfill
+
+No.
+
+Regression Status
+
+Passed.
+
+Verification
+
+- Focused ScenarioPolicyEvaluator bonus, penalty, mixed-adjustment, neutral,
+  and score-delta invariant tests passed.
+- Scenario recommendation API sign-aware explanation assertions passed.
+- Full regression suite passed.
+
+Production Verification
+
+Verified against the deployed APIs:
+
+- `GET /api/v1/materials/5/recommendations/scenario` with `element=Li`,
+  `avoid_element=Li`, and `prefer_element=Na`
+- `GET /api/v1/materials/5/discovery/candidates` with
+  `include_recommendations=true&include_scenarios=true`
+
+Production responses confirmed:
+
+- preferred-element candidates expose `scenario_delta: 10.0` and `final
+  scenario bonus 10.0`
+- the avoided-element candidate exposes `scenario_delta: -20.0` and `final
+  scenario penalty 20.0`
+- discovery explanations propagate the corrected scenario wording
+- the score-delta invariant holds for the inspected candidates
+- no contradictory negative-penalty wording remains
+
+Resolution Status
+
+MG-AUD-052 is fully remediated, regression-tested, and production-verified.
+The release tag for this post-v1.9.18 change has not yet been recorded.
+
+---
+
+## Unreleased (post-v1.9.18) — MG-AUD-053
+
+Summary
+
+Discovery candidate base-score selection and deterministic tie-ordering
+remediation.
+
+Reason
+
+Resolved MG-AUD-053.
+
+Affected Components
+
+- DiscoveryCandidateService candidate-source merge logic
+- Discovery candidate result ordering
+- Discovery candidate service regression tests
+
+Changes
+
+Base-Score Merge Selection
+
+Candidate-source merging now compares the incoming base score with the
+existing candidate's stored base score. It no longer compares an incoming base
+score against an existing displayed score that already includes the
+source-diversity bonus.
+
+This prevents a stronger incoming source from being incorrectly rejected when
+an earlier, weaker source appears larger only because diversity has already
+been added.
+
+Deterministic Tie Ordering
+
+Discovery candidates remain ordered by descending `discovery_score`. Exact
+score ties are now ordered by ascending `material_id`.
+
+Valid Equal-Evidence Ties
+
+Family-only candidates with identical evidence continue to receive identical
+scores. The observed `125.0` ties are intentional:
+
+```text
+shared_chemistry            40.0
+alkali_substitution         35.0
+preferred_element_bonus     25.0
+avoided_element_removed     25.0
+total                      125.0
+```
+
+No unsupported scientific differentiation was introduced.
+
+Scientific Changes
+
+None.
+
+Scoring weights and scientific ranking policy are unchanged. The remediation
+corrects source-base selection and provides a stable non-scientific tie-breaker.
+
+Performance
+
+No measurable performance impact.
+
+No additional database queries introduced.
+
+Breaking API
+
+No.
+
+Response fields and score values are unchanged. Exact ties may now have an
+explicitly stable order by ascending `material_id`.
+
+Database Backfill
+
+No.
+
+Regression Status
+
+Passed.
+
+Verification
+
+- Focused candidate merge tests passed.
+- A stronger incoming base score wins even when the existing displayed total
+  is equal because of a diversity bonus.
+- A genuine equal-base-score tie retains the existing winning breakdown.
+- Score totals continue to equal the sum of their breakdowns.
+- Full regression suite passed.
+
+Production Verification
+
+Verified against the deployed discovery candidate endpoint using both enhanced
+family/recommendation/scenario aggregation and the default family-only mode.
+
+Production responses confirmed:
+
+- enhanced results remain in descending score order
+- every `discovery_score` reconciles with its `score_breakdown`
+- three participating source types produce `source_diversity_bonus: 20.0`
+- valid family-only `125.0` ties remain unchanged
+- tied `125.0` candidates are ordered by material IDs `6, 7, 8, 9, 10`
+- tied `-10.0` candidates are ordered by material IDs `1, 2, 3, 4`
+
+Resolution Status
+
+MG-AUD-053 is fully remediated, regression-tested, and production-verified.
+The release tag for this post-v1.9.18 change has not yet been recorded.

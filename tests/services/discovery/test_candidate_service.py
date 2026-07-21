@@ -159,7 +159,7 @@ def test_incoming_breakdown_replaces_existing_breakdown_when_incoming_score_wins
     _assert_score_matches_breakdown(candidate)
 
 
-def test_exact_score_tie_retains_existing_breakdown():
+def test_higher_incoming_base_score_wins_even_when_existing_total_is_equal():
     service = _build_service()
     candidates_by_id: dict[int, dict] = {}
 
@@ -183,6 +183,7 @@ def test_exact_score_tie_retains_existing_breakdown():
     )
 
     assert candidates_by_id[10]["discovery_score"] == 110.0
+    assert candidates_by_id[10]["_base_discovery_score"] == 100.0
 
     _upsert(
         service,
@@ -196,13 +197,100 @@ def test_exact_score_tie_retains_existing_breakdown():
 
     candidate = candidates_by_id[10]
 
-    assert candidate["discovery_score"] == 120.0
+    assert candidate["_base_discovery_score"] == 110.0
+    assert candidate["discovery_score"] == 130.0
     assert candidate["score_breakdown"] == {
-        "family_score": 100.0,
+        "scenario_score": 110.0,
         "source_diversity_bonus": 20.0,
     }
 
-    assert "scenario_score" not in candidate["score_breakdown"]
+    assert "family_score" not in candidate["score_breakdown"]
+    assert "recommendation_score" not in candidate["score_breakdown"]
+
+    _assert_score_matches_breakdown(candidate)
+
+
+def test_exact_base_score_tie_retains_existing_breakdown():
+    service = _build_service()
+    candidates_by_id: dict[int, dict] = {}
+
+    _upsert(
+        service,
+        candidates_by_id,
+        score=100.0,
+        score_breakdown={"family_score": 100.0},
+        paths=["family_related"],
+        explanation="Identified through material-family relationships.",
+    )
+
+    _upsert(
+        service,
+        candidates_by_id,
+        score=100.0,
+        score_breakdown={"recommendation_score": 100.0},
+        paths=["recommendation_engine"],
+        source_type="recommendation",
+        explanation="Identified through recommendation analysis.",
+    )
+
+    candidate = candidates_by_id[10]
+
+    assert candidate["_base_discovery_score"] == 100.0
+    assert candidate["discovery_score"] == 110.0
+    assert candidate["score_breakdown"] == {
+        "family_score": 100.0,
+        "source_diversity_bonus": 10.0,
+    }
+
+    assert "recommendation_score" not in candidate["score_breakdown"]
+
+    _assert_score_matches_breakdown(candidate)
+
+
+def test_incoming_base_score_is_compared_without_existing_diversity_bonus():
+    service = _build_service()
+    candidates_by_id: dict[int, dict] = {}
+
+    _upsert(
+        service,
+        candidates_by_id,
+        score=100.0,
+        score_breakdown={"family_score": 100.0},
+        paths=["family_related"],
+        explanation="Family candidate.",
+        source_type="family",
+    )
+
+    _upsert(
+        service,
+        candidates_by_id,
+        score=90.0,
+        score_breakdown={"recommendation_score": 90.0},
+        paths=["recommendation_engine"],
+        explanation="Recommendation candidate.",
+        source_type="recommendation",
+    )
+
+    assert candidates_by_id[10]["discovery_score"] == 110.0
+
+    _upsert(
+        service,
+        candidates_by_id,
+        score=105.0,
+        score_breakdown={"scenario_score": 105.0},
+        paths=["scenario_recommendation"],
+        explanation="Scenario candidate.",
+        source_type="scenario",
+    )
+
+    candidate = candidates_by_id[10]
+
+    assert candidate["_base_discovery_score"] == 105.0
+    assert candidate["discovery_score"] == 125.0
+    assert candidate["score_breakdown"] == {
+        "scenario_score": 105.0,
+        "source_diversity_bonus": 20.0,
+    }
 
     _assert_score_matches_breakdown(candidate)
 

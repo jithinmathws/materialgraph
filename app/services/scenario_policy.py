@@ -65,14 +65,18 @@ class ScenarioPolicyEvaluator:
                 f"contains preferred element {', '.join(preferred)}, bonus {bonus}"
             )
 
-        final_scenario_penalty = recommendation_score - score
+        scenario_score = round(score, 2)
+        scenario_delta = round(scenario_score - recommendation_score, 2)
 
-        reasons.append(
-            f"final scenario penalty {round(final_scenario_penalty, 2)}"
-        )
+        if scenario_delta > 0:
+            reasons.append(f"final scenario bonus {scenario_delta}")
+        elif scenario_delta < 0:
+            reasons.append(f"final scenario penalty {abs(scenario_delta)}")
+        else:
+            reasons.append("no final scenario adjustment")
 
         return ScenarioPolicyResult(
-            scenario_score=round(score, 2),
-            scenario_delta=round(score - recommendation_score, 2),
+            scenario_score=scenario_score,
+            scenario_delta=scenario_delta,
             scenario_reason="; ".join(reasons),
         )

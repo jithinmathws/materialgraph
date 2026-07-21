@@ -48,10 +48,22 @@ def test_get_material_scenario_recommendations(client):
             for rec in data["recommendations"]
         )
 
-        assert any(
-            "final scenario penalty" in rec["scenario_reason"]
-            for rec in data["recommendations"]
-        )
+        for recommendation in data["recommendations"]:
+            scenario_delta = recommendation["scenario_delta"]
+            scenario_reason = recommendation["scenario_reason"]
+
+            assert scenario_delta == round(
+                recommendation["scenario_score"]
+                - recommendation["recommendation_score"],
+                2,
+            )
+
+            if scenario_delta > 0:
+                assert "final scenario bonus" in scenario_reason
+            elif scenario_delta < 0:
+                assert "final scenario penalty" in scenario_reason
+            else:
+                assert "no final scenario adjustment" in scenario_reason
 
 
 def test_get_material_scenario_recommendations_not_found(client):
