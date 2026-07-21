@@ -939,3 +939,103 @@ No
 Regression Status
 
 Passed
+
+---
+
+## v1.9.18
+
+Summary
+
+Canonical criticality comparison terminology remediation.
+
+Reason
+
+Resolved MG-AUD-036.
+
+Affected Components
+
+- MaterialSimilarityService
+- MaterialRecommendationService
+- DiscoveryScoringService
+- Similarity and recommendation response schemas
+- Similarity, recommendation, scenario recommendation, and discovery APIs
+
+Changes
+
+Criticality Direction Vocabulary
+
+Comparison values derived from `criticality_score` now use explicit
+criticality terminology:
+
+- `LOWER_RISK` → `LOWER_CRITICALITY`
+- `HIGHER_RISK` → `HIGHER_CRITICALITY`
+- `SAME_RISK` → `SAME_CRITICALITY`
+- `UNKNOWN` remains unchanged
+
+Schema Validation
+
+Similarity and recommendation response schemas now use one shared constrained
+`CriticalityDirection` vocabulary instead of unconstrained strings.
+
+Recommendation Explainability
+
+Human-readable recommendation reasons remain unchanged:
+
+- lower criticality by ...
+- higher criticality by ...
+- same criticality
+
+Discovery Scoring
+
+Discovery scoring now consumes `LOWER_CRITICALITY` while preserving the
+existing 30-point lower-criticality bonus, reasoning path, and score-breakdown
+key.
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The remediation changes machine-readable terminology only. Criticality
+deltas, score weights, bonus eligibility, ranking, and scientific results are
+unchanged. Material risk remains a separate evidence and scoring concept.
+
+Performance
+
+No measurable performance impact.
+
+No additional database queries introduced.
+
+Breaking API
+
+Yes
+
+The `criticality_direction` field name and response structure are unchanged,
+but three serialized values changed. Clients comparing exact legacy values
+must adopt the canonical criticality values.
+
+Database Backfill
+
+No
+
+Regression Status
+
+Passed
+
+Verification
+
+- Similarity delta and direction tests passed.
+- Recommendation score and explanation tests passed.
+- Discovery lower-criticality bonus regression tests passed.
+- Full `pytest -v` suite passed.

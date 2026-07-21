@@ -124,12 +124,12 @@ class MaterialSimilarityService:
             return "UNKNOWN"
 
         if criticality_delta < 0:
-            return "LOWER_RISK"
+            return "LOWER_CRITICALITY"
 
         if criticality_delta > 0:
-            return "HIGHER_RISK"
+            return "HIGHER_CRITICALITY"
 
-        return "SAME_RISK"
+        return "SAME_CRITICALITY"
 
     def _calculate_similarity_score(self, neighbor: dict) -> float:
         score = 0.0

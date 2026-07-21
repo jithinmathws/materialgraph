@@ -1,12 +1,16 @@
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.material_common import MaterialRiskSummary, MaterialRelationshipSummary
+from app.schemas.material_common import (
+    CriticalityDirection,
+    MaterialRelationshipSummary,
+    MaterialRiskSummary,
+)
 
 
 class MaterialRecommendationRead(MaterialRiskSummary, MaterialRelationshipSummary):
     similarity_score: float
     criticality_delta: float | None
-    criticality_direction: str
+    criticality_direction: CriticalityDirection
     recommendation_score: float
     recommendation_reason: str
 

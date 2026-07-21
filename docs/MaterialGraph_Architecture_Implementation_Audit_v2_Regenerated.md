@@ -2,7 +2,7 @@
 
 **Version:** v2 --- Restructured Living Audit\
 **Status:** Active\
-**Project stage:** Post-v1.9.6\
+**Project stage:** Post-v1.9.18\
 **Primary regression trace:** LiFePO4 → Na/phosphate objective\
 **Source:** Refactored from the complete v1 implementation audit and
 later code/live-data investigations
@@ -72,6 +72,8 @@ public API responses.
     substring matching for element membership.**
 12. **MG-AUD-050 - Resolved (v1.9.16) --- Scientific pathway responses 
 now distinguish path-wide and endpoint-specific objective satisfaction.**
+13. **MG-AUD-036 - Resolved (v1.9.18) --- Criticality-direction response
+values now use criticality terminology while preserving scoring behavior.**
 
 ## Current Data Reality
 
@@ -1355,7 +1357,7 @@ These are layered policies, not necessarily contradictions.
 
 ## MG-AUD-036 --- Criticality Direction Uses Risk Terminology
 
-**Status:** Confirmed\
+**Status:** Resolved (v1.9.18)\
 **Confidence:** Confirmed\
 **Priority:** P1
 
@@ -1366,6 +1368,55 @@ Criticality deltas produce:
 -   `SAME_RISK`
 
 This is a terminology/contract mismatch.
+
+### Resolution
+
+The direction is derived exclusively from `criticality_delta`, calculated
+as candidate criticality minus source criticality. The legacy response
+values were replaced atomically with the following canonical vocabulary:
+
+-   `LOWER_CRITICALITY`
+-   `HIGHER_CRITICALITY`
+-   `SAME_CRITICALITY`
+-   `UNKNOWN`
+
+A shared `CriticalityDirection` `Literal` now constrains similarity and
+recommendation response schemas. The producer and all identified runtime
+consumers were updated together, including recommendation explanations and
+the discovery-scoring condition that awards the existing 30-point
+lower-criticality bonus. The public query description was also corrected
+from "lower criticality risk" to "lower criticality."
+
+### Affected Components
+
+-   `app/services/material/similarity_service.py`
+-   `app/services/material/recommendation_service.py`
+-   `app/services/discovery/scoring_service.py`
+-   `app/schemas/material_common.py`
+-   `app/schemas/material_similarity.py`
+-   `app/schemas/material_recommendation.py`
+-   `app/api/v1/routes/material_neighbors.py`
+
+### Verification
+
+Focused characterization tests now cover:
+
+-   criticality-delta calculation, rounding, and unknown handling
+-   all four canonical direction states
+-   recommendation scores and human-readable comparison reasons
+-   preservation of the 30-point lower-criticality discovery bonus,
+    reasoning path, and score-breakdown key
+
+The focused tests and full `pytest -v` suite passed. No criticality score,
+delta, similarity score, recommendation score, discovery weight, ranking,
+or human-readable reason semantics changed.
+
+### Compatibility Note
+
+The field name and response structure are unchanged, but the three known
+direction strings are different. This is a breaking response-value change
+for clients that compare exact legacy strings. No frontend, persistence,
+cache, or other repository consumer of those legacy values was found.
 
 ------------------------------------------------------------------------
 
@@ -2045,7 +2096,9 @@ Actions:
 1.  ✓ Correct canonical framework semantics.
 2.  Qualify family/substitution wording.
 3.  Separate internal deterministic support from external evidence.
-4.  Update public schemas with compatibility planning.
+4.  ✓ Constrain criticality-direction schemas and replace risk-labelled
+    values with canonical criticality terminology (MG-AUD-036).
+5.  Continue public-schema compatibility planning for remaining findings.
 
 ## Phase 7 --- Search and Performance
 
@@ -2186,6 +2239,20 @@ change is.
 - updated comparative element aggregation
 - full regression suite passed
 - LiFePO4 → Na/phosphate scientific usefulness remained 95.65
+
+## 2026-07-21 --- Criticality-Direction Contract
+
+-   resolved MG-AUD-036 criticality/risk terminology mismatch
+-   replaced `LOWER_RISK`, `HIGHER_RISK`, and `SAME_RISK` with constrained
+    canonical criticality-direction values
+-   updated similarity, recommendation, and discovery-scoring consumers
+    atomically
+-   preserved the existing lower-criticality bonus, score breakdown,
+    recommendation scores, ranking, and human-readable reasons
+-   documented the exact response-value compatibility change
+-   added focused characterization coverage for direction mapping,
+    explanation branching, and discovery bonus eligibility
+-   full `pytest -v` suite passed
 
 ------------------------------------------------------------------------
 
@@ -2397,6 +2464,12 @@ been implemented and verified independently.
 
 MG-AUD-050 has been implemented and verified.
 
+MG-AUD-036 has been implemented and verified. Similarity,
+recommendation, and discovery responses now use constrained canonical
+criticality-direction values while preserving all numeric scoring and
+ranking behavior. The exact response-value compatibility change is
+documented explicitly.
+
 Scientific pathway responses now distinguish deterministic path-wide
 objective satisfaction from endpoint-specific objective satisfaction
 while preserving existing scoring, ranking, and API compatibility.
@@ -2470,6 +2543,10 @@ The sequential remediation set through MG-AUD-009 has been completed.
 
 MG-AUD-049 and MG-AUD-050 have both been implemented and verified as independent remediations discovered during subsequent audit work.
 
+MG-AUD-036 has been implemented and verified. Its public response values
+now use constrained criticality terminology; the response structure and
+numeric scoring behavior remain unchanged.
+
 Future audit work should continue with the remaining confirmed
 semantic, evidence, ranking, and performance findings in roadmap
 priority order.
@@ -2492,4 +2569,6 @@ prioritized remediation roadmap.
 
 The highest engineering value is no longer additional architectural
 inspection, but systematic correction of confirmed upstream issues
-followed by regression verification.
+followed by regression verification. The next remediation should proceed
+through the remaining confirmed semantic, evidence, ranking, and
+performance findings in roadmap priority order.

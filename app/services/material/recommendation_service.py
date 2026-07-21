@@ -180,15 +180,15 @@ class MaterialRecommendationService:
 
         reasons.append(f"similarity score {candidate['similarity_score']}")
 
-        if candidate["criticality_direction"] == "LOWER_RISK":
+        if candidate["criticality_direction"] == "LOWER_CRITICALITY":
             reasons.append(
                 f"lower criticality by {abs(candidate['criticality_delta'])}"
             )
-        elif candidate["criticality_direction"] == "HIGHER_RISK":
+        elif candidate["criticality_direction"] == "HIGHER_CRITICALITY":
             reasons.append(
                 f"higher criticality by {candidate['criticality_delta']}"
             )
-        elif candidate["criticality_direction"] == "SAME_RISK":
+        elif candidate["criticality_direction"] == "SAME_CRITICALITY":
             reasons.append("same criticality")
 
         if candidate["shared_element_count"] > 0:

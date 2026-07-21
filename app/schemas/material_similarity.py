@@ -1,13 +1,17 @@
 from pydantic import ConfigDict
 
-from app.schemas.material_common import MaterialRiskSummary, MaterialRelationshipSummary
+from app.schemas.material_common import (
+    CriticalityDirection,
+    MaterialRelationshipSummary,
+    MaterialRiskSummary,
+)
 
 
 class SimilarMaterialRead(MaterialRiskSummary, MaterialRelationshipSummary):
     similarity_score: float
     reason_summary: str
     criticality_delta: float | None
-    criticality_direction: str
+    criticality_direction: CriticalityDirection
 
 
 class MaterialSimilarityResponse(MaterialRiskSummary):

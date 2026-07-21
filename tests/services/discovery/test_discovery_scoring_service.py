@@ -97,3 +97,49 @@ def test_set_source_diversity_bonus_replaces_existing_bonus():
         "family_score": 100.0,
         "source_diversity_bonus": 20.0,
     }
+
+
+def test_lower_criticality_direction_applies_existing_bonus():
+    service = DiscoveryScoringService()
+
+    score, paths, breakdown = service.score_recommendation_candidate(
+        {
+            "recommendation_score": 100.0,
+            "criticality_direction": "LOWER_CRITICALITY",
+            "is_stable": False,
+            "shared_application_count": 0,
+        }
+    )
+
+    assert score == 130.0
+    assert paths == [
+        "recommendation_engine",
+        "similar_material",
+        "lower_criticality",
+    ]
+    assert breakdown == {
+        "recommendation_score": 100.0,
+        "lower_criticality_bonus": 30.0,
+    }
+
+
+def test_non_lower_criticality_direction_does_not_apply_bonus():
+    service = DiscoveryScoringService()
+
+    score, paths, breakdown = service.score_recommendation_candidate(
+        {
+            "recommendation_score": 100.0,
+            "criticality_direction": "HIGHER_CRITICALITY",
+            "is_stable": False,
+            "shared_application_count": 0,
+        }
+    )
+
+    assert score == 100.0
+    assert paths == [
+        "recommendation_engine",
+        "similar_material",
+    ]
+    assert breakdown == {
+        "recommendation_score": 100.0,
+    }

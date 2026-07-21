@@ -138,7 +138,7 @@ def get_material_recommendations(
     ),
     prefer_lower_criticality: bool = Query(
         default=True,
-        description="Whether to prioritize materials with lower criticality risk.",
+        description="Whether to prioritize materials with lower criticality.",
     ),
     db: Session = Depends(get_db),
 ) -> MaterialRecommendationResponse:

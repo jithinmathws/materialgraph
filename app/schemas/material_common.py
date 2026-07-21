@@ -1,4 +1,14 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
+
+
+CriticalityDirection = Literal[
+    "LOWER_CRITICALITY",
+    "HIGHER_CRITICALITY",
+    "SAME_CRITICALITY",
+    "UNKNOWN",
+]
 
 
 class ORMBase(BaseModel):

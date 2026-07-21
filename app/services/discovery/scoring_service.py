@@ -45,7 +45,7 @@ class DiscoveryScoringService:
             "recommendation_score": candidate["recommendation_score"],
         }
 
-        if candidate["criticality_direction"] == "LOWER_RISK":
+        if candidate["criticality_direction"] == "LOWER_CRITICALITY":
             score += LOWER_CRITICALITY_BONUS
             paths.append("lower_criticality")
             score_breakdown["lower_criticality_bonus"] = LOWER_CRITICALITY_BONUS

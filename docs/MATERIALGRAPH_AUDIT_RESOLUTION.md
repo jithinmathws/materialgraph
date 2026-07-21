@@ -1,7 +1,7 @@
 # MaterialGraph Architecture & Implementation Audit Resolution
 
-Version: 1.2
-Last Updated: 2026-07-18
+Version: 1.3
+Last Updated: 2026-07-21
 
 ---
 
@@ -242,6 +242,167 @@ Unknown scientific evidence must remain unknown. Missing evidence should
 never be converted into favorable evidence during downstream scoring.
 
 Related Scientific Principles
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
+---
+
+# MG-AUD-036
+
+Title
+
+Criticality comparison directions use general risk terminology.
+
+Severity
+
+Medium
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+v1.9.18
+
+Affected Components
+
+- MaterialSimilarityService
+- MaterialRecommendationService
+- DiscoveryScoringService
+- Similarity response schemas
+- Recommendation and scenario recommendation response schemas
+- Material neighbor routes
+- Discovery candidate scoring
+
+Root Cause
+
+Comparisons calculated exclusively from `criticality_score` were labelled as
+`LOWER_RISK`, `HIGHER_RISK`, and `SAME_RISK`.
+
+These values predated the platform's explicit separation of material
+criticality from `risk_score`. The legacy labels therefore became
+scientifically ambiguous and inconsistent with the quantity being compared.
+
+Scientific Impact
+
+No numeric scientific defect was present. Criticality deltas, similarity
+scores, recommendation scores, discovery scores, and rankings were calculated
+correctly.
+
+The machine-readable API vocabulary was semantically inaccurate and could
+cause consumers to interpret a criticality comparison as a general material
+risk comparison.
+
+Resolution
+
+✓ Replaced legacy direction values with canonical criticality values:
+
+- `LOWER_CRITICALITY`
+- `HIGHER_CRITICALITY`
+- `SAME_CRITICALITY`
+- `UNKNOWN`
+
+✓ Added one shared constrained `CriticalityDirection` schema vocabulary.
+
+✓ Applied the shared vocabulary to similarity, recommendation, and scenario
+recommendation response contracts.
+
+✓ Updated recommendation explanation branches while preserving existing
+researcher-facing wording.
+
+✓ Updated DiscoveryScoringService atomically so the existing 30-point
+lower-criticality bonus remains eligible for lower-criticality candidates.
+
+✓ Corrected the route description from "lower criticality risk" to "lower
+criticality."
+
+✓ Preserved the independent material-risk and material-quality pipelines.
+
+Characterization Verification
+
+Before remediation
+
+- Negative criticality delta produced `LOWER_RISK`.
+- Positive criticality delta produced `HIGHER_RISK`.
+- Zero criticality delta produced `SAME_RISK`.
+- Unknown criticality produced `UNKNOWN`.
+- Discovery scoring used `LOWER_RISK` as the control signal for its 30-point
+  lower-criticality bonus.
+
+After remediation
+
+- Negative criticality delta produces `LOWER_CRITICALITY`.
+- Positive criticality delta produces `HIGHER_CRITICALITY`.
+- Zero criticality delta produces `SAME_CRITICALITY`.
+- Unknown criticality continues to produce `UNKNOWN`.
+- Discovery scoring uses `LOWER_CRITICALITY` and awards the same 30-point
+  bonus.
+
+Regression Verification
+
+✓ Similarity delta, rounding, unknown-evidence, and direction tests
+
+✓ Recommendation score and explanation tests
+
+✓ Discovery lower-criticality bonus and score-breakdown tests
+
+✓ Full `pytest -v` regression suite
+
+Scientific Changes
+
+LiFePO4 Criticality
+
+No change (32.0)
+
+LiFePO4 Risk
+
+No change (2.833)
+
+Scientific Usefulness
+
+No change (95.65)
+
+Reason
+
+The remediation changes terminology and schema validation only. Numeric
+criticality calculations, risk calculations, score weights, bonus eligibility,
+ranking, and researcher-facing explanations remain unchanged.
+
+Performance Improvements
+
+✓ No measurable performance impact.
+
+✓ No additional database queries introduced.
+
+Breaking API
+
+Yes.
+
+The `criticality_direction` field name and JSON structure remain unchanged,
+but three exact serialized values changed. Clients comparing legacy string
+values must migrate to the canonical criticality vocabulary.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Machine-readable scientific vocabulary must name the exact quantity being
+compared. Criticality and material risk are separate concepts and should not
+share ambiguous direction labels.
+
+Schema constraints should encode finite response vocabularies so semantic
+drift cannot pass validation unnoticed.
+
+Related Scientific Principles
+
+Principle 10
 
 Principle 11
 
