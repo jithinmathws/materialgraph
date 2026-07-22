@@ -283,22 +283,35 @@ class DiscoveryTraversalService:
             for transition in transitions
         ]
 
-        preserved_frameworks = [
-            set(transition["preserved_framework"])
+        shared_element_sets = [
+            set(
+                transition.get("shared_elements")
+                or transition.get("preserved_framework", [])
+            )
             for transition in transitions
-            if transition["preserved_framework"]
+            if (
+                transition.get("shared_elements")
+                or transition.get("preserved_framework")
+            )
         ]
 
-        common_framework = sorted(
-            set.intersection(*preserved_frameworks)
-            if preserved_frameworks
+        common_shared_elements = sorted(
+            set.intersection(*shared_element_sets)
+            if shared_element_sets
             else set()
         )
 
-        reason = "This discovery path follows " + " → ".join(transition_types)
+        reason = (
+            "This discovery path follows "
+            + " → ".join(transition_types)
+        )
 
-        if common_framework:
-            reason += f" while preserving {'-'.join(common_framework)} chemistry"
+        if common_shared_elements:
+            reason += (
+                " while retaining shared elemental overlap across "
+                + "-".join(common_shared_elements)
+                + "; structural preservation is not validated"
+            )
 
         return reason + "."
 

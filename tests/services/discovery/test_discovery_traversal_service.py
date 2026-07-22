@@ -81,3 +81,46 @@ def test_discovery_path_returns_path_when_available(db_session):
     assert "path_found" in result
     assert "materials" in result
     assert "transitions" in result
+
+
+def test_path_reason_calibrates_element_overlap_evidence():
+    service = DiscoveryTraversalService.__new__(
+        DiscoveryTraversalService
+    )
+
+    reason = service._build_path_reason(
+        [
+            {
+                "transition_type": "alkali_substitution",
+                "shared_elements": ["Fe", "O", "P"],
+                "preserved_framework": ["Fe", "O", "P"],
+                "preservation_basis": "element_overlap",
+                "structural_preservation_validated": False,
+            }
+        ]
+    )
+
+    assert "shared elemental overlap across Fe-O-P" in reason
+    assert "structural preservation is not validated" in reason
+    assert "while preserving Fe-O-P chemistry" not in reason
+
+def test_path_reason_calibrates_oxide_evidence():
+    service = DiscoveryTraversalService.__new__(
+        DiscoveryTraversalService
+    )
+
+    reason = service._build_path_reason(
+        [
+            {
+                "transition_type": "alkali_substitution",
+                "shared_elements": ["Fe", "O"],
+                "preserved_framework": ["Fe", "O"],
+                "preservation_basis": "element_overlap",
+                "structural_preservation_validated": False,
+            }
+        ]
+    )
+
+    assert "shared elemental overlap across Fe-O" in reason
+    assert "structural preservation is not validated" in reason
+    assert "while preserving Fe-O chemistry" not in reason

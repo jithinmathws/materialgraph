@@ -439,6 +439,79 @@ ADR-002
 
 ---
 
+# MG-AUD-011
+
+Title
+
+Framework explanations overstated available evidence.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Affected Components
+
+- MaterialFamilyService explanation generation
+- Discovery candidate explanations propagated from family evidence
+- Discovery traversal path reasoning
+- Material-family API description
+
+Root Cause
+
+Composition-based element overlap was described with structural wording such as `shares phosphate framework`, `shares oxide chemistry`, and path chemistry preservation. The implementation had not validated bonding, crystallographic structure, site equivalence, or framework preservation.
+
+Resolution
+
+✓ Replaced phosphate-framework claims with phosphorus-and-oxygen composition evidence.
+
+✓ Added an explicit statement that structural framework similarity is not validated.
+
+✓ Replaced oxide-chemistry claims with oxygen-membership evidence and an explicit statement that oxide structure similarity is not validated.
+
+✓ Reworded traversal path reasoning to describe shared elemental overlap and state that structural preservation is not validated.
+
+✓ Preserved compatibility fields such as `preserved_framework` where they remain qualified by `preservation_basis: element_overlap` and `structural_preservation_validated: false`.
+
+Regression Verification
+
+✓ Material-family explanation tests passed.
+
+✓ Discovery traversal explanation tests passed.
+
+✓ Full regression suite passed.
+
+Production Verification
+
+✓ Family responses no longer claim `shares phosphate framework`.
+
+✓ Discovery candidate explanations describe composition evidence and explicitly qualify missing structural validation.
+
+✓ Path reasoning reports shared elemental overlap and explicitly states that structural preservation is not validated.
+
+✓ Candidate admission, scoring, ranking, transition types, and compatibility fields remained unchanged.
+
+Scientific Changes
+
+Explanation semantics only. No scientific scoring weights, ranking policy, candidate admission, or pathway generation changed.
+
+Breaking API
+
+No.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Element membership and overlap must not be presented as structural, bonding, framework, or mechanistic evidence without independent validation.
+
+---
+
 # MG-AUD-052
 
 Title

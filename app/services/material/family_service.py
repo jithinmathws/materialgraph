@@ -221,10 +221,22 @@ class MaterialFamilyService:
             )
 
         if "phosphate_related" in relationships:
-            reasons.append("shares phosphate framework")
+            if "O" in base_set and "O" in candidate_set:
+                reasons.append(
+                    "both materials contain phosphorus and oxygen; "
+                    "structural framework similarity is not validated"
+                )
+            else:
+                reasons.append(
+                    "both materials contain phosphorus, and the candidate contains "
+                    "oxygen; structural framework similarity is not validated"
+                )
 
         if "oxide_related" in relationships:
-            reasons.append("shares oxide chemistry")
+            reasons.append(
+                "both materials contain oxygen; "
+                "oxide structure similarity is not validated"
+            )
 
         return (
             f"{candidate_formula}: " + "; ".join(reasons)

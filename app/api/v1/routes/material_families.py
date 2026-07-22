@@ -20,7 +20,7 @@ router = APIRouter(
     description=(
         "Returns related materials connected by family-style relationships such as "
         "shared chemistry, alkali substitution, transition-metal similarity, "
-        "phosphate framework similarity, and oxide chemistry."
+        "phosphate-related elemental chemistry, and oxide chemistry."
     ),
 )
 def get_material_families(

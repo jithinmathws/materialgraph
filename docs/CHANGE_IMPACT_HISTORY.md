@@ -1,1296 +1,451 @@
-# MaterialGraph Scientific Change History
+# MaterialGraph Change Impact History
+
+This document is the concise chronological record of externally meaningful
+scientific, scoring, explanation, and API behavior changes made through the
+MaterialGraph audit.
+
+It does not contain root-cause analysis, file-level implementation details,
+complete tests, or full production responses. Those belong in
+`MATERIALGRAPH_AUDIT_RESOLUTION.md`. The canonical finding status remains in
+`MaterialGraph_Architecture_Implementation_Audit_v2_Regenerated.md`.
+
+## Impact legend
+
+- **Scientific result:** computed scientific values or conclusions changed.
+- **Ranking:** candidate or pathway order may change.
+- **API contract:** response fields or serialized values changed.
+- **Data migration:** stored data required recalculation or backfill.
 
 ---
 
-## v1.9.7
+## Composition-aware criticality weighting
 
-Summary
+Related findings: MG-AUD-001  
+Release reference: v1.9.7  
+Status: Production verified
 
-Composition weighting remediation.
+### Before
 
-Reason
+Material criticality treated constituent elements without correct
+stoichiometric weighting.
 
-Resolved MG-AUD-001.
+### After
 
-Affected Components
+Criticality uses composition-aware weighting. For the reference material
+LiFePO4, criticality changed from `36.5` to `32.0`, and the reference pathway's
+scientific usefulness changed from `94.95` to `95.65`.
 
-Material import
+### Impact
 
-Criticality
-
-Quality
-
-Discovery
-
-Changes
-
-LiFePO4 Criticality
-
-36.5 → 32.0
-
-Scientific Usefulness
-
-94.95 → 95.65
-
-Reason
-
-Correct stoichiometric weighting.
-
-Breaking API
-
-No
-
-Database Backfill
-
-Yes
-
-Regression Status
-
-Passed
+- Scientific result: **Yes**
+- Ranking: **Potentially**, where corrected values distinguish candidates
+- API contract: **No**
+- Data migration: **Yes**
 
 ---
 
-## v1.9.8
+## Unknown criticality remains unknown
 
-Summary
+Related findings: MG-AUD-002  
+Release reference: v1.9.8  
+Status: Production verified
 
-Criticality evidence remediation.
+### Before
 
-Reason
+Missing criticality evidence could be treated like favorable zero criticality
+and contribute a quality advantage.
 
-Resolved MG-AUD-002.
+### After
 
-Affected Components
+Unknown criticality remains `null` and receives no favorable quality bonus.
+Known-material values and the LiFePO4 reference workflow are unchanged.
 
-Criticality
+### Impact
 
-Quality
-
-Scientific Pathway
-
-Similarity
-
-Recommendation
-
-Changes
-
-Unknown Criticality
-
-null remains unknown
-
-Quality Contribution
-
-Unknown criticality receives no favorable quality bonus.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-Only incomplete criticality evidence behavior changed.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
+- Scientific result: **Yes**, for materials with incomplete evidence
+- Ranking: **Potentially**, for affected materials
+- API contract: **No**
+- Data migration: **No**
 
 ---
 
-## v1.9.9
+## Unknown risk preserved during candidate screening
 
-Summary
+Related findings: MG-AUD-003  
+Release reference: v1.9.9  
+Status: Production verified
 
-Risk evidence remediation for candidate screening.
+### Before
 
-Reason
+Candidate screening and comparison could collapse unknown risk into a
+favorable numeric value.
 
-Resolved MG-AUD-003.
+### After
 
-Affected Components
+Unknown risk remains unknown throughout screening and comparison. Candidate
+responses expose risk-evidence metadata, and bulk loading avoids repeated
+per-material lookups.
 
-Candidate Screening
+### Impact
 
-Candidate Comparison
-
-Material Risk
-
-Changes
-
-Unknown Risk
-
-null remains unknown throughout screening and comparison.
-
-Risk Evidence
-
-Evidence metadata exposed in candidate screening responses.
-
-Performance
-
-Bulk risk loading replaces per-material legacy risk lookups.
-
-Scientific Changes
-
-LiFePO4 Risk
-
-No change (2.833)
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-Only unknown risk evidence handling changed.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
+- Scientific result: **Yes**, for candidates with unknown risk
+- Ranking: **Potentially**, for affected candidates
+- API contract: **Additive metadata only**
+- Data migration: **No**
 
 ---
 
-## v1.9.10
+## Exact chemical-element membership
 
-Summary
+Related findings: MG-AUD-004  
+Release reference: v1.9.10  
+Status: Production verified
 
-Exact element membership remediation.
+### Before
 
-Reason
+Some discovery logic used raw formula substring matching, which could confuse
+symbols such as `N` and `Na`, `S` and `Si`, or `C` and `Ca`.
 
-Resolved MG-AUD-004.
+### After
 
-Affected Components
+Candidate scoring, chain filtering, warnings, and research-objective logic use
+structured or parsed chemical-element membership.
 
-Discovery Candidate Scoring
+### Impact
 
-Discovery Chain Search
-
-Discovery Warning Generation
-
-Research Objective Exploration
-
-Chemical Formula Membership
-
-Changes
-
-Element Membership
-
-Exact chemical element membership replaces raw formula substring matching.
-
-Candidate Scoring
-
-Preferred and avoided element scoring now uses structured element
-membership instead of string matching.
-
-Discovery Chains
-
-Candidate expansion now uses exact element membership during preferred
-element filtering.
-
-Research Objective Exploration
-
-Scoring, researcher reasons, and warnings now use exact element
-membership.
-
-Warnings
-
-Researcher-facing warnings no longer rely on substring matching.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-The Li/Na phosphate reference workflow already used unambiguous element
-symbols. The remediation corrects ambiguous element symbol handling
-(e.g. N vs Na, S vs Si, C vs Ca) without changing valid scientific
-results.
-
-Performance
-
-Structured MaterialElement membership reused where already available.
-
-Formula parsing only used where structured membership is unavailable.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Reference Workflow
-
-Verified
-
-LiFePO4 → Na phosphate objective unchanged.
+- Scientific result: **Yes**, for ambiguous element symbols
+- Ranking: **Potentially**, for affected objectives
+- API contract: **No**
+- Data migration: **No**
 
 ---
 
-## v1.9.11
+## Qualified framework-preservation provenance
 
-Summary
+Related findings: MG-AUD-005  
+Release reference: v1.9.11  
+Status: Production verified
 
-Framework preservation semantic qualification.
+### Before
 
-Reason
+Shared elements could be described as framework preservation without exposing
+the limits of the underlying evidence.
 
-Resolved MG-AUD-005.
+### After
 
-Affected Components
+Discovery and research outputs distinguish shared-element continuity from
+validated structural preservation. They expose `shared_elements`,
+`preservation_basis: "element_overlap"`, and
+`structural_preservation_validated: false`. The existing
+`preserved_framework` field remains as a compatibility alias.
 
-Discovery Transition Validation
+### Impact
 
-Substitution Path Analysis
-
-Discovery Chains
-
-Scientific Pathway Analysis
-
-Research Evidence Intelligence
-
-Comparative Research Intelligence
-
-Research Objective Exploration
-
-Changes
-
-Scientific Semantics
-
-Element overlap is now represented explicitly as shared-element continuity.
-
-Transition Metadata
-
-Introduced canonical shared_elements metadata while preserving
-preserved_framework as a backward-compatible alias.
-
-Scientific Provenance
-
-Added:
-
-- preservation_basis = "element_overlap"
-- structural_preservation_validated = false
-
-Research Evidence
-
-Research-facing explanations now distinguish deterministic
-shared-element continuity from experimentally validated structural
-preservation.
-
-Scientific Pathway Analysis
-
-Scientific facts now expose explicit preservation provenance and
-qualified terminology.
-
-Comparative Intelligence
-
-Comparative element highlights preserve API compatibility while exposing
-semantic metadata describing the underlying evidence.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-This remediation improves scientific semantics and evidence provenance
-without changing deterministic scoring or pathway ranking.
-
-Performance
-
-No measurable performance impact.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Reference Workflow
-
-Verified
-
-LiFePO4 → Na phosphate objective unchanged.
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **Additive metadata; compatibility field retained**
+- Data migration: **No**
 
 ---
 
-## v1.9.12
+## Reconciled discovery-score provenance
 
-Summary
+Related findings: MG-AUD-006  
+Release reference: v1.9.12  
+Status: Production verified
 
-Discovery score provenance remediation.
+### Before
 
-Reason
+Candidate merging could combine score breakdowns from competing sources, so a
+displayed breakdown did not always describe the final score.
 
-Resolved MG-AUD-006.
+### After
 
-Affected Components
+The winning source's score and breakdown remain together while contextual
+discovery evidence is aggregated. For every candidate:
 
-Discovery Candidate Scoring
+```text
+sum(score_breakdown) = discovery_score
+```
 
-Discovery Candidate Merging
+### Impact
 
-Discovery Score Explainability
-
-Changes
-
-Score Provenance
-
-Discovery score breakdowns now represent the score provenance that
-produced the final discovery score instead of accumulating competing
-source scores.
-
-Candidate Merging
-
-Candidate merging now preserves the winning score provenance while
-continuing to aggregate contextual discovery evidence such as discovery
-paths, explanations, and substitution paths.
-
-Explainability
-
-Discovery score arithmetic is now internally consistent.
-
-For every candidate:
-
-sum(score_breakdown) == discovery_score
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-This remediation corrects explainability provenance only.
-
-Deterministic scientific scoring and candidate ranking remain unchanged.
-
-Performance
-
-No measurable performance impact.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Reference Workflow
-
-Verified
-
-LiFePO4 → Na phosphate objective unchanged.
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **No**
+- Data migration: **No**
 
 ---
 
-## v1.9.13
+## Source-diversity bonus based on distinct sources
 
-Summary
+Related findings: MG-AUD-007  
+Release reference: v1.9.13  
+Status: Production verified
 
-Discovery source-diversity provenance remediation.
+### Before
 
-Reason
+Repeated encounters and previously aggregated scores could inflate the
+source-diversity contribution.
 
-Resolved MG-AUD-007.
+### After
 
-Affected Components
+The bonus uses distinct discovery source types: one source receives `0`, two
+receive `10`, and three receive `20`. Base-score provenance is kept separate
+from the diversity bonus so the bonus is applied once.
 
-Discovery Candidate Scoring
+### Impact
 
-Discovery Candidate Merging
-
-Discovery Source Diversity
-
-Discovery Score Explainability
-
-Changes
-
-Source Diversity Semantics
-
-Source diversity bonuses are now based on distinct discovery source types
-rather than repeated candidate encounters.
-
-Distinct Source Tracking
-
-Candidate merging tracks unique contributing source types internally.
-
-Repeated encounters from the same source no longer increase the source
-diversity bonus.
-
-Diversity Bonus
-
-The current deterministic bonus is:
-
-- one distinct source: 0
-- two distinct sources: 10
-- three distinct sources: 20
-
-Score Provenance
-
-Base discovery score provenance is tracked separately from the accumulated
-source diversity bonus.
-
-This prevents an existing aggregate discovery score from being reused as a
-base score and receiving the diversity bonus a second time.
-
-Candidate Merging
-
-The winning base score and its score breakdown are preserved while contextual
-discovery paths, explanations, and substitution paths continue to aggregate
-across candidate encounters.
-
-Internal Provenance
-
-Internal source and base-score provenance fields are removed before candidates
-are returned through the public API.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-This remediation corrects discovery source-diversity accounting and score
-provenance without modifying scientific pathway scoring.
-
-The LiFePO4 → Na/phosphate reference workflow remains unchanged.
-
-Performance
-
-No measurable performance impact.
-
-No additional database queries introduced.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Reference Workflow
-
-Verified
-
-LiFePO4 → Na phosphate objective unchanged.
-
-Scientific usefulness remains 95.65.
+- Scientific result: **Yes**, where prior source accounting was inflated
+- Ranking: **Potentially**, for affected candidates
+- API contract: **No**
+- Data migration: **No**
 
 ---
 
-## v1.9.14
+## Complete evidence required for favorable risk-quality bonuses
 
-Summary
+Related findings: MG-AUD-008  
+Release reference: v1.9.14  
+Status: Production verified
 
-Risk-quality bonus evidence-completeness remediation.
+### Before
 
-Reason
+A calculable risk score based on incomplete material-element coverage could
+still qualify for a favorable risk-quality bonus.
 
-Resolved MG-AUD-008.
+### After
 
-Affected Components
+Low- and medium-risk quality bonuses require complete constituent-element risk
+evidence. Partial evidence remains visible but is not treated as favorable.
+The LiFePO4 and inspected Na-phosphate reference materials had complete
+coverage and therefore retained their results.
 
-- Material Risk Evidence
-- Material Quality Scoring
-- Discovery Path Ranking
-- Scientific Pathway Analysis
-- Research Evidence Intelligence
-- Comparative Research Intelligence
-- Endpoint-Sensitive Research Ranking
-- K-Best and K-Shortest Path Ranking
-- Weighted Shortest Path
-- Discovery Graph Node Quality
-- Graph Analytics and Community Importance
+### Impact
 
-Changes
-
-Favorable low-risk and medium-risk quality bonuses now require complete material-element risk evidence.
-
-A material with a calculable risk score but incomplete material-element coverage continues to expose the observed risk score and evidence metadata, but partial evidence no longer qualifies for a favorable risk-quality bonus.
-
-Risk aggregation semantics are unchanged. `risk_profile_coverage` continues to represent material-element coverage rather than composition-weighted coverage or risk-profile dimension completeness. Risk-dimension completeness remains a separate audit concern.
-
-Characterization tests confirmed the pre-remediation defect and the corrected behavior. Scalar and bulk risk evidence semantics remain aligned.
-
-Scientific Changes
-
-LiFePO4 Risk
-
-No change (2.833)
-
-LiFePO4 Risk Evidence Coverage
-
-1.0 (4 of 4 constituent elements covered)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Material Quality Path Contribution
-
-No change (14.65)
-
-Reason
-
-The LiFePO4 → Na/phosphate reference materials checked (material IDs 5–10) all have complete material-element risk evidence (`risk_profile_coverage = 1.0`, `risk_evidence_complete = true`, and no unknown risk elements). The reference workflow therefore remains eligible for the existing favorable risk-quality contribution.
-
-Downstream Impact Discovered During Investigation
-
-Corrected material quality can propagate to scientific usefulness, pathway ranking, scientific pathway quality summaries and confidence explanations, research evidence readiness, comparative explanations, endpoint-sensitive tie-breaking, K-best and equal-hop K-shortest ordering, weighted shortest-path costs, discovery graph node quality, and graph community importance.
-
-No downstream scoring weights were changed; these consumers inherit corrected MaterialQualityService values.
-
-Additional Audit Discoveries
-
-- During MG-AUD-008 dependency inspection, raw formula substring matching was discovered in DiscoveryGraphAnalyticsService community-summary element counting. This was tracked independently as MG-AUD-049 and remediated in the same v1.9.14 development cycle.
-- `risk_evidence_complete` represents complete coverage across constituent material elements, not completeness across every risk-profile dimension. Risk-dimension coverage should remain a separate audit finding or refinement.
-- Composition-weighted risk coverage was considered but intentionally not introduced because it would constitute a new scientific policy rather than a minimal remediation.
-
-Performance
-
-No additional database queries introduced.
-
-Breaking API
-
-No
-
-Database Backfill
-
-No
-
-Regression Status
-
-- Focused MaterialQualityService tests passed.
-- Focused MaterialRiskService characterization tests passed.
-- LiFePO4 → Na/phosphate reference workflow verified.
-- Full regression suite passed.
+- Scientific result: **Yes**, for incomplete-evidence materials
+- Ranking: **Potentially**, across quality-dependent graph and pathway ranking
+- API contract: **No**
+- Data migration: **No**
 
 ---
 
-## v1.9.15
+## Exact community element membership
 
-Summary
+Related findings: MG-AUD-049  
+Release reference: v1.9.14 development cycle  
+Status: Production verified
 
-Multi-element research objective remediation.
+### Before
 
-Reason
+Graph community summaries could count elements using formula substrings.
 
-Resolved MG-AUD-009.
+### After
 
-Affected Components
+Community analytics use exact element membership, preventing false matches
+between short and longer chemical symbols.
 
-- ResearchObjectiveService
-- DiscoveryPathRankingService
-- ScientificPathwayAnalysisService
-- ResearchObjectiveExplorationService
-- Scientific pathway response schemas
+### Impact
 
-Changes
-
-Multi-element Objective Support
-
-Research objectives now support multiple avoided and preferred elements throughout deterministic discovery, pathway ranking, and scientific pathway analysis.
-
-Objective Alignment
-
-Objective-alignment scoring now evaluates every requested avoided and preferred element instead of considering only the first element from each objective list.
-
-Scientific Explainability
-
-Scientific pathway responses now expose structured objective satisfaction metadata including:
-
-- requested objective elements
-- matched objective elements
-- unmatched objective elements
-- objective coverage percentages
-- overall completion status
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-Single-element objective
-
-95.65
-
-Multi-element objective (Li, Co → Na, K)
-
-83.15
-
-Reason
-
-Single-element behaviour is preserved.
-
-Multi-element objectives now receive proportional objective-alignment scoring based on the deterministic transition evidence available across the complete pathway.
-
-Performance
-
-No measurable performance impact.
-
-No additional database queries introduced.
-
-Breaking API
-
-No
-
-The new `objective_satisfaction` response object is additive.
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Reference Workflow
-
-Verified
-
-- Single-element objective unchanged.
-- Multi-element objective propagation verified.
-- Multi-element objective scoring verified.
-- Objective explainability verified.
-- Full regression suite passed.
-
-Additional Audit Discovery
-
-During implementation of MG-AUD-009, an additional explainability opportunity was identified.
-
-Current objective satisfaction describes deterministic path-wide objective fulfillment.
+- Scientific result: **Yes**, for ambiguous symbols in community summaries
+- Ranking: **No**
+- API contract: **No**
+- Data migration: **No**
 
 ---
 
-## v1.9.16
+## Multi-element research objectives
 
-Summary
+Related findings: MG-AUD-009  
+Release reference: v1.9.15  
+Status: Production verified
 
-Endpoint-specific research objective evaluation.
+### Before
 
-Reason
+Objective alignment could evaluate only the first avoided and preferred
+element even when several were requested.
 
-Resolved MG-AUD-050.
+### After
 
-Affected Components
+Every requested avoided and preferred element contributes to deterministic
+objective evaluation. Responses expose matched and unmatched elements,
+coverage percentages, and completion status. Single-element behavior remains
+unchanged; multi-element objectives may now receive different scores.
 
-- ScientificPathwayAnalysisService
-- ResearchObjectiveExplorationService
-- Scientific pathway response schemas
+### Impact
 
-Changes
-
-Endpoint Objective Evaluation
-
-Scientific pathway responses now distinguish deterministic path-wide objective
-satisfaction from endpoint-specific objective satisfaction.
-
-Endpoint Explainability
-
-Added endpoint-specific objective evaluation including:
-
-- endpoint_matched_avoid_elements
-- endpoint_unmatched_avoid_elements
-- endpoint_matched_prefer_elements
-- endpoint_unmatched_prefer_elements
-- endpoint_avoid_coverage
-- endpoint_prefer_coverage
-- endpoint_overall_coverage
-- endpoint_status
-- endpoint_interpretation
-
-Scientific Semantics
-
-Path-wide objective satisfaction continues to describe deterministic removal
-and introduction events occurring anywhere along the pathway.
-
-Endpoint-specific objective satisfaction evaluates only the final endpoint
-material composition.
-
-Scoring
-
-No deterministic scoring changes.
-
-No objective-alignment changes.
-
-No scientific usefulness changes.
-
-No pathway ranking changes.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-This remediation improves researcher explainability by distinguishing
-path-wide transition evidence from endpoint material composition while
-preserving all deterministic scientific scoring.
-
-Performance
-
-No measurable performance impact.
-
-No additional database queries introduced.
-
-Breaking API
-
-No
-
-Endpoint objective fields are additive.
-
-Existing path-wide objective fields remain unchanged.
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Reference Workflow
-
-Verified
-
-- Path-wide objective satisfaction verified.
-- Endpoint-specific objective satisfaction verified.
-- Characterization tests passed.
-- Full regression suite passed.
+- Scientific result: **Yes**, for multi-element objectives
+- Ranking: **Potentially**, for multi-element objectives
+- API contract: **Additive objective-satisfaction metadata**
+- Data migration: **No**
 
 ---
 
-## v1.9.17
+## Path-wide and endpoint-specific objective satisfaction
 
-Summary
+Related findings: MG-AUD-050  
+Release reference: v1.9.16  
+Status: Production verified
 
-Stable pathway identity and tie-aware comparative research remediation.
+### Before
 
-Reason
+Path-wide transition events could be interpreted as proof that the final
+material satisfied the same objective.
 
-Resolved MG-AUD-051.
+### After
 
-Affected Components
+Research responses distinguish objective events anywhere along a path from the
+composition of the final endpoint. Endpoint matched and unmatched elements,
+coverage, status, and interpretation are exposed separately.
 
-- ScientificPathwayAnalysisService
-- ComparativeResearchIntelligenceService
-- ResearchObjectiveExplorationService
-- Scientific pathway response schemas
-- Comparative research response schemas
+### Impact
 
-Changes
-
-Stable Pathway Identity
-
-Every scientific pathway now exposes:
-
-- pathway_id
-- position
-- rank
-
-Ranking Semantics
-
-Competition ranking is preserved while pathway identity is separated from ranking.
-
-Comparative Intelligence
-
-Comparative summaries, pairwise comparisons, and researcher-facing outputs now reference stable pathway identities.
-
-Element Highlights
-
-Comparative element aggregation tracks unique pathway_ids rather than ranks, preserving tied pathways independently.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-Architectural and explainability improvement only. Deterministic scoring, ranking, and scientific results remain unchanged.
-
-Performance
-
-No measurable performance impact.
-
-Breaking API
-
-No
-
-New identity fields are additive.
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **Additive endpoint-evaluation fields**
+- Data migration: **No**
 
 ---
 
-## v1.9.18
+## Stable pathway identity with tie-aware comparison
 
-Summary
+Related findings: MG-AUD-051  
+Release reference: v1.9.17  
+Status: Production verified
 
-Canonical criticality comparison terminology remediation.
+### Before
 
-Reason
+Comparative research could use rank as pathway identity, causing distinct tied
+pathways to be conflated.
 
-Resolved MG-AUD-036.
+### After
 
-Affected Components
+Each pathway exposes a stable `pathway_id`, `position`, and `rank`.
+Comparative summaries and element aggregation reference pathway identity while
+preserving competition ranking and valid ties.
 
-- MaterialSimilarityService
-- MaterialRecommendationService
-- DiscoveryScoringService
-- Similarity and recommendation response schemas
-- Similarity, recommendation, scenario recommendation, and discovery APIs
+### Impact
 
-Changes
-
-Criticality Direction Vocabulary
-
-Comparison values derived from `criticality_score` now use explicit
-criticality terminology:
-
-- `LOWER_RISK` → `LOWER_CRITICALITY`
-- `HIGHER_RISK` → `HIGHER_CRITICALITY`
-- `SAME_RISK` → `SAME_CRITICALITY`
-- `UNKNOWN` remains unchanged
-
-Schema Validation
-
-Similarity and recommendation response schemas now use one shared constrained
-`CriticalityDirection` vocabulary instead of unconstrained strings.
-
-Recommendation Explainability
-
-Human-readable recommendation reasons remain unchanged:
-
-- lower criticality by ...
-- higher criticality by ...
-- same criticality
-
-Discovery Scoring
-
-Discovery scoring now consumes `LOWER_CRITICALITY` while preserving the
-existing 30-point lower-criticality bonus, reasoning path, and score-breakdown
-key.
-
-Scientific Changes
-
-LiFePO4 Criticality
-
-No change (32.0)
-
-LiFePO4 Risk
-
-No change (2.833)
-
-Scientific Usefulness
-
-No change (95.65)
-
-Reason
-
-The remediation changes machine-readable terminology only. Criticality
-deltas, score weights, bonus eligibility, ranking, and scientific results are
-unchanged. Material risk remains a separate evidence and scoring concept.
-
-Performance
-
-No measurable performance impact.
-
-No additional database queries introduced.
-
-Breaking API
-
-Yes
-
-The `criticality_direction` field name and response structure are unchanged,
-but three serialized values changed. Clients comparing exact legacy values
-must adopt the canonical criticality values.
-
-Database Backfill
-
-No
-
-Regression Status
-
-Passed
-
-Verification
-
-- Similarity delta and direction tests passed.
-- Recommendation score and explanation tests passed.
-- Discovery lower-criticality bonus regression tests passed.
-- Full `pytest -v` suite passed.
-
-Production Verification
-
-Verified against the deployed v1.9.18 APIs:
-
-- `GET /api/v1/materials/5/similar`
-- `GET /api/v1/materials/5/recommendations`
-- `GET /api/v1/materials/5/recommendations/scenario`
-- `GET /api/v1/materials/5/discovery/candidates` with recommendation source
-  enabled
-- `GET /api/v1/materials/5/discovery/candidates` with recommendation and
-  scenario sources enabled
-
-All inspected criticality comparisons used canonical values. Discovery
-recommendation candidates retained `lower_criticality` and received the
-30-point `lower_criticality_bonus`. No legacy risk-direction values were
-observed.
-
-The discovery route defaults `include_recommendations` and
-`include_scenarios` to `false` for performance. Family-only responses therefore
-do not contain recommendation-derived criticality evidence by design.
-
-Additional Audit Discovery
-
-MG-AUD-052 was opened after production responses exposed scenario explanations
-whose wording does not agree with the sign or direction of the numeric
-contribution. Examples include a preferred-element bonus followed by `final
-scenario penalty -10.0`, and positive score deltas described as penalties.
-
-This follow-up concerns explanation semantics only and does not reopen
-MG-AUD-036.
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **Additive pathway identity fields**
+- Data migration: **No**
 
 ---
 
-## Unreleased (post-v1.9.18)
+## Canonical criticality comparison terminology
 
-Summary
+Related findings: MG-AUD-036  
+Release reference: v1.9.18  
+Status: Production verified
 
-Scenario adjustment explanation consistency remediation.
+### Before
 
-Reason
+The `criticality_direction` field used risk-oriented values even though it was
+derived from `criticality_score`.
 
-Resolved MG-AUD-052.
+### After
 
-Affected Components
+Serialized values use `LOWER_CRITICALITY`, `HIGHER_CRITICALITY`,
+`SAME_CRITICALITY`, and `UNKNOWN`. Numeric deltas, bonuses, ranking, and
+human-readable explanations are unchanged.
 
-- ScenarioPolicyEvaluator
-- Scenario recommendation explanation generation
-- Discovery candidate explanation aggregation
-- Scenario policy and scenario recommendation API tests
+### Impact
 
-Changes
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **Yes; serialized enum values changed**
+- Data migration: **No**
 
-Direction-Aware Final Adjustment
+---
 
-The final scenario explanation now derives its label from `scenario_delta`:
+## Direction-aware scenario explanations
 
-- positive delta → `final scenario bonus`
-- negative delta → `final scenario penalty` using the absolute magnitude
-- zero delta → `no final scenario adjustment`
+Related findings: MG-AUD-052  
+Release reference: Post-v1.9.18  
+Status: Production verified
 
-Score-Delta Invariant
+### Before
 
-Scenario evaluation now exposes and verifies the canonical relationship:
+Scenario explanations could describe a positive adjustment as a negative
+penalty or display a signed penalty inconsistently.
+
+### After
+
+Positive deltas are described as bonuses, negative deltas as penalties using
+their absolute magnitude, and zero as no adjustment. The invariant is:
 
 ```text
 scenario_delta = scenario_score - recommendation_score
 ```
 
-Explanation Consistency
+Numeric scores, weights, ranking, and response fields are unchanged.
 
-Preferred-element contributions now produce consistent positive wording, for
-example:
+### Impact
 
-```text
-contains preferred element Na, bonus 10.0; final scenario bonus 10.0
-```
-
-Avoided-element contributions now produce consistent negative wording, for
-example:
-
-```text
-contains avoided element Li, penalty 20.0; final scenario penalty 20.0
-```
-
-The contradictory wording `final scenario penalty -10.0` is no longer
-produced.
-
-Scientific Changes
-
-None.
-
-Scenario weights, recommendation scores, scenario scores, discovery scores,
-candidate ordering, and ranking policy are unchanged. The remediation corrects
-researcher-facing explanation semantics only.
-
-Performance
-
-No measurable performance impact.
-
-No additional database queries introduced.
-
-Breaking API
-
-No.
-
-Response fields and numeric values are unchanged. Only human-readable
-`scenario_reason` wording is corrected.
-
-Database Backfill
-
-No.
-
-Regression Status
-
-Passed.
-
-Verification
-
-- Focused ScenarioPolicyEvaluator bonus, penalty, mixed-adjustment, neutral,
-  and score-delta invariant tests passed.
-- Scenario recommendation API sign-aware explanation assertions passed.
-- Full regression suite passed.
-
-Production Verification
-
-Verified against the deployed APIs:
-
-- `GET /api/v1/materials/5/recommendations/scenario` with `element=Li`,
-  `avoid_element=Li`, and `prefer_element=Na`
-- `GET /api/v1/materials/5/discovery/candidates` with
-  `include_recommendations=true&include_scenarios=true`
-
-Production responses confirmed:
-
-- preferred-element candidates expose `scenario_delta: 10.0` and `final
-  scenario bonus 10.0`
-- the avoided-element candidate exposes `scenario_delta: -20.0` and `final
-  scenario penalty 20.0`
-- discovery explanations propagate the corrected scenario wording
-- the score-delta invariant holds for the inspected candidates
-- no contradictory negative-penalty wording remains
-
-Resolution Status
-
-MG-AUD-052 is fully remediated, regression-tested, and production-verified.
-The release tag for this post-v1.9.18 change has not yet been recorded.
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **No; human-readable wording only**
+- Data migration: **No**
 
 ---
 
-## Unreleased (post-v1.9.18) — MG-AUD-053
+## Correct discovery base-score selection and deterministic ties
 
-Summary
+Related findings: MG-AUD-053  
+Release reference: Post-v1.9.18  
+Status: Production verified
 
-Discovery candidate base-score selection and deterministic tie-ordering
-remediation.
+### Before
 
-Reason
+A stronger incoming source could be rejected when an earlier candidate's
+displayed score appeared larger only because it already included a diversity
+bonus. Exact-score ordering also lacked an explicit stable tie-breaker.
 
-Resolved MG-AUD-053.
+### After
 
-Affected Components
+Source merging compares base score with base score. Results remain sorted by
+descending `discovery_score`, with ascending `material_id` used only for exact
+ties. Valid equal-evidence scores, including the family-only `125.0` ties, are
+preserved.
 
-- DiscoveryCandidateService candidate-source merge logic
-- Discovery candidate result ordering
-- Discovery candidate service regression tests
+### Impact
 
-Changes
+- Scientific result: **Yes**, when the wrong base source previously won
+- Ranking: **Yes**, for affected merges and deterministic exact ties
+- API contract: **No**
+- Data migration: **No**
 
-Base-Score Merge Selection
+---
 
-Candidate-source merging now compares the incoming base score with the
-existing candidate's stored base score. It no longer compares an incoming base
-score against an existing displayed score that already includes the
-source-diversity bonus.
+## Evidence-calibrated phosphate and oxide explanations
 
-This prevents a stronger incoming source from being incorrectly rejected when
-an earlier, weaker source appears larger only because diversity has already
-been added.
+Related findings: MG-AUD-011  
+Date: 2026-07-22  
+Status: Production verified
 
-Deterministic Tie Ordering
+### Before
 
-Discovery candidates remain ordered by descending `discovery_score`. Exact
-score ties are now ordered by ascending `material_id`.
+Researcher-facing explanations used phrases such as `shares phosphate
+framework`, `shares oxide chemistry`, and path wording that could imply
+validated structural preservation from elemental overlap alone.
 
-Valid Equal-Evidence Ties
+### After
 
-Family-only candidates with identical evidence continue to receive identical
-scores. The observed `125.0` ties are intentional:
+Explanations now state the evidence and its limit:
 
-```text
-shared_chemistry            40.0
-alkali_substitution         35.0
-preferred_element_bonus     25.0
-avoided_element_removed     25.0
-total                      125.0
-```
+- both materials contain phosphorus and oxygen; structural framework
+  similarity is not validated;
+- both materials contain oxygen; oxide structure similarity is not validated;
+- paths retain shared elemental overlap; structural preservation is not
+  validated.
 
-No unsupported scientific differentiation was introduced.
+Compatibility fields such as `preserved_framework` remain available and are
+qualified by element-overlap provenance.
 
-Scientific Changes
+### Impact
 
-None.
-
-Scoring weights and scientific ranking policy are unchanged. The remediation
-corrects source-base selection and provides a stable non-scientific tie-breaker.
-
-Performance
-
-No measurable performance impact.
-
-No additional database queries introduced.
-
-Breaking API
-
-No.
-
-Response fields and score values are unchanged. Exact ties may now have an
-explicitly stable order by ascending `material_id`.
-
-Database Backfill
-
-No.
-
-Regression Status
-
-Passed.
-
-Verification
-
-- Focused candidate merge tests passed.
-- A stronger incoming base score wins even when the existing displayed total
-  is equal because of a diversity bonus.
-- A genuine equal-base-score tie retains the existing winning breakdown.
-- Score totals continue to equal the sum of their breakdowns.
-- Full regression suite passed.
-
-Production Verification
-
-Verified against the deployed discovery candidate endpoint using both enhanced
-family/recommendation/scenario aggregation and the default family-only mode.
-
-Production responses confirmed:
-
-- enhanced results remain in descending score order
-- every `discovery_score` reconciles with its `score_breakdown`
-- three participating source types produce `source_diversity_bonus: 20.0`
-- valid family-only `125.0` ties remain unchanged
-- tied `125.0` candidates are ordered by material IDs `6, 7, 8, 9, 10`
-- tied `-10.0` candidates are ordered by material IDs `1, 2, 3, 4`
-
-Resolution Status
-
-MG-AUD-053 is fully remediated, regression-tested, and production-verified.
-The release tag for this post-v1.9.18 change has not yet been recorded.
+- Scientific result: **No**
+- Ranking: **No**
+- API contract: **No; human-readable wording only**
+- Data migration: **No**
