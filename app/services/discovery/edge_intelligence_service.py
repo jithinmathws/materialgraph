@@ -42,7 +42,7 @@ class DiscoveryEdgeIntelligenceService:
         if transition_type == "alkali_substitution":
             return 1.0
 
-        if transition_type == "framework_preserving":
+        if transition_type == "shared_element_continuity":
             return 0.85
 
         if transition_type == "family_expansion":

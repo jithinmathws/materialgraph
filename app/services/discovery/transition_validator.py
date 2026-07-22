@@ -178,7 +178,7 @@ class DiscoveryTransitionValidator:
         if substitution_path:
             return substitution_path["path_type"]
 
-        return "framework_preserving"
+        return "candidate_transition"
 
     def _build_reason(
         self,

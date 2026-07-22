@@ -196,7 +196,7 @@ class DiscoveryPathRankingService:
                 and family
             ):
                 transition_scores.append(0.85)
-            elif transition_type == "framework_preserving":
+            elif transition_type == "shared_element_continuity":
                 transition_scores.append(0.75)
             else:
                 transition_scores.append(0.5)

@@ -297,7 +297,7 @@ class DiscoveryKBestPathService:
             return "family_expansion"
 
         if "shared_chemistry" in paths:
-            return "framework_preserving"
+            return "shared_element_continuity"
 
         return "candidate_transition"
 

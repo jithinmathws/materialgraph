@@ -80,18 +80,20 @@ class DiscoverySubstitutionPathService:
 
         if len(shared_elements) >= 3:
             return {
-                "path_type": "framework_preserving",
+                "path_type": "shared_element_continuity",
                 "from_formula": base_formula,
                 "to_formula": candidate_formula,
                 "replaced_elements": replaced_elements,
                 "introduced_elements": introduced_elements,
                 "shared_elements": shared_elements,
+                # Backward-compatible field name; values represent shared elements.
                 "preserved_framework": preserved_framework,
                 "preservation_basis": "element_overlap",
                 "structural_preservation_validated": False,
                 "reason": (
                     f"{candidate_formula} shares {', '.join(shared_elements)} elements "
-                    f"with {base_formula}; structural preservation is not validated."
+                    f"with {base_formula}; structural framework preservation is not "
+                    "validated."
                 ),
             }
 
