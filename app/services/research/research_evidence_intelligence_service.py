@@ -31,11 +31,11 @@ class ResearchEvidenceIntelligenceService:
         scientific_facts = opportunity.get("scientific_facts", {})
         quality_summary = opportunity.get("quality_summary", {})
 
-        if score_breakdown.get("framework_preservation", 0.0) >= 20:
+        if score_breakdown.get("shared_element_continuity", 0.0) >= 20:
             signals.append({
                 "statement": "Shared-element continuity is identified across the pathway.",
                 "source_service": "DiscoveryPathRankingService",
-                "derived_from": "framework_preservation",
+                "derived_from": "shared_element_continuity",
                 "confidence": "moderate",
             })
 
@@ -174,7 +174,7 @@ class ResearchEvidenceIntelligenceService:
         scientific_facts = opportunity.get("scientific_facts", {})
         score_breakdown = opportunity.get("score_breakdown", {})
 
-        if score_breakdown.get("framework_preservation", 0.0) >= 20:
+        if score_breakdown.get("shared_element_continuity", 0.0) >= 20:
             priorities.append({
                 "priority": priority,
                 "action": "Validate whether shared-element continuity corresponds to structural preservation.",

@@ -31,7 +31,7 @@ def _opportunity(
         },
         "scientific_usefulness_score": score,
         "score_breakdown": {
-            "framework_preservation": 30.0,
+            "shared_element_continuity": 30.0,
             "objective_alignment": 25.0,
             "transition_plausibility": 20.0,
             "path_efficiency": 10.0 if hop_count == 1 else 7.5,
@@ -417,7 +417,7 @@ def test_pairwise_comparison_explains_higher_ranked_score_dimensions():
     lower = _opportunity(rank=2, score=88.0)
 
     higher["score_breakdown"] = {
-        "framework_preservation": 30.0,
+        "shared_element_continuity": 30.0,
         "objective_alignment": 25.0,
         "transition_plausibility": 20.0,
         "path_efficiency": 10.0,
@@ -425,7 +425,7 @@ def test_pairwise_comparison_explains_higher_ranked_score_dimensions():
     }
 
     lower["score_breakdown"] = {
-        "framework_preservation": 20.0,
+        "shared_element_continuity": 20.0,
         "objective_alignment": 25.0,
         "transition_plausibility": 15.0,
         "path_efficiency": 7.5,
@@ -437,20 +437,20 @@ def test_pairwise_comparison_explains_higher_ranked_score_dimensions():
     reasons = result["pairwise_comparisons"][0]["why_higher_ranked"]
     dimensions = {reason["dimension"] for reason in reasons}
 
-    assert "framework_preservation" in dimensions
+    assert "shared_element_continuity" in dimensions
     assert "transition_plausibility" in dimensions
     assert "path_efficiency" in dimensions
 
-    framework_reason = next(
+    continuity_reason = next(
         reason
         for reason in reasons
-        if reason["dimension"] == "framework_preservation"
+        if reason["dimension"] == "shared_element_continuity"
     )
 
-    assert framework_reason["higher_score"] == 30.0
-    assert framework_reason["lower_score"] == 20.0
-    assert framework_reason["difference"] == 10.0
-    assert framework_reason["explanation"]
+    assert continuity_reason["higher_score"] == 30.0
+    assert continuity_reason["lower_score"] == 20.0
+    assert continuity_reason["difference"] == 10.0
+    assert continuity_reason["explanation"]
 
 
 def test_pairwise_comparison_preserves_lower_ranked_advantages():
@@ -460,7 +460,7 @@ def test_pairwise_comparison_preserves_lower_ranked_advantages():
     lower = _opportunity(rank=2, score=88.0)
 
     higher["score_breakdown"] = {
-        "framework_preservation": 30.0,
+        "shared_element_continuity": 30.0,
         "objective_alignment": 25.0,
         "transition_plausibility": 20.0,
         "path_efficiency": 10.0,
@@ -468,7 +468,7 @@ def test_pairwise_comparison_preserves_lower_ranked_advantages():
     }
 
     lower["score_breakdown"] = {
-        "framework_preservation": 25.0,
+        "shared_element_continuity": 25.0,
         "objective_alignment": 20.0,
         "transition_plausibility": 15.0,
         "path_efficiency": 7.5,

@@ -6,7 +6,7 @@ from app.services.material.quality_service import MaterialQualityService
 
 
 class DiscoveryPathRankingService:
-    FRAMEWORK_WEIGHT = 30.0
+    SHARED_ELEMENT_CONTINUITY_WEIGHT = 30.0
     OBJECTIVE_WEIGHT = 25.0
     PLAUSIBILITY_WEIGHT = 20.0
     MATERIAL_QUALITY_WEIGHT = 15.0
@@ -38,7 +38,7 @@ class DiscoveryPathRankingService:
             elements=prefer_elements,
         )
 
-        framework_score = self._score_framework_preservation(
+        continuity_score = self._score_shared_element_continuity(
             transitions
         )
         objective_score = self._score_objective_alignment(
@@ -57,7 +57,7 @@ class DiscoveryPathRankingService:
         )
 
         total_score = round(
-            framework_score
+            continuity_score
             + objective_score
             + plausibility_score
             + efficiency_score
@@ -68,7 +68,7 @@ class DiscoveryPathRankingService:
         return {
             "scientific_usefulness_score": total_score,
             "score_breakdown": {
-                "framework_preservation": framework_score,
+                "shared_element_continuity": continuity_score,
                 "objective_alignment": objective_score,
                 "transition_plausibility": plausibility_score,
                 "path_efficiency": efficiency_score,
@@ -81,7 +81,7 @@ class DiscoveryPathRankingService:
             ),
         }
 
-    def _score_framework_preservation(
+    def _score_shared_element_continuity(
         self,
         transitions: list[dict],
     ) -> float:
@@ -108,17 +108,17 @@ class DiscoveryPathRankingService:
         )
 
         if {"P", "O"}.issubset(common_shared_elements):
-            return self.FRAMEWORK_WEIGHT
+            return self.SHARED_ELEMENT_CONTINUITY_WEIGHT
 
         if "O" in common_shared_elements:
             return round(
-                self.FRAMEWORK_WEIGHT * 0.7,
+                self.SHARED_ELEMENT_CONTINUITY_WEIGHT * 0.7,
                 2,
             )
 
         if common_shared_elements:
             return round(
-                self.FRAMEWORK_WEIGHT * 0.5,
+                self.SHARED_ELEMENT_CONTINUITY_WEIGHT * 0.5,
                 2,
             )
 
@@ -211,10 +211,7 @@ class DiscoveryPathRankingService:
             2,
         )
 
-    def _score_path_efficiency(
-        self,
-        transitions: list[dict],
-    ) -> float:
+    def _score_path_efficiency(self, transitions: list[dict]) -> float:
         hop_count = len(transitions)
 
         if hop_count == 0:
@@ -224,21 +221,9 @@ class DiscoveryPathRankingService:
             return self.EFFICIENCY_WEIGHT
 
         if hop_count == 2:
-            return round(
-                self.EFFICIENCY_WEIGHT * 0.75,
-                2,
-            )
+            return round(self.EFFICIENCY_WEIGHT * 0.75, 2)
 
-        if hop_count == 3:
-            return round(
-                self.EFFICIENCY_WEIGHT * 0.5,
-                2,
-            )
-
-        return round(
-            self.EFFICIENCY_WEIGHT * 0.25,
-            2,
-        )
+        return round(self.EFFICIENCY_WEIGHT * 0.5, 2)
 
     def _build_usefulness_reason(
         self,
@@ -251,6 +236,8 @@ class DiscoveryPathRankingService:
                 "No discovery path was available for ranking."
             )
 
+        # preserved_framework is retained as a legacy elemental-overlap fallback;
+        # it does not establish crystallographic or structural preservation.
         shared_element_sets = [
             set(
                 transition.get("shared_elements")

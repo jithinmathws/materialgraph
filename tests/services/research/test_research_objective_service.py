@@ -62,7 +62,7 @@ class _CapturingPathRankingService:
         return {
             "scientific_usefulness_score": 85.0,
             "score_breakdown": {
-                "framework_preservation": 30.0,
+                "shared_element_continuity": 30.0,
                 "objective_alignment": 25.0,
                 "transition_plausibility": 20.0,
                 "path_efficiency": 10.0,

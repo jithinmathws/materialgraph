@@ -452,7 +452,7 @@ class ScientificPathwayAnalysisService:
                 "Continues within a related material family instead of jumping to an unrelated chemistry space."
             )
 
-        if breakdown.get("transition_plausibility", 0.0) >= 15:
+        if breakdown.get("shared_element_continuity", 0.0) >= 15:
             strengths.append("Transition plausibility score is strong.")
 
         return strengths or ["Available for structured scientific review."]
@@ -516,7 +516,7 @@ class ScientificPathwayAnalysisService:
         reasons: list[str] = []
         breakdown = chain.get("score_breakdown", {})
 
-        if breakdown.get("framework_preservation", 0.0) >= 20:
+        if breakdown.get("shared_element_continuity", 0.0) >= 20:
             reasons.append(
                 "Shared-element continuity contributes strongly under the current "
                 "deterministic model; structural preservation has not been validated."
@@ -527,7 +527,7 @@ class ScientificPathwayAnalysisService:
                 "The pathway aligns well with the stated research objective."
             )
 
-        if breakdown.get("transition_plausibility", 0.0) >= 15:
+        if breakdown.get("shared_element_continuity", 0.0) >= 15:
             reasons.append(
                 "Transition plausibility is strong under the encoded deterministic rules."
             )

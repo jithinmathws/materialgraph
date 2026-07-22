@@ -449,3 +449,66 @@ qualified by element-overlap provenance.
 - Ranking: **No**
 - API contract: **No; human-readable wording only**
 - Data migration: **No**
+
+---
+
+## Evidence-calibrated transition classifications
+
+Related findings: MG-AUD-012  
+Date: 2026-07-22  
+Release reference: Post-v1.9.18  
+Status: Production verified; replacement branches covered by automated tests
+
+### Before
+
+Element overlap or an evidence-free validator fallback could be serialized as
+`framework_preserving`, implying stronger structural evidence than the system
+possessed.
+
+### After
+
+Qualifying elemental-overlap transitions use `shared_element_continuity`.
+The validator's evidence-free final fallback uses `candidate_transition`.
+Compatibility evidence fields remain available and structural validation
+continues to be reported as false.
+
+### Impact
+
+- Scientific result: **No; terminology now matches evidence strength**
+- Ranking: **No; existing numeric weights were retained**
+- API contract: **Yes; affected serialized transition values changed**
+- Data migration: **No**
+
+---
+
+## Shared-element continuity scoring semantics
+
+Related findings: MG-AUD-013  
+Date: 2026-07-22  
+Release reference: Post-v1.9.18  
+Status: Locally verified; production deployment pending
+
+### Before
+
+The path-ranking score breakdown exposed `framework_preservation`, although
+the dimension was computed from shared-element overlap rather than independent
+bonding, structure-matching, or crystallographic evidence.
+
+### After
+
+The score dimension is `shared_element_continuity`. Research evidence,
+pathway analysis, comparative explanations, and provenance use the same term
+and explicitly state that structural preservation is not validated. Existing
+continuity weights and valid final scores are retained.
+
+Regression checks also confirmed that one-hop path efficiency remains `10.0`
+and empty paths receive `0.0` efficiency. Local objective exploration for
+material 5 returned `shared_element_continuity: 30` with the expected total
+score of `95.65`.
+
+### Impact
+
+- Scientific result: **No; the evidence label is now scientifically qualified**
+- Ranking: **No; final weights and valid rankings are unchanged**
+- API contract: **Yes; one score-breakdown key changed**
+- Data migration: **No**

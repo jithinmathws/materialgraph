@@ -9,6 +9,8 @@ This document contains only MaterialGraph audit findings. Update an existing fin
 ## Status legend
 
 - **Confirmed:** Verified defect or semantic risk awaiting resolution.
+- **Verification:** Remediation implemented and locally verified; remaining
+  deployment or production checks are pending.
 - **Resolved:** Implemented, regression-tested, and—where applicable—production-verified.
 - **Domain decision required:** Implementation is known, but remediation depends on an explicit scientific or product-policy decision.
 - **Accepted behavior:** Verified behavior retained intentionally; document rather than remediate.
@@ -293,16 +295,22 @@ or structure.
 
 ### MG-AUD-012 — `framework_preserving` Fallback Lacks Independent Validation
 
-- **Status:** Confirmed
+- **Status:** Resolved
 - **Priority:** P1
 - **Confidence:** Confirmed
 
 **Finding:** The transition type can be emitted without independent
 structural-preservation evidence.
 
+**Impact:** Elemental overlap could be serialized as a stronger structural
+claim than the available evidence supported. The remediation changed the
+unvalidated overlap classification to `shared_element_continuity` and the
+evidence-free fallback to `candidate_transition`; admission rules and numeric
+scores were unchanged.
+
 ### MG-AUD-013 — Framework Scoring Inherits Overlap Semantics
 
-- **Status:** Confirmed
+- **Status:** Verification
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -315,6 +323,25 @@ structural-preservation evidence.
 
 The numeric precision exceeds the strength of the underlying structural
 evidence.
+
+**Remediation:** Renamed the score dimension from `framework_preservation` to
+`shared_element_continuity` throughout path ranking, research evidence,
+scientific pathway analysis, comparative intelligence, and test fixtures. The
+numeric continuity weights were retained, but researcher-facing explanations
+now qualify the signal as elemental overlap and explicitly state that
+structural preservation is not validated.
+
+During remediation, regression checks detected and corrected two unrelated
+efficiency defects: the path-efficiency calculation briefly referenced the
+wrong weight, and an empty path received a one-hop efficiency bonus. The final
+implementation uses `EFFICIENCY_WEIGHT = 10.0` and assigns `0.0` efficiency to
+an empty path.
+
+**Verification:** The focused tests and full regression suite passed locally.
+Local objective exploration for material 5 returned `200 OK`, emitted
+`shared_element_continuity: 30`, retained the expected total usefulness score
+of `95.65`, and made no unsupported structural-preservation claim. Production
+deployment and EC2 endpoint verification remain pending.
 
 ### MG-AUD-014 — Preservation Can Be Satisfied by Union Across Transitions
 
@@ -967,6 +994,24 @@ deterministic response rule.
     changed.
 -   Artificially changing weights to split valid ties would claim scientific
     differentiation unsupported by the available evidence.
+
+### MG-AUD-054 — Discovery Explanation Clauses Can Lack a Separator
+
+- **Status:** Confirmed
+- **Priority:** P3
+- **Confidence:** Confirmed
+
+**Finding:** A discovery explanation can concatenate an evidence-limitation
+clause and the next score clause without punctuation, producing wording such
+as:
+
+```text
+oxide structure similarity is not validated similarity score 110.0
+```
+
+**Impact:** Numeric scores, ranking, and scientific classifications are not
+affected. The defect reduces readability and can make independently generated
+explanation clauses appear to form one unsupported statement.
 
 ## Maintenance rule
 

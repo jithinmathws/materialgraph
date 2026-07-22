@@ -84,7 +84,7 @@ def _build_chain(
         "chain_reason": "Test pathway.",
         "scientific_usefulness_score": score,
         "score_breakdown": {
-            "framework_preservation": 30.0,
+            "shared_element_continuity": 30.0,
             "objective_alignment": 25.0,
             "transition_plausibility": 18.5,
             "path_efficiency": 7.5,

@@ -1,0 +1,160 @@
+warning: in the working copy of 'app/services/discovery/path_ranking_service.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app/services/discovery/path_ranking_service.py b/app/services/discovery/path_ranking_service.py[m
+[1mindex 5e8517e..7efb643 100644[m
+[1m--- a/app/services/discovery/path_ranking_service.py[m
+[1m+++ b/app/services/discovery/path_ranking_service.py[m
+[36m@@ -6,7 +6,7 @@[m [mfrom app.services.material.quality_service import MaterialQualityService[m
+ [m
+ [m
+ class DiscoveryPathRankingService:[m
+[31m-    FRAMEWORK_WEIGHT = 30.0[m
+[32m+[m[32m    SHARED_ELEMENT_CONTINUITY_WEIGHT = 30.0[m
+     OBJECTIVE_WEIGHT = 25.0[m
+     PLAUSIBILITY_WEIGHT = 20.0[m
+     MATERIAL_QUALITY_WEIGHT = 15.0[m
+[36m@@ -38,7 +38,7 @@[m [mclass DiscoveryPathRankingService:[m
+             elements=prefer_elements,[m
+         )[m
+ [m
+[31m-        framework_score = self._score_framework_preservation([m
+[32m+[m[32m        continuity_score = self._score_shared_element_continuity([m
+             transitions[m
+         )[m
+         objective_score = self._score_objective_alignment([m
+[36m@@ -57,7 +57,7 @@[m [mclass DiscoveryPathRankingService:[m
+         )[m
+ [m
+         total_score = round([m
+[31m-            framework_score[m
+[32m+[m[32m            continuity_score[m
+             + objective_score[m
+             + plausibility_score[m
+             + efficiency_score[m
+[36m@@ -68,7 +68,7 @@[m [mclass DiscoveryPathRankingService:[m
+         return {[m
+             "scientific_usefulness_score": total_score,[m
+             "score_breakdown": {[m
+[31m-                "framework_preservation": framework_score,[m
+[32m+[m[32m                "shared_element_continuity": continuity_score,[m
+                 "objective_alignment": objective_score,[m
+                 "transition_plausibility": plausibility_score,[m
+                 "path_efficiency": efficiency_score,[m
+[36m@@ -81,7 +81,7 @@[m [mclass DiscoveryPathRankingService:[m
+             ),[m
+         }[m
+ [m
+[31m-    def _score_framework_preservation([m
+[32m+[m[32m    def _score_shared_element_continuity([m
+         self,[m
+         transitions: list[dict],[m
+     ) -> float:[m
+[36m@@ -108,17 +108,17 @@[m [mclass DiscoveryPathRankingService:[m
+         )[m
+ [m
+         if {"P", "O"}.issubset(common_shared_elements):[m
+[31m-            return self.FRAMEWORK_WEIGHT[m
+[32m+[m[32m            return self.SHARED_ELEMENT_CONTINUITY_WEIGHT[m
+ [m
+         if "O" in common_shared_elements:[m
+             return round([m
+[31m-                self.FRAMEWORK_WEIGHT * 0.7,[m
+[32m+[m[32m                self.SHARED_ELEMENT_CONTINUITY_WEIGHT * 0.7,[m
+                 2,[m
+             )[m
+ [m
+         if common_shared_elements:[m
+             return round([m
+[31m-                self.FRAMEWORK_WEIGHT * 0.5,[m
+[32m+[m[32m                self.SHARED_ELEMENT_CONTINUITY_WEIGHT * 0.5,[m
+                 2,[m
+             )[m
+ [m
+[36m@@ -211,34 +211,16 @@[m [mclass DiscoveryPathRankingService:[m
+             2,[m
+         )[m
+ [m
+[31m-    def _score_path_efficiency([m
+[31m-        self,[m
+[31m-        transitions: list[dict],[m
+[31m-    ) -> float:[m
+[32m+[m[32m    def _score_path_efficiency(self, transitions: list[dict]) -> float:[m
+         hop_count = len(transitions)[m
+ [m
+[31m-        if hop_count == 0:[m
+[31m-            return 0.0[m
+[31m-[m
+[31m-        if hop_count == 1:[m
+[31m-            return self.EFFICIENCY_WEIGHT[m
+[32m+[m[32m        if hop_count <= 1:[m
+[32m+[m[32m            return self.PATH_EFFICIENCY_WEIGHT[m
+ [m
+         if hop_count == 2:[m
+[31m-            return round([m
+[31m-                self.EFFICIENCY_WEIGHT * 0.75,[m
+[31m-                2,[m
+[31m-            )[m
+[32m+[m[32m            return round(self.PATH_EFFICIENCY_WEIGHT * 0.75, 2)[m
+ [m
+[31m-        if hop_count == 3:[m
+[31m-            return round([m
+[31m-                self.EFFICIENCY_WEIGHT * 0.5,[m
+[31m-                2,[m
+[31m-            )[m
+[31m-[m
+[31m-        return round([m
+[31m-            self.EFFICIENCY_WEIGHT * 0.25,[m
+[31m-            2,[m
+[31m-        )[m
+[32m+[m[32m        return round(self.PATH_EFFICIENCY_WEIGHT * 0.5, 2)[m
+ [m
+     def _build_usefulness_reason([m
+         self,[m
+[36m@@ -251,6 +233,8 @@[m [mclass DiscoveryPathRankingService:[m
+                 "No discovery path was available for ranking."[m
+             )[m
+ [m
+[32m+[m[32m        # preserved_framework is retained as a legacy elemental-overlap fallback;[m
+[32m+[m[32m        # it does not establish crystallographic or structural preservation.[m
+         shared_element_sets = [[m
+             set([m
+                 transition.get("shared_elements")[m
+[1mdiff --git a/app/services/research/research_evidence_intelligence_service.py b/app/services/research/research_evidence_intelligence_service.py[m
+[1mindex 6c9b0da..54e5f69 100644[m
+[1m--- a/app/services/research/research_evidence_intelligence_service.py[m
+[1m+++ b/app/services/research/research_evidence_intelligence_service.py[m
+[36m@@ -31,11 +31,11 @@[m [mclass ResearchEvidenceIntelligenceService:[m
+         scientific_facts = opportunity.get("scientific_facts", {})[m
+         quality_summary = opportunity.get("quality_summary", {})[m
+ [m
+[31m-        if score_breakdown.get("framework_preservation", 0.0) >= 20:[m
+[32m+[m[32m        if score_breakdown.get("shared_element_continuity", 0.0) >= 20:[m
+             signals.append({[m
+                 "statement": "Shared-element continuity is identified across the pathway.",[m
+                 "source_service": "DiscoveryPathRankingService",[m
+[31m-                "derived_from": "framework_preservation",[m
+[32m+[m[32m                "derived_from": "shared_element_continuity",[m
+                 "confidence": "moderate",[m
+             })[m
+ [m
+[1mdiff --git a/app/services/research/scientific_pathway_analysis_service.py b/app/services/research/scientific_pathway_analysis_service.py[m
+[1mindex e91dc41..9ffa122 100644[m
+[1m--- a/app/services/research/scientific_pathway_analysis_service.py[m
+[1m+++ b/app/services/research/scientific_pathway_analysis_service.py[m
+[36m@@ -452,7 +452,7 @@[m [mclass ScientificPathwayAnalysisService:[m
+                 "Continues within a related material family instead of jumping to an unrelated chemistry space."[m
+             )[m
+ [m
+[31m-        if breakdown.get("transition_plausibility", 0.0) >= 15:[m
+[32m+[m[32m        if breakdown.get("shared_element_continuity", 0.0) >= 15:[m
+             strengths.append("Transition plausibility score is strong.")[m
+ [m
+         return strengths or ["Available for structured scientific review."][m
+[36m@@ -527,7 +527,7 @@[m [mclass ScientificPathwayAnalysisService:[m
+                 "The pathway aligns well with the stated research objective."[m
+             )[m
+ [m
+[31m-        if breakdown.get("transition_plausibility", 0.0) >= 15:[m
+[32m+[m[32m        if breakdown.get("shared_element_continuity", 0.0) >= 15:[m
+             reasons.append([m
+                 "Transition plausibility is strong under the encoded deterministic rules."[m
+             )[m

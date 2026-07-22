@@ -1,7 +1,7 @@
 # MaterialGraph Architecture & Implementation Audit Resolution
 
-Version: 1.3
-Last Updated: 2026-07-21
+Version: 1.5
+Last Updated: 2026-07-22
 
 ---
 
@@ -2361,6 +2361,237 @@ Related Scientific Principles
 Principle 10
 
 Principle 11
+
+Related ADR
+
+ADR-002
+
+---
+
+# MG-AUD-012
+
+Title
+
+`framework_preserving` fallback lacked independent validation.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+Post-v1.9.18
+
+Affected Components
+
+- DiscoverySubstitutionPathService
+- DiscoveryTransitionValidator
+- DiscoveryKBestPathService
+- DiscoveryEdgeIntelligenceService
+- DiscoveryPathRankingService
+- Discovery transition API values
+
+Root Cause
+
+Elemental overlap and `shared_chemistry` evidence could be classified as
+`framework_preserving`, although the system had no independent bonding,
+structure-matching, or crystallographic validation. The validator also used
+`framework_preserving` as its final fallback when no substitution-path evidence
+was available.
+
+Scientific Impact
+
+The serialized transition value overstated the strength of the available
+evidence. It could imply validated structural continuity where MaterialGraph
+had established only shared-element continuity or no more specific transition
+classification.
+
+Resolution
+
+✓ Renamed the qualifying element-overlap fallback to
+`shared_element_continuity`.
+
+✓ Changed the evidence-free validator fallback to `candidate_transition`.
+
+✓ Updated K-best transition inference for `shared_chemistry` to emit
+`shared_element_continuity`.
+
+✓ Updated edge-intelligence and path-ranking branches to recognize the new
+serialized transition value.
+
+✓ Retained `preserved_framework` as a compatibility field while preserving its
+element-overlap provenance and `structural_preservation_validated: false`
+qualifier.
+
+Regression Verification
+
+✓ All focused service tests and the full regression suite passed locally.
+
+✓ Production deployment and service restart succeeded after correcting the EC2
+security-group SSH rule.
+
+✓ Production discovery, chain, objective, and balanced-mode responses remained
+operational and contained no `framework_preserving` transition value.
+
+✓ Production responses retained evidence qualifiers and compatibility fields.
+
+Verification Scope Note
+
+The current production dataset exercised `alkali_substitution` and
+`family_expansion`, but did not yield legitimate examples of
+`shared_element_continuity` or `candidate_transition`. Those replacement
+branches were verified by focused automated tests. Production endpoint checks
+therefore establish deployment and general regression behavior, not direct
+production-data coverage of both replacement branches.
+
+Scientific Changes
+
+Transition terminology changed to match evidence strength. Candidate admission,
+score values, weights, and ranking logic did not change.
+
+Breaking API
+
+Affected serialized transition values changed from `framework_preserving` to
+`shared_element_continuity` or `candidate_transition`, according to available
+evidence. The response schema and fields did not change.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Classification names are scientific claims. Element overlap, structural
+preservation, and neutral fallback states must remain distinct even when their
+initial numeric weights are intentionally preserved for compatibility.
+
+Related Findings
+
+MG-AUD-011
+
+MG-AUD-013
+
+Related ADR
+
+ADR-002
+
+---
+
+# MG-AUD-013
+
+Title
+
+Framework scoring inherited elemental-overlap semantics.
+
+Severity
+
+High
+
+Status
+
+Verification
+
+Resolution Version
+
+Post-v1.9.18
+
+Affected Components
+
+- DiscoveryPathRankingService
+- ResearchEvidenceIntelligenceService
+- ScientificPathwayAnalysisService
+- ComparativeResearchIntelligenceService
+- Research objective and pathway response score breakdowns
+
+Root Cause
+
+The path-ranking dimension named `framework_preservation` was calculated from
+shared elements across transitions. This composition-level evidence did not
+validate bonding, crystallographic structure, site equivalence, or continuous
+framework preservation through the path.
+
+Scientific Impact
+
+The numeric contribution represented elemental continuity, but its name could
+lead researchers and downstream consumers to interpret it as independently
+validated structural preservation.
+
+Resolution
+
+✓ Renamed the canonical score dimension to `shared_element_continuity`.
+
+✓ Updated path-ranking output, research evidence provenance, scientific
+pathway analysis, comparative intelligence, and positive test fixtures to use
+the new dimension.
+
+✓ Retained the established continuity weights while qualifying explanations as
+elemental overlap and explicitly stating that structural preservation is not
+validated.
+
+✓ Preserved intentional negative regression assertions that ensure
+`framework_preservation` is absent from score breakdowns.
+
+Regression Corrections During Remediation
+
+✓ Restored path efficiency to `EFFICIENCY_WEIGHT = 10.0` after a terminology
+edit temporarily referenced the shared-element-continuity weight.
+
+✓ Corrected empty-path scoring so zero transitions receive `0.0` path
+efficiency instead of the one-hop bonus.
+
+✓ Kept established score invariants unchanged: a representative full
+single-hop alkali-substitution path scores `85.0`, and the verified two-hop
+objective-exploration result scores `95.65`.
+
+Regression Verification
+
+✓ Focused path-ranking, evidence-semantics, and pathway-analysis tests passed.
+
+✓ Full regression suite passed locally.
+
+✓ Local objective exploration for material 5 returned `200 OK` with
+`shared_element_continuity: 30`, total usefulness score `95.65`, and qualified
+structural-uncertainty wording.
+
+Pending Verification
+
+The updated code has not yet been deployed to EC2. Production deployment,
+service restart, and representative endpoint verification are required before
+this finding is marked Resolved or Production verified.
+
+Scientific Changes
+
+The semantic label and evidence wording changed to match the available
+composition-level evidence. Final numeric weights and valid pathway rankings
+did not change.
+
+Breaking API
+
+Yes. The score-breakdown key changed from `framework_preservation` to
+`shared_element_continuity`. Response structure and numeric score values remain
+unchanged.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Terminology-only migrations must be protected by focused numeric-invariant and
+empty-input tests. Elemental overlap and validated structural preservation must
+remain separate concepts in score keys, provenance, and explanations.
+
+Related Findings
+
+MG-AUD-005
+
+MG-AUD-011
+
+MG-AUD-012
 
 Related ADR
 

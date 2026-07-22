@@ -262,7 +262,7 @@ class ComparativeResearchIntelligenceService:
 
     def _humanize(self, value: str) -> str:
         labels = {
-            "framework_preservation": "Shared-element continuity",
+            "shared_element_continuity": "Shared-element continuity",
         }
 
         return labels.get(

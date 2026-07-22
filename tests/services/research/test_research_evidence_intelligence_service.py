@@ -6,7 +6,7 @@ from app.services.research.research_evidence_intelligence_service import (
 def _sample_opportunity() -> dict:
     return {
         "score_breakdown": {
-            "framework_preservation": 30.0,
+            "shared_element_continuity": 30.0,
             "objective_alignment": 25.0,
             "transition_plausibility": 18.5,
             "path_efficiency": 7.5,
