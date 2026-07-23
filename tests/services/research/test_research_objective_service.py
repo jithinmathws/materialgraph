@@ -145,15 +145,23 @@ def test_research_objective_filters_preserved_elements(db_session):
     required = {"Fe", "P", "O"}
 
     for chain in result["chains"]:
-        preserved = set()
+        transitions = chain["transitions"]
 
-        for transition in chain["transitions"]:
-            preserved.update(
-                transition.get("shared_elements")
-                or transition["preserved_framework"]
+        assert transitions
+
+        shared_element_sets = []
+
+        for transition in transitions:
+            elements = (
+                transition["shared_elements"]
+                if "shared_elements" in transition
+                else transition.get("preserved_framework", [])
             )
+            shared_element_sets.append(set(elements))
 
-        assert required.issubset(preserved)
+        continuous_elements = set.intersection(*shared_element_sets)
+
+        assert required.issubset(continuous_elements)
 
 
 def test_multi_element_objective_passes_complete_sets_to_chain_generation(
@@ -238,4 +246,63 @@ def test_multi_element_objective_list_order_no_longer_changes_effective_sets(
     )
     assert set(chain_service.calls[0]["prefer_elements"]) == set(
         chain_service.calls[1]["prefer_elements"]
+    )
+
+
+def test_preservation_requires_continuity_across_every_transition(
+    db_session,
+):
+    service = ResearchObjectiveService(db_session)
+
+    chain = {
+        "transitions": [
+            {
+                "shared_elements": ["Fe", "P"],
+                "preserved_framework": ["Fe", "P"],
+            },
+            {
+                "shared_elements": ["Fe", "O"],
+                "preserved_framework": ["Fe", "O"],
+            },
+        ],
+    }
+
+    assert service._preserves_required_elements(
+        chain=chain,
+        preserve_elements=["Fe"],
+    )
+    assert not service._preserves_required_elements(
+        chain=chain,
+        preserve_elements=["Fe", "P", "O"],
+    )
+
+
+def test_preservation_fails_when_path_has_no_transitions(
+    db_session,
+):
+    service = ResearchObjectiveService(db_session)
+
+    assert not service._preserves_required_elements(
+        chain={"transitions": []},
+        preserve_elements=["Fe"],
+    )
+
+
+def test_shared_elements_take_precedence_over_compatibility_alias(
+    db_session,
+):
+    service = ResearchObjectiveService(db_session)
+
+    chain = {
+        "transitions": [
+            {
+                "shared_elements": [],
+                "preserved_framework": ["Fe"],
+            },
+        ],
+    }
+
+    assert not service._preserves_required_elements(
+        chain=chain,
+        preserve_elements=["Fe"],
     )

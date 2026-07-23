@@ -397,17 +397,29 @@ class ScientificPathwayAnalysisService:
             if transition.get("transition_type")
         })
 
-    def _common_shared_elements(self, transitions: list[dict]) -> list[str]:
-        shared_element_sets = [
-            set(transition.get("preserved_framework", []))
-            for transition in transitions
-            if transition.get("preserved_framework")
-        ]
-
-        if not shared_element_sets:
+    def _common_shared_elements(
+        self,
+        transitions: list[dict],
+    ) -> list[str]:
+        if not transitions:
             return []
 
-        return sorted(set.intersection(*shared_element_sets))
+        shared_element_sets: list[set[str]] = []
+
+        for transition in transitions:
+            if "shared_elements" in transition:
+                transition_elements = transition["shared_elements"]
+            else:
+                transition_elements = transition.get(
+                    "preserved_framework",
+                    [],
+                )
+
+            shared_element_sets.append(set(transition_elements))
+
+        common_elements = set.intersection(*shared_element_sets)
+
+        return sorted(common_elements)
 
     def _collect_elements(self, transitions: list[dict], key: str) -> list[str]:
         elements = set()

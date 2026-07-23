@@ -140,6 +140,124 @@ ADR-002
 
 ---
 
+# MG-AUD-014
+
+Title
+
+Preservation could be satisfied by union across transitions.
+
+Severity
+
+High
+
+Status
+
+Verification
+
+Resolution Version
+
+Post-v1.9.18 remediation (release tag pending)
+
+Affected Components
+
+- ResearchObjectiveService preservation evaluation
+- ScientificPathwayAnalysisService shared-element facts
+- Research-objective and scientific-pathway regression tests
+
+Root Cause
+
+Research-objective preservation accumulated transition evidence with a union.
+Different transitions could therefore collectively contain all requested
+elements even when those elements were not shared continuously through every
+hop.
+
+Scientific pathway analysis already intended to compute an intersection, but
+it read only the compatibility field `preserved_framework`, ignored the
+authoritative `shared_elements` field, and omitted transitions that lacked
+evidence. These behaviors could overstate path-wide continuity.
+
+Scientific Impact
+
+A multi-hop pathway could satisfy a preservation constraint without continuous
+evidence for every requested element. Research filtering, objective
+satisfaction, and explanations could therefore report stronger path-wide
+continuity than the transitions established.
+
+Resolution
+
+✓ Replaced union aggregation with intersection across every transition.
+
+✓ Made `shared_elements` authoritative whenever present, including when
+explicitly empty.
+
+✓ Retained `preserved_framework` only as a compatibility fallback when
+`shared_elements` is absent.
+
+✓ Required every transition to participate; missing evidence contributes an
+empty set.
+
+✓ Defined zero-transition paths as not establishing non-empty preservation
+requirements.
+
+✓ Aligned scientific pathway facts with the same path-wide semantics.
+
+Regression Verification
+
+✓ All 26 focused research-service tests passed.
+
+✓ The full regression suite passed.
+
+✓ Regression coverage rejects union-only preservation, empty paths, missing
+transition evidence, and fallback from an explicitly empty primary field.
+
+Local Endpoint Verification
+
+✓ A two-hop objective pathway reported transition evidence
+`{Fe, O, P}` followed by `{Fe, Na, O, P}`.
+
+✓ The response and chain explanation correctly reported their path-wide
+intersection as `Fe-O-P` shared-element continuity.
+
+✓ Compatibility fields retained `preservation_basis: element_overlap` and
+`structural_preservation_validated: false`.
+
+Pending Verification
+
+The correction has not yet been recorded as verified on the production EC2
+endpoint. Deploy, restart the service, and repeat the representative objective
+request before marking MG-AUD-014 Resolved.
+
+Scientific Changes
+
+Yes. Preservation now means continuous shared-element evidence across every
+transition rather than collective occurrence anywhere in the path.
+
+Breaking API
+
+No. Existing response fields retain their shape, although affected objective
+results and explanations may change when a path previously passed only through
+union semantics.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Path-wide continuity is an all-hop invariant. Evidence aliases must have clear
+precedence, and missing or empty primary evidence must not silently recover a
+stronger claim from a compatibility field.
+
+Related Findings
+
+MG-AUD-005
+
+MG-AUD-011
+
+MG-AUD-013
+
+---
+
 # MG-AUD-037 — Recommendation Reasons Mix Contributors and Context
 
 Priority
@@ -148,7 +266,7 @@ P1
 
 Status
 
-Verification
+✅ Resolved
 
 Resolution Version
 
@@ -261,11 +379,18 @@ Database Migration
 
 No.
 
-Pending Verification
+Production Verification
 
-The updated code has not yet been deployed to EC2. Production deployment,
-service restart, and endpoint verification in both criticality-preference modes
-are required before this finding is marked Resolved or Production verified.
+✓ Production verification passed on 2026-07-23 for material 5 with both
+`prefer_lower_criticality=true` and `prefer_lower_criticality=false`.
+
+✓ With the preference enabled, criticality appeared as an active contributor
+and the displayed score reconciled with similarity, criticality, stability, and
+low-energy contributions.
+
+✓ With the preference disabled, criticality did not affect the score and
+appeared only under `context`; representative scores reconciled as
+`130 + 10 + 5 = 145` and `110 + 10 + 5 = 125`.
 
 Lessons Learned
 
@@ -2637,7 +2762,7 @@ High
 
 Status
 
-Verification
+✅ Resolved
 
 Resolution Version
 
@@ -2701,11 +2826,19 @@ Regression Verification
 `shared_element_continuity: 30`, total usefulness score `95.65`, and qualified
 structural-uncertainty wording.
 
-Pending Verification
+Production Verification
 
-The updated code has not yet been deployed to EC2. Production deployment,
-service restart, and representative endpoint verification are required before
-this finding is marked Resolved or Production verified.
+✓ Production verification passed on 2026-07-23 using objective exploration for
+material 5.
+
+✓ The response retained total usefulness score `95.65` with
+`shared_element_continuity: 30`.
+
+✓ The score breakdown contained no `framework_preservation` field.
+
+✓ Evidence remained qualified as `preservation_basis: element_overlap` with
+`structural_preservation_validated: false`, and explanations made no unsupported
+structural-preservation claim.
 
 Scientific Changes
 

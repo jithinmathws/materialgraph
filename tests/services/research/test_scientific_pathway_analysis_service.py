@@ -434,3 +434,57 @@ def test_endpoint_objective_satisfaction_handles_empty_objectives():
     assert result["endpoint_prefer_coverage"] == 1.0
     assert result["endpoint_overall_coverage"] == 1.0
     assert result["endpoint_status"] == "complete"
+
+
+def test_common_shared_elements_uses_path_wide_intersection(
+    db_session,
+):
+    service = ScientificPathwayAnalysisService(db_session)
+
+    transitions = [
+        {"shared_elements": ["Fe", "P"]},
+        {"shared_elements": ["Fe", "O"]},
+    ]
+
+    assert service._common_shared_elements(transitions) == ["Fe"]
+
+
+def test_common_shared_elements_requires_evidence_from_every_transition(
+    db_session,
+):
+    service = ScientificPathwayAnalysisService(db_session)
+
+    transitions = [
+        {"shared_elements": ["Fe", "P", "O"]},
+        {},
+    ]
+
+    assert service._common_shared_elements(transitions) == []
+
+
+def test_common_shared_elements_supports_compatibility_alias(
+    db_session,
+):
+    service = ScientificPathwayAnalysisService(db_session)
+
+    transitions = [
+        {"preserved_framework": ["Fe", "P", "O"]},
+        {"preserved_framework": ["Fe", "O"]},
+    ]
+
+    assert service._common_shared_elements(transitions) == ["Fe", "O"]
+
+
+def test_common_shared_elements_prefers_primary_field(
+    db_session,
+):
+    service = ScientificPathwayAnalysisService(db_session)
+
+    transitions = [
+        {
+            "shared_elements": [],
+            "preserved_framework": ["Fe", "P", "O"],
+        },
+    ]
+
+    assert service._common_shared_elements(transitions) == []

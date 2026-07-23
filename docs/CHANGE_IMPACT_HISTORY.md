@@ -486,7 +486,7 @@ continues to be reported as false.
 Related findings: MG-AUD-013  
 Date: 2026-07-22  
 Release reference: Post-v1.9.18  
-Status: Locally verified; production deployment pending
+Status: Resolved; production verified 2026-07-23
 
 ### Before
 
@@ -506,6 +506,12 @@ and empty paths receive `0.0` efficiency. Local objective exploration for
 material 5 returned `shared_element_continuity: 30` with the expected total
 score of `95.65`.
 
+Production verification on 2026-07-23 confirmed the same score breakdown and
+total. The response exposed `preservation_basis: element_overlap`,
+`structural_preservation_validated: false`, and no
+`framework_preservation` score field or unsupported structural-preservation
+claim.
+
 ### Impact
 
 - Scientific result: **No; the evidence label is now scientifically qualified**
@@ -520,7 +526,7 @@ score of `95.65`.
 Related findings: MG-AUD-037  
 Date: 2026-07-23  
 Release reference: Post-v1.9.18  
-Status: Locally verified; production deployment pending
+Status: Resolved; production verified 2026-07-23
 
 ### Before
 
@@ -545,9 +551,56 @@ Local checks confirmed that a similarity score of `130.0`, stability bonus of
 disabled. With the preference enabled, the applicable criticality adjustment
 is also reflected in both the score and explanation.
 
+Production verification on 2026-07-23 passed for both
+`prefer_lower_criticality=true` and `false` using material 5. Active
+contributors reconciled with returned scores, while criticality was retained
+only as context when the preference was disabled.
+
 ### Impact
 
 - Scientific result: **No**
 - Ranking: **No; scoring policy and numeric calculations are unchanged**
 - API contract: **No; human-readable wording only**
+- Data migration: **No**
+
+---
+
+## Path-wide shared-element continuity
+
+Related findings: MG-AUD-014  
+Date: 2026-07-23  
+Release reference: Post-v1.9.18  
+Status: Locally verified; production deployment pending
+
+### Before
+
+Research-objective preservation could be satisfied by the union of elements
+shared by different transitions. Scientific pathway analysis also read only
+the compatibility field `preserved_framework`, ignored authoritative
+`shared_elements`, and could omit transitions without evidence.
+
+### After
+
+Required preservation is evaluated from the intersection of shared-element
+evidence across every transition. `shared_elements` is authoritative whenever
+present, including when explicitly empty; `preserved_framework` is used only
+when the primary field is absent. Every transition participates in the
+intersection, and an empty path does not establish preservation.
+
+Twenty-six focused research-service tests and the full regression suite passed.
+A local two-hop objective response correctly reported:
+
+``` text
+{Fe, O, P} ∩ {Fe, Na, O, P} = {Fe, O, P}
+```
+
+The chain explanation consequently reported `Fe-O-P shared-element
+continuity`; regression coverage separately confirmed that union-only evidence
+is rejected.
+
+### Impact
+
+- Scientific result: **Yes; invalid union-only preservation is rejected**
+- Ranking: **Potentially; paths failing continuous preservation may be filtered or evaluated differently**
+- API contract: **No; existing fields retain their shape**
 - Data migration: **No**

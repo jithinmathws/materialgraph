@@ -69,19 +69,32 @@ class ResearchObjectiveService:
         chain: dict,
         preserve_elements: list[str],
     ) -> bool:
-        if not preserve_elements:
+        required_elements = set(preserve_elements)
+
+        if not required_elements:
             return True
 
-        required = set(preserve_elements)
-        all_preserved = set()
+        transitions = chain.get("transitions", [])
 
-        for transition in chain["transitions"]:
-            all_preserved.update(
-                transition.get("shared_elements")
-                or transition.get("preserved_framework", [])
-            )
+        if not transitions:
+            return False
 
-        return required.issubset(all_preserved)
+        shared_element_sets: list[set[str]] = []
+
+        for transition in transitions:
+            if "shared_elements" in transition:
+                transition_elements = transition["shared_elements"]
+            else:
+                transition_elements = transition.get(
+                    "preserved_framework",
+                    [],
+                )
+
+            shared_element_sets.append(set(transition_elements))
+
+        continuous_elements = set.intersection(*shared_element_sets)
+
+        return required_elements.issubset(continuous_elements)
 
     def _matches_target_family(
         self,

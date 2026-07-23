@@ -18,8 +18,8 @@ This document contains only MaterialGraph audit findings. Update an existing fin
 ## Register summary
 
 - **Total findings:** 53
-- **Resolved:** 18
-- **Not resolved:** 35
+- **Resolved:** 20
+- **Not resolved:** 33
 
 ## Correctness and Data Integrity
 
@@ -310,7 +310,7 @@ scores were unchanged.
 
 ### MG-AUD-013 — Framework Scoring Inherits Overlap Semantics
 
-- **Status:** Verification
+- **Status:** Resolved
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -338,14 +338,17 @@ implementation uses `EFFICIENCY_WEIGHT = 10.0` and assigns `0.0` efficiency to
 an empty path.
 
 **Verification:** The focused tests and full regression suite passed locally.
-Local objective exploration for material 5 returned `200 OK`, emitted
-`shared_element_continuity: 30`, retained the expected total usefulness score
-of `95.65`, and made no unsupported structural-preservation claim. Production
-deployment and EC2 endpoint verification remain pending.
+Local and production objective exploration for material 5 returned `200 OK`,
+emitted `shared_element_continuity: 30`, retained the expected total usefulness
+score of `95.65`, and made no unsupported structural-preservation claim.
+Production verification on 2026-07-23 also confirmed
+`preservation_basis: element_overlap`,
+`structural_preservation_validated: false`, and the absence of the legacy
+`framework_preservation` score field.
 
 ### MG-AUD-014 — Preservation Can Be Satisfied by Union Across Transitions
 
-- **Status:** Confirmed
+- **Status:** Verification
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -359,6 +362,23 @@ union satisfies required
 ```
 
 This does not prove continuous preservation through the path.
+
+**Remediation:** Research-objective preservation now requires the requested
+elements to occur in the intersection of shared-element evidence across every
+transition. `shared_elements` takes precedence whenever present, including
+when explicitly empty; `preserved_framework` is used only as a compatibility
+fallback when the primary field is absent. Every transition participates in
+the intersection, missing evidence contributes an empty set, and a
+zero-transition path does not establish preservation. Scientific pathway facts
+now use the same semantics.
+
+**Verification:** All 26 focused research-service tests and the full regression
+suite passed. Regression coverage rejects disjoint union-only evidence, empty
+paths, missing transition evidence, and fallback from an explicitly empty
+primary field. Local two-hop objective exploration correctly reported the
+intersection of `{Fe, O, P}` and `{Fe, Na, O, P}` as `Fe-O-P` shared-element
+continuity. Production deployment and EC2 endpoint verification remain
+pending.
 
 ### MG-AUD-015 — Objective Alignment Uses Path-Wide Events
 
@@ -682,7 +702,7 @@ This is a terminology/contract mismatch.
 
 ### MG-AUD-037 — Recommendation Reasons Mix Contributors and Context
 
-- **Status:** Verification
+- **Status:** Resolved
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -706,12 +726,13 @@ active contributor only when the preference is enabled; otherwise it remains
 available under `context`.
 
 **Verification:** Focused recommendation-service tests and the full regression
-suite passed locally. Local endpoint checks for material 5 confirmed that
+suite passed locally. Local and production endpoint checks for material 5
+confirmed that
 `prefer_lower_criticality=true` includes criticality in scoring and that
 `prefer_lower_criticality=false` excludes it from the score while retaining the
 comparison as context. Displayed recommendation scores reconciled with their
-stated contributors in both modes. Production deployment and EC2 endpoint
-verification remain pending.
+stated contributors in both modes. Production verification passed on
+2026-07-23.
 
 ### MG-AUD-038 — Path Efficiency Is Hop-Count Based
 
