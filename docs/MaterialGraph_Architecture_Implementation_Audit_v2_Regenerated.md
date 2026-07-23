@@ -682,7 +682,7 @@ This is a terminology/contract mismatch.
 
 ### MG-AUD-037 — Recommendation Reasons Mix Contributors and Context
 
-- **Status:** Confirmed
+- **Status:** Verification
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -694,6 +694,24 @@ This is a terminology/contract mismatch.
     directly added in recommendation scoring
 
 Contributor facts and contextual facts are not distinguished.
+
+**Remediation:** Recommendation explanation generation now receives
+`prefer_lower_criticality` and distinguishes the similarity basis, active score
+contributors, contextual criticality information, and the final recommendation
+score. Shared elements and applications are labelled as components of the
+similarity score rather than independent recommendation bonuses. The
+low-energy-above-hull contribution is included when its scoring condition
+(`energy_above_hull <= 0.01`) is satisfied. Criticality is presented as an
+active contributor only when the preference is enabled; otherwise it remains
+available under `context`.
+
+**Verification:** Focused recommendation-service tests and the full regression
+suite passed locally. Local endpoint checks for material 5 confirmed that
+`prefer_lower_criticality=true` includes criticality in scoring and that
+`prefer_lower_criticality=false` excludes it from the score while retaining the
+comparison as context. Displayed recommendation scores reconciled with their
+stated contributors in both modes. Production deployment and EC2 endpoint
+verification remain pending.
 
 ### MG-AUD-038 — Path Efficiency Is Hop-Count Based
 

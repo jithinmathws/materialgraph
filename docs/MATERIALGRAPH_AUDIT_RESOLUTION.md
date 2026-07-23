@@ -140,6 +140,150 @@ ADR-002
 
 ---
 
+# MG-AUD-037 — Recommendation Reasons Mix Contributors and Context
+
+Priority
+
+P1
+
+Status
+
+Verification
+
+Resolution Version
+
+Post-v1.9.18 remediation (release tag pending)
+
+Affected Components
+
+- MaterialRecommendationService score explanation generation
+- Discovery candidate explanations propagated from recommendations
+- Recommendation-service regression tests
+
+Problem
+
+`recommendation_reason` combined score contributors and contextual facts
+without distinguishing their roles.
+
+Criticality comparisons were included regardless of whether
+`prefer_lower_criticality` affected the score. Shared elements and
+applications appeared alongside recommendation bonuses even though they are
+already components of `similarity_score`. The 5-point
+low-energy-above-hull contribution was omitted from the explanation.
+
+Root Cause
+
+`_build_recommendation_reason()` did not receive
+`prefer_lower_criticality`, so it could not determine whether criticality was
+an active score contributor or contextual comparison data.
+
+The explanation also flattened the similarity basis and additional
+recommendation contributions into one undifferentiated list. Its wording did
+not expose that shared-element and shared-application evidence had already
+been incorporated into the similarity score.
+
+Investigation
+
+Repository-wide dependency tracing confirmed that:
+
+- shared elements and applications contribute to `similarity_score`;
+- `similarity_score` is the base recommendation score;
+- criticality contributes only when `prefer_lower_criticality` is enabled;
+- stability contributes 10 points;
+- energy above hull contributes 5 points when
+  `energy_above_hull <= 0.01`;
+- the schema treats `recommendation_reason` as an opaque string;
+- no frontend or downstream consumer parses its wording; and
+- discovery forwards the reason unchanged as an explanation component.
+
+Resolution
+
+✓ Passed `prefer_lower_criticality` into
+`_build_recommendation_reason()`.
+
+✓ Labelled shared elements and applications as the `similarity basis`, avoiding
+the appearance of independent or duplicate recommendation bonuses.
+
+✓ Included lower or higher criticality among active contributors only when the
+criticality preference affects scoring.
+
+✓ Retained a non-scoring criticality comparison under `context` when the
+preference is disabled.
+
+✓ Added `low energy above hull` when the exact scoring threshold,
+`energy_above_hull <= 0.01`, is satisfied.
+
+✓ Preserved stability wording and the final recommendation score.
+
+Regression Verification
+
+✓ Recommendation-service tests passed (`11 passed`).
+
+✓ New regression coverage verifies non-scoring criticality context, the
+low-energy contribution, and the labelled similarity basis.
+
+✓ The full regression suite passed locally.
+
+Local Endpoint Verification
+
+✓ `GET /api/v1/materials/5/recommendations` with
+`prefer_lower_criticality=true` showed criticality as an active contributor.
+
+✓ The same endpoint with `prefer_lower_criticality=false` removed criticality
+from scoring and retained it only after `context:`.
+
+✓ Shared-element and shared-application evidence appeared under
+`similarity basis:`.
+
+✓ Stability and qualifying low energy above hull appeared as active
+contributors.
+
+✓ Displayed scores reconciled with the explanations. Representative disabled
+preference results were:
+
+```text
+130 similarity + 10 stability + 5 low energy = 145
+110 similarity + 10 stability + 5 low energy = 125
+```
+
+Scientific Changes
+
+No scientific values, scoring weights, thresholds, or ranking policies
+changed. The remediation improves explanation provenance and prevents
+contextual evidence from being mistaken for an active score contribution.
+
+Breaking API
+
+No. Response fields and serialized numeric values are unchanged.
+Human-readable `recommendation_reason` wording is clearer.
+
+Database Migration
+
+No.
+
+Pending Verification
+
+The updated code has not yet been deployed to EC2. Production deployment,
+service restart, and endpoint verification in both criticality-preference modes
+are required before this finding is marked Resolved or Production verified.
+
+Lessons Learned
+
+Human-readable explanations must preserve score provenance. Evidence that
+forms a composite base score should be labelled as that score's basis, optional
+policy contributions must follow their activation flags, and contextual facts
+must not be presented as if they changed the result.
+
+Related Findings
+
+MG-AUD-034
+
+MG-AUD-035
+
+MG-AUD-036
+
+---
+
 # MG-AUD-002
 
 Title

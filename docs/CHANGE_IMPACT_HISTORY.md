@@ -512,3 +512,42 @@ score of `95.65`.
 - Ranking: **No; final weights and valid rankings are unchanged**
 - API contract: **Yes; one score-breakdown key changed**
 - Data migration: **No**
+
+---
+
+## Contributor-aware recommendation explanations
+
+Related findings: MG-AUD-037  
+Date: 2026-07-23  
+Release reference: Post-v1.9.18  
+Status: Locally verified; production deployment pending
+
+### Before
+
+Recommendation reasons mixed scoring contributors with contextual comparisons.
+Criticality could be mentioned even when its preference was disabled, shared
+elements and applications were not identified as the basis of the similarity
+score, and the low-energy-above-hull contribution was omitted from the reason.
+
+### After
+
+Recommendation reasons now distinguish:
+
+- the similarity score and its shared-element/shared-application basis;
+- active score contributors, including stability, qualifying low energy above
+  hull, and criticality when lower criticality is preferred;
+- non-scoring criticality comparison under `context` when the preference is
+  disabled; and
+- the final recommendation score.
+
+Local checks confirmed that a similarity score of `130.0`, stability bonus of
+`10`, and low-energy bonus of `5` produce `145.0` when criticality preference is
+disabled. With the preference enabled, the applicable criticality adjustment
+is also reflected in both the score and explanation.
+
+### Impact
+
+- Scientific result: **No**
+- Ranking: **No; scoring policy and numeric calculations are unchanged**
+- API contract: **No; human-readable wording only**
+- Data migration: **No**
