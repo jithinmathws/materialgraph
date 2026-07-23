@@ -56,6 +56,7 @@ class MaterialRecommendationService:
                     "recommendation_reason": self._build_recommendation_reason(
                         candidate=candidate,
                         recommendation_score=recommendation_score,
+                        prefer_lower_criticality=prefer_lower_criticality,
                     ),
                 }
             )
@@ -175,34 +176,65 @@ class MaterialRecommendationService:
         self,
         candidate: dict,
         recommendation_score: float,
+        prefer_lower_criticality: bool,
     ) -> str:
-        reasons = []
+        reasons = [f"similarity score {candidate['similarity_score']}"]
 
-        reasons.append(f"similarity score {candidate['similarity_score']}")
+        criticality_direction = candidate["criticality_direction"]
+        criticality_delta = candidate["criticality_delta"]
 
-        if candidate["criticality_direction"] == "LOWER_CRITICALITY":
-            reasons.append(
-                f"lower criticality by {abs(candidate['criticality_delta'])}"
+        criticality_reason: str | None = None
+
+        if (
+            criticality_direction == "LOWER_CRITICALITY"
+            and criticality_delta is not None
+        ):
+            criticality_reason = (
+                f"lower criticality by {abs(criticality_delta)}"
             )
-        elif candidate["criticality_direction"] == "HIGHER_CRITICALITY":
-            reasons.append(
-                f"higher criticality by {candidate['criticality_delta']}"
+        elif (
+            criticality_direction == "HIGHER_CRITICALITY"
+            and criticality_delta is not None
+        ):
+            criticality_reason = (
+                f"higher criticality by {abs(criticality_delta)}"
             )
-        elif candidate["criticality_direction"] == "SAME_CRITICALITY":
-            reasons.append("same criticality")
+        elif criticality_direction == "SAME_CRITICALITY":
+            criticality_reason = "same criticality"
+
+        if criticality_reason and prefer_lower_criticality:
+            reasons.append(criticality_reason)
+
+        similarity_basis = []
 
         if candidate["shared_element_count"] > 0:
-            reasons.append(f"shares {candidate['shared_element_count']} element(s)")
+            similarity_basis.append(
+                f"shares {candidate['shared_element_count']} element(s)"
+            )
 
         if candidate["shared_application_count"] > 0:
-            reasons.append(
+            similarity_basis.append(
                 f"shares {candidate['shared_application_count']} application(s)"
+            )
+
+        if similarity_basis:
+            reasons.append(
+                f"similarity basis: {', '.join(similarity_basis)}"
             )
 
         if candidate["is_stable"]:
             reasons.append("stable material")
 
+        if (
+            candidate["energy_above_hull"] is not None
+            and candidate["energy_above_hull"] <= 0.01
+        ):
+            reasons.append("low energy above hull")
+
         reasons.append(f"recommendation score {recommendation_score}")
+
+        if criticality_reason and not prefer_lower_criticality:
+            reasons.append(f"context: {criticality_reason}")
 
         return "; ".join(reasons)
 

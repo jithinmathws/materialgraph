@@ -78,6 +78,7 @@ def test_build_recommendation_reason_describes_criticality_comparison(
     reason = service._build_recommendation_reason(
         candidate=candidate,
         recommendation_score=recommendation_score,
+        prefer_lower_criticality=True,
     )
 
     assert reason == expected_reason
@@ -113,3 +114,75 @@ def test_recommendation_score_uses_delta_not_direction(
     )
 
     assert score == expected_score
+
+
+def test_recommendation_reason_labels_non_scoring_criticality_as_context(
+    service,
+):
+    candidate = build_candidate(
+        criticality_direction="LOWER_CRITICALITY",
+        criticality_delta=-12.0,
+    )
+
+    recommendation_score = service._calculate_recommendation_score(
+        candidate=candidate,
+        prefer_lower_criticality=False,
+    )
+
+    reason = service._build_recommendation_reason(
+        candidate=candidate,
+        recommendation_score=recommendation_score,
+        prefer_lower_criticality=False,
+    )
+
+    assert recommendation_score == 100.0
+    assert "context: lower criticality by 12.0" in reason
+    assert "lower criticality by 12.0" not in reason.split("context:")[0]
+
+
+def test_recommendation_reason_includes_low_energy_score_contribution(
+    service,
+):
+    candidate = build_candidate(
+        criticality_direction="UNKNOWN",
+        criticality_delta=None,
+    )
+    candidate["energy_above_hull"] = 0.01
+
+    recommendation_score = service._calculate_recommendation_score(
+        candidate=candidate,
+        prefer_lower_criticality=False,
+    )
+
+    reason = service._build_recommendation_reason(
+        candidate=candidate,
+        recommendation_score=recommendation_score,
+        prefer_lower_criticality=False,
+    )
+
+    assert recommendation_score == 105.0
+    assert "low energy above hull" in reason
+
+
+def test_recommendation_reason_labels_similarity_basis(
+    service,
+):
+    candidate = build_candidate(
+        criticality_direction="UNKNOWN",
+        criticality_delta=None,
+    )
+    candidate["shared_element_count"] = 3
+    candidate["shared_application_count"] = 1
+
+    recommendation_score = service._calculate_recommendation_score(
+        candidate=candidate,
+        prefer_lower_criticality=False,
+    )
+
+    reason = service._build_recommendation_reason(
+        candidate=candidate,
+        recommendation_score=recommendation_score,
+        prefer_lower_criticality=False,
+    )
+
+    assert "similarity basis: shares 3 element(s), shares 1 application(s)" in reason
