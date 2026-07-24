@@ -303,7 +303,7 @@ class DiscoveryTraversalService:
 
         reason = (
             "This discovery path follows "
-            + " → ".join(transition_types)
+            + " -> ".join(transition_types)
         )
 
         if common_shared_elements:

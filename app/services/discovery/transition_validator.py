@@ -229,7 +229,7 @@ class DiscoveryTransitionValidator:
             )
 
         return (
-            f"{from_formula} → {to_formula}: "
+            f"{from_formula} -> {to_formula}: "
             + "; ".join(parts)
             + "."
         )

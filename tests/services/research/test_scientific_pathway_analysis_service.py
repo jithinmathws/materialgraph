@@ -258,9 +258,10 @@ def test_scientific_pathway_analysis_exposes_partial_objective_satisfaction(
     assert satisfaction["overall_coverage"] == 0.5
     assert satisfaction["status"] == "partial"
 
-    # Explainability must not change ranking.
-    assert opportunity["score_breakdown"]["objective_alignment"] == 12.5
-    assert opportunity["scientific_usefulness_score"] == 83.15
+    # Path-event coverage remains partial, while ranking uses the
+    # final material's endpoint composition.
+    assert opportunity["score_breakdown"]["objective_alignment"] == 18.75
+    assert opportunity["scientific_usefulness_score"] == 89.4
 
 
 def test_scientific_pathway_analysis_assigns_unique_pathway_identity(

@@ -1,7 +1,24 @@
 from app.services.discovery.path_ranking_service import DiscoveryPathRankingService
 
 def test_path_ranking_preserves_scores_but_qualifies_reason():
-    result=DiscoveryPathRankingService().rank_path([], [{"transition_type":"alkali_substitution","family":"phosphate","shared_elements":["Fe","O","P"],"preserved_framework":["Fe","O","P"],"removed_elements":["Li"],"introduced_elements":["Na"]}], "Li","Na")
+    result = DiscoveryPathRankingService().rank_path(
+        materials=[
+            {"material_id": 1, "formula": "LiFePO4"},
+            {"material_id": 2, "formula": "NaFePO4"},
+        ],
+        transitions=[
+            {
+                "transition_type": "alkali_substitution",
+                "family": "phosphate",
+                "shared_elements": ["Fe", "O", "P"],
+                "preserved_framework": ["Fe", "O", "P"],
+                "removed_elements": ["Li"],
+                "introduced_elements": ["Na"],
+            }
+        ],
+        avoid_element="Li",
+        prefer_element="Na",
+    )
     assert result["scientific_usefulness_score"]==85.0
     breakdown = result["score_breakdown"]
 

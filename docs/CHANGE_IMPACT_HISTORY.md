@@ -570,7 +570,7 @@ only as context when the preference was disabled.
 Related findings: MG-AUD-014  
 Date: 2026-07-23  
 Release reference: Post-v1.9.18  
-Status: Locally verified; production deployment pending
+Status: Resolved; production verified 2026-07-23
 
 ### Before
 
@@ -603,4 +603,67 @@ is rejected.
 - Scientific result: **Yes; invalid union-only preservation is rejected**
 - Ranking: **Potentially; paths failing continuous preservation may be filtered or evaluated differently**
 - API contract: **No; existing fields retain their shape**
+- Data migration: **No**
+
+---
+
+## Endpoint-based discovery path objective alignment
+
+Related findings: MG-AUD-015  
+Date: 2026-07-24  
+Release reference: Post-v1.9.18  
+Status: Resolved; development endpoint verified 2026-07-24
+
+### Before
+
+Discovery path ranking unioned removed and introduced elements across every
+transition. A path could therefore earn objective-alignment credit when an
+avoided element was removed and later reintroduced, or when a preferred
+element was introduced and later removed, even though the final material did
+not satisfy the objective. Usefulness explanations also described accumulated
+transition events without distinguishing final endpoint composition.
+
+### After
+
+Objective alignment is determined from the final material's exact element
+composition:
+
+- structured endpoint `elements` are authoritative whenever the field is
+  present, including when explicitly empty;
+- otherwise, endpoint `formula` or `pretty_formula` is evaluated with the
+  canonical chemical-formula parser;
+- missing endpoint composition earns no objective credit;
+- avoid and prefer objectives retain their established proportional scoring,
+  with each side contributing at most `12.5`; and
+- transition events remain available as pathway evidence but no longer prove
+  endpoint satisfaction.
+
+Usefulness explanations now separately report events that occur during the
+path and objective outcomes at the endpoint. They also state when endpoint
+composition is unavailable. Discovery transition separators were standardized
+from the Unicode arrow to ASCII `->` to prevent mojibake in terminal-rendered
+API responses.
+
+Regression coverage includes endpoint reversals, partial and complete
+multi-element objectives, missing endpoint evidence, structured-element
+precedence, and explanation semantics. The full test suite passed.
+
+Development verification of:
+
+``` text
+LiFePO4 -> Na3Fe3(PO4)4
+```
+
+returned:
+
+- `objective_alignment: 25.0`;
+- `scientific_usefulness_score: 99.47`;
+- path-event explanations for removing Li and introducing Na; and
+- endpoint explanations confirming that Li is excluded and Na is present.
+
+### Impact
+
+- Scientific result: **Yes; endpoint objective credit now reflects the final material**
+- Ranking: **Potentially; paths with reversed or incomplete endpoint outcomes can score lower**
+- API contract: **No structural change; numeric results and human-readable wording may change**
 - Data migration: **No**

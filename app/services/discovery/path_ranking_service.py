@@ -2,6 +2,7 @@ from collections.abc import Collection
 
 from sqlalchemy.orm import Session
 
+from app.utils.chemical_formula import extract_elements
 from app.services.material.quality_service import MaterialQualityService
 
 
@@ -42,6 +43,7 @@ class DiscoveryPathRankingService:
             transitions
         )
         objective_score = self._score_objective_alignment(
+            materials=materials,
             transitions=transitions,
             avoid_elements=normalized_avoid_elements,
             prefer_elements=normalized_prefer_elements,
@@ -75,6 +77,7 @@ class DiscoveryPathRankingService:
                 "material_quality": material_quality_score,
             },
             "usefulness_reason": self._build_usefulness_reason(
+                materials=materials,
                 transitions=transitions,
                 avoid_elements=normalized_avoid_elements,
                 prefer_elements=normalized_prefer_elements,
@@ -126,23 +129,13 @@ class DiscoveryPathRankingService:
 
     def _score_objective_alignment(
         self,
+        materials: list[dict],
         transitions: list[dict],
         avoid_elements: frozenset[str],
         prefer_elements: frozenset[str],
     ) -> float:
-        if not transitions:
+        if not materials or not transitions:
             return 0.0
-
-        removed_elements = set()
-        introduced_elements = set()
-
-        for transition in transitions:
-            removed_elements.update(
-                transition.get("removed_elements", [])
-            )
-            introduced_elements.update(
-                transition.get("introduced_elements", [])
-            )
 
         if not avoid_elements and not prefer_elements:
             return round(
@@ -150,25 +143,31 @@ class DiscoveryPathRankingService:
                 2,
             )
 
+        endpoint_elements = self._endpoint_elements(materials)
+
+        # An empty set means endpoint composition evidence is unavailable
+        # or explicitly empty. It must not earn objective credit.
+        if not endpoint_elements:
+            return 0.0
+
         half_weight = self.OBJECTIVE_WEIGHT * 0.5
         score = 0.0
 
         if avoid_elements:
-            matched_avoided = (
-                avoid_elements & removed_elements
+            satisfied_avoided = (
+                avoid_elements - endpoint_elements
             )
             avoidance_ratio = (
-                len(matched_avoided) / len(avoid_elements)
+                len(satisfied_avoided) / len(avoid_elements)
             )
             score += half_weight * avoidance_ratio
 
         if prefer_elements:
-            matched_preferred = (
-                prefer_elements & introduced_elements
+            satisfied_preferred = (
+                prefer_elements & endpoint_elements
             )
             preference_ratio = (
-                len(matched_preferred)
-                / len(prefer_elements)
+                len(satisfied_preferred) / len(prefer_elements)
             )
             score += half_weight * preference_ratio
 
@@ -227,17 +226,16 @@ class DiscoveryPathRankingService:
 
     def _build_usefulness_reason(
         self,
+        materials: list[dict],
         transitions: list[dict],
         avoid_elements: frozenset[str],
         prefer_elements: frozenset[str],
     ) -> str:
         if not transitions:
-            return (
-                "No discovery path was available for ranking."
-            )
+            return "No discovery path was available for ranking."
 
-        # preserved_framework is retained as a legacy elemental-overlap fallback;
-        # it does not establish crystallographic or structural preservation.
+        # preserved_framework is retained as a legacy elemental-overlap
+        # fallback; it does not establish structural preservation.
         shared_element_sets = [
             set(
                 transition.get("shared_elements")
@@ -256,8 +254,8 @@ class DiscoveryPathRankingService:
             else set()
         )
 
-        removed_elements = set()
-        introduced_elements = set()
+        removed_elements: set[str] = set()
+        introduced_elements: set[str] = set()
         transition_types = []
 
         for transition in transitions:
@@ -271,45 +269,103 @@ class DiscoveryPathRankingService:
                 transition.get("transition_type")
             )
 
-        matched_avoided = sorted(
-            avoid_elements & removed_elements
-        )
-        unmatched_avoided = sorted(
-            avoid_elements - removed_elements
-        )
-        matched_preferred = sorted(
+        reasons = []
+
+        # Describe transition events independently from endpoint outcomes.
+        path_removed = sorted(avoid_elements & removed_elements)
+        path_not_removed = sorted(avoid_elements - removed_elements)
+        path_introduced = sorted(
             prefer_elements & introduced_elements
         )
-        unmatched_preferred = sorted(
+        path_not_introduced = sorted(
             prefer_elements - introduced_elements
         )
 
-        reasons = []
-
-        if matched_avoided:
+        if path_removed:
             reasons.append(
-                "removes requested avoided element(s) "
-                + ", ".join(matched_avoided)
+                "removes "
+                + ", ".join(path_removed)
+                + " during the path"
             )
 
-        if unmatched_avoided:
+        if path_not_removed:
             reasons.append(
-                "does not show removal events for requested "
-                "avoided element(s) "
-                + ", ".join(unmatched_avoided)
+                "does not show removal events during the path for "
+                "requested avoided element(s) "
+                + ", ".join(path_not_removed)
             )
 
-        if matched_preferred:
+        if path_introduced:
             reasons.append(
-                "introduces requested preferred element(s) "
-                + ", ".join(matched_preferred)
+                "introduces "
+                + ", ".join(path_introduced)
+                + " during the path"
             )
 
-        if unmatched_preferred:
+        if path_not_introduced:
             reasons.append(
-                "does not show introduction events for requested "
-                "preferred element(s) "
-                + ", ".join(unmatched_preferred)
+                "does not show introduction events during the path for "
+                "requested preferred element(s) "
+                + ", ".join(path_not_introduced)
+            )
+
+        # Determine whether authoritative endpoint-composition evidence exists.
+        endpoint_composition_available = False
+
+        if materials:
+            endpoint = materials[-1]
+
+            if "elements" in endpoint:
+                endpoint_composition_available = True
+            elif (
+                endpoint.get("formula")
+                or endpoint.get("pretty_formula")
+            ):
+                endpoint_composition_available = True
+
+        if endpoint_composition_available:
+            endpoint_elements = self._endpoint_elements(materials)
+
+            excluded_avoided = sorted(
+                avoid_elements - endpoint_elements
+            )
+            retained_avoided = sorted(
+                avoid_elements & endpoint_elements
+            )
+            contained_preferred = sorted(
+                prefer_elements & endpoint_elements
+            )
+            missing_preferred = sorted(
+                prefer_elements - endpoint_elements
+            )
+
+            if excluded_avoided:
+                reasons.append(
+                    "endpoint excludes requested avoided element(s) "
+                    + ", ".join(excluded_avoided)
+                )
+
+            if retained_avoided:
+                reasons.append(
+                    "endpoint still contains requested avoided element(s) "
+                    + ", ".join(retained_avoided)
+                )
+
+            if contained_preferred:
+                reasons.append(
+                    "endpoint contains requested preferred element(s) "
+                    + ", ".join(contained_preferred)
+                )
+
+            if missing_preferred:
+                reasons.append(
+                    "endpoint does not contain requested preferred "
+                    "element(s) "
+                    + ", ".join(missing_preferred)
+                )
+        elif avoid_elements or prefer_elements:
+            reasons.append(
+                "endpoint composition is unavailable"
             )
 
         if common_shared_elements:
@@ -327,7 +383,7 @@ class DiscoveryPathRankingService:
         if valid_transition_types:
             reasons.append(
                 "uses "
-                + " → ".join(valid_transition_types)
+                + " -> ".join(valid_transition_types)
                 + " transition logic"
             )
 
@@ -379,6 +435,38 @@ class DiscoveryPathRankingService:
             sum(material_scores) / len(material_scores),
             2,
         )
+
+
+    @staticmethod
+    def _endpoint_elements(
+        materials: list[dict],
+    ) -> set[str]:
+        if not materials:
+            return set()
+
+        endpoint = materials[-1]
+
+        # Structured endpoint composition is authoritative whenever
+        # the field is present, including when explicitly empty.
+        if "elements" in endpoint:
+            elements = endpoint.get("elements")
+
+            if not elements:
+                return set()
+
+            return {
+                element
+                for element in elements
+                if element
+            }
+
+        formula = (
+            endpoint.get("formula")
+            or endpoint.get("pretty_formula")
+        )
+
+        return extract_elements(formula)
+
 
     def _normalize_elements(
         self,

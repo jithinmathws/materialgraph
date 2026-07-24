@@ -17,9 +17,9 @@ This document contains only MaterialGraph audit findings. Update an existing fin
 
 ## Register summary
 
-- **Total findings:** 53
-- **Resolved:** 20
-- **Not resolved:** 33
+- **Total findings:** 54
+- **Resolved:** 23
+- **Not resolved:** 31
 
 ## Correctness and Data Integrity
 
@@ -348,7 +348,7 @@ Production verification on 2026-07-23 also confirmed
 
 ### MG-AUD-014 — Preservation Can Be Satisfied by Union Across Transitions
 
-- **Status:** Verification
+- **Status:** Resolved
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -382,7 +382,7 @@ pending.
 
 ### MG-AUD-015 — Objective Alignment Uses Path-Wide Events
 
-- **Status:** Confirmed
+- **Status:** Resolved
 - **Priority:** P1
 - **Confidence:** Confirmed
 
@@ -397,6 +397,24 @@ Distinguish:
 -   transition event alignment
 -   path continuity
 -   endpoint satisfaction
+
+**Remediation:** Discovery path objective alignment now uses the final
+material's exact endpoint composition. Structured `elements` data is
+authoritative when present, including when explicitly empty; otherwise the
+canonical chemical-formula parser is used. Avoid and prefer objectives remain
+proportional and transition events are retained only as separate pathway
+evidence. Usefulness explanations now distinguish path events from endpoint
+outcomes and report unavailable endpoint composition without awarding credit.
+
+**Verification:** Regression coverage confirms that introduced-then-removed
+preferred elements and removed-then-reintroduced avoided elements receive no
+endpoint credit, partial multi-element objectives remain proportional, and
+missing endpoint evidence receives no credit. The full test suite passed.
+Development endpoint verification for
+`LiFePO4 -> Na3Fe3(PO4)4` returned objective alignment `25.0`, a total
+scientific usefulness score of `99.47`, and separate path-event and endpoint
+explanations. Discovery reason separators were also standardized to ASCII
+`->` for consistent terminal and API rendering.
 
 ### MG-AUD-016 — Avoid/Prefer Constraints Are Soft in Candidate Scoring
 

@@ -140,6 +140,194 @@ ADR-002
 
 ---
 
+# MG-AUD-015
+
+Title
+
+Objective alignment used path-wide transition events instead of endpoint
+composition.
+
+Severity
+
+High
+
+Status
+
+✅ Resolved
+
+Resolution Version
+
+Post-v1.9.18
+
+Affected Components
+
+- DiscoveryPathRankingService
+- ScientificPathwayAnalysisService integration expectations
+- Discovery path-ranking tests
+- Scientific pathway-analysis tests
+- Discovery transition and traversal explanation rendering
+
+Root Cause
+
+Discovery path ranking accumulated the union of `removed_elements` and
+`introduced_elements` across all transitions and used those event sets to
+award objective-alignment credit.
+
+Transition events describe what happened somewhere along a pathway. They do
+not establish the composition of the final material. A preferred element could
+be introduced and later removed, or an avoided element could be removed and
+later reintroduced, while the path still received objective credit.
+
+Scientific Impact
+
+Path scientific-usefulness scores could overstate endpoint objective
+satisfaction. This could affect path ordering and researcher interpretation,
+particularly for multi-hop paths and multi-element objectives.
+
+Usefulness explanations compounded the issue by presenting transition events
+without separately stating whether the endpoint satisfied the requested avoid
+and prefer constraints.
+
+Resolution
+
+✓ Objective alignment now evaluates the final material's composition.
+
+✓ Structured endpoint `elements` are authoritative whenever the field is
+present, including when explicitly empty.
+
+✓ When structured elements are absent, the canonical exact chemical-formula
+parser evaluates `formula` or `pretty_formula`.
+
+✓ Unavailable or explicitly empty endpoint composition earns no objective
+credit.
+
+✓ Avoid and prefer sides retain their established proportional policy. Each
+side contributes at most `12.5`, preserving the maximum two-sided objective
+weight of `25.0`.
+
+✓ Transition-event evidence remains available but is no longer treated as
+endpoint satisfaction.
+
+✓ Usefulness explanations now distinguish:
+
+- removals and introductions occurring during the path;
+- avoided elements excluded from or retained by the endpoint;
+- preferred elements present in or absent from the endpoint; and
+- unavailable endpoint-composition evidence.
+
+✓ Unicode path separators in discovery explanations were standardized to
+ASCII `->` to render consistently in PowerShell, terminals, logs, and API
+clients.
+
+Regression Verification
+
+✓ Preferred element introduced and later removed receives no endpoint credit.
+
+✓ Avoided element removed and later reintroduced receives no endpoint credit.
+
+✓ Complete single-element avoid/prefer satisfaction receives `25.0`.
+
+✓ Partial multi-element satisfaction receives proportional credit.
+
+✓ Missing endpoint composition receives `0.0`.
+
+✓ Explicit structured `elements` take precedence over formula fallback.
+
+✓ Explanation tests separate path events from endpoint outcomes and cover
+endpoint reversals, partial satisfaction, and unavailable evidence.
+
+✓ Existing semantic and scientific pathway-analysis tests were updated to use
+endpoint-composition expectations.
+
+✓ Full regression suite passed.
+
+Development Endpoint Verification
+
+The discovery path endpoint was verified for material 5 and target material 7
+with `avoid_element=Li` and `prefer_element=Na`.
+
+Verified path:
+
+``` text
+LiFePO4 -> Na3Fe3(PO4)4
+```
+
+The endpoint `Na3Fe3(PO4)4` excludes Li and contains Na. The response returned:
+
+``` text
+objective_alignment: 25.0
+scientific_usefulness_score: 99.47
+```
+
+The usefulness reason independently reported:
+
+- Li removal and Na introduction during the path;
+- Li exclusion and Na presence at the endpoint;
+- Fe-O-P shared-element continuity; and
+- alkali-substitution transition logic.
+
+The score breakdown reconciled:
+
+``` text
+30.0 + 25.0 + 20.0 + 10.0 + 14.47 = 99.47
+```
+
+Production Verification
+
+Pending. Development endpoint behavior and the full automated test suite are
+verified; production deployment was not part of this remediation check.
+
+Scientific Changes
+
+Yes. Objective alignment now represents final-material composition instead of
+path-wide event occurrence. Valid paths whose endpoints already satisfied the
+objective retain their expected credit. Reversed or incomplete endpoint
+outcomes may receive lower scores.
+
+Breaking API
+
+No structural API change.
+
+Numeric objective-alignment and scientific-usefulness scores may change for
+paths whose transition-event history differs from final endpoint composition.
+Human-readable usefulness wording is more explicit. Unicode arrows in
+discovery explanation text now render as ASCII `->`.
+
+Database Migration
+
+No.
+
+Lessons Learned
+
+Transition events, path continuity, and endpoint composition are distinct
+scientific concepts and must not share one scoring proxy.
+
+Explanations should identify both the evidence scope and the material state
+that supports a numeric score.
+
+Structured composition evidence must remain authoritative, while formula
+parsing should be an exact fallback rather than substring matching.
+
+Related Findings
+
+MG-AUD-004
+
+MG-AUD-014
+
+MG-AUD-050
+
+Related Scientific Principles
+
+Principle 10
+
+Principle 11
+
+Related ADR
+
+ADR-002
+
+---
+
 # MG-AUD-014
 
 Title
@@ -223,9 +411,8 @@ intersection as `Fe-O-P` shared-element continuity.
 
 Pending Verification
 
-The correction has not yet been recorded as verified on the production EC2
-endpoint. Deploy, restart the service, and repeat the representative objective
-request before marking MG-AUD-014 Resolved.
+The correction has been recorded as resolved on the production EC2
+endpoint.
 
 Scientific Changes
 
