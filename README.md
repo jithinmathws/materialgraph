@@ -222,7 +222,7 @@ scientifically validated.
 ## Quick Start
 
 ```bash
-git clone https://github.com/<username>/materialgraph.git
+git clone https://github.com/MaterialGraph/materialgraph.git
 cd materialgraph
 
 python -m venv .venv

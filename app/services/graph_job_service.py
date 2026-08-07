@@ -44,8 +44,9 @@ class GraphJobService:
         stmt = (
             select(GraphJob)
             .where(GraphJob.status == JobStatus.PENDING)
-            .order_by(GraphJob.created_at.asc())
+            .order_by(GraphJob.created_at.asc(), GraphJob.id.asc())
             .limit(1)
+            .with_for_update(skip_locked=True)
         )
 
         job = self.db.scalars(stmt).first()
@@ -53,9 +54,10 @@ class GraphJobService:
         if job is None:
             return None
 
+        claimed_at = utc_now()
         job.status = JobStatus.RUNNING
-        job.started_at = utc_now()
-        job.updated_at = utc_now()
+        job.started_at = claimed_at
+        job.updated_at = claimed_at
 
         self.db.commit()
         self.db.refresh(job)

@@ -1,15 +1,15 @@
 # MaterialGraph Audit Register
 
 **Document role:** Sole authoritative source for current finding status and totals  
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-07
 
 ## Summary
 
 - **Total findings:** 94
-- **Remediated:** 45
+- **Remediated:** 46
 - **Accepted behavior / no defect confirmed:** 2
-- **Open:** 47
-- **Closed total:** 47
+- **Open:** 46
+- **Closed total:** 48
 
 ## Findings
 
@@ -74,7 +74,7 @@
 | MG-AUD-057 | Setup documentation configures an API-key name the importer does not read. | P1 | Open | [Details](findings/MG-AUD-051-075.md#mg-aud-057) | — |
 | MG-AUD-058 | Project version is defined by incompatible authorities. | P2 | Open | [Details](findings/MG-AUD-051-075.md#mg-aud-058) | — |
 | MG-AUD-059 | Duplicate element normalization is not honored during persistence. | P1 | Open | [Details](findings/MG-AUD-051-075.md#mg-aud-059) | — |
-| MG-AUD-060 | Pending graph-job claiming is not concurrency-safe. | P0 | Open | [Details](findings/MG-AUD-051-075.md#mg-aud-060) | — |
+| MG-AUD-060 | Pending graph-job claiming is not concurrency-safe. | P0 | Remediated | [Details](findings/MG-AUD-051-075.md#mg-aud-060) | [Evidence](resolutions/2026-08.md#mg-aud-060) |
 | MG-AUD-061 | Graph-job lifecycle permits contradictory state transitions. | P1 | Open | [Details](findings/MG-AUD-051-075.md#mg-aud-061) | — |
 | MG-AUD-062 | Missing criticality evidence receives favorable tie ordering. | P0 | Remediated | [Details](findings/MG-AUD-051-075.md#mg-aud-062) | [Evidence](resolutions/2026-07.md#mg-aud-062) |
 | MG-AUD-063 | Limited neighborhood responses can contain dangling edges. | P1 | Open | [Details](findings/MG-AUD-051-075.md#mg-aud-063) | — |

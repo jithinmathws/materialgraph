@@ -1,7 +1,7 @@
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.services.material_import_service import MaterialImportService
-from app.services.materials_project_service import MaterialsProjectService
+from app.services.material.import_service import MaterialImportService
+from app.services.material.project_service import MaterialsProjectService
 
 
 BATTERY_CHEMICAL_SYSTEMS = [
